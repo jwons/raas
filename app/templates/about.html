@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+
+{% block app_content %}
+    <h1 class="text-primary">About</h1>
+    <h2 class="text-muted">What is containR?</h2>
+    <p class="text-muted">containR was developed in 2018 at Harvard University by Christopher Chen (as an <a href="https://drive.google.com/file/d/1EBVFU9A5FdfGxdogU_X6zJHsSdTnUU3_/view?usp=sharing">undergraduate thesis project</a>) to improve the reproducibility of research code written in R. To achieve this goal, this website creates Docker images containing all the code, data, and package dependencies for R-based research projects, ensuring that the R code contained within will run on any computer with Docker installed. For usage instructions, check out the <a href="{{ url_for('instructions') }}">instructions page</a>.</p>
+    <h2 class="text-muted">Acknowledgements</h2>
+    <p>This project was advised by Professors Margo Seltzer and Joe Blitzstein, and was done in close collaboration with Matt Lau and Thomas Pasquier. The design for this website is based heavily on <a href="https://blog.miguelgrinberg.com/post/the-flask-mega-tutorial-part-i-hello-world">this Flask tutorial</a> by Miguel Grinberg.</p> 
+
+{% endblock %}

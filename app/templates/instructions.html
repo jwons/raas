@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+
+{% block app_content %}
+    <h1 class="text-primary">Instructions</h1>
+    <h2 class="text-muted">1. Introduction</h2>
+    containR was developed to improve the reproducibility of research code written in R. To achieve this goal, this website creates Docker images containing all the code, data, and package dependencies for R-based research projects, ensuring that the R code contained within will run on any computer with Docker installed. ContainR collects data provenance, or (very informally) metadata collected about code behavior while it executes, on the code in order to determine the necessary dependencies to include in the Docker image.
+    <hr>
+    <h2 class="text-muted">2. Set up Docker</h2>
+    <h3 class="text-muted">What's a Docker image?</h3>
+    A Docker image is a blueprint for a Docker containter, containing all the files and software a Docker container needs to run. A Docker container is essentially a process on your computer that runs an isolated computing environment (sort of like a virtual machine, but much more light-weight). For our purposes, we build Docker images of a folder containing your research code and its data and software dependencies. Think of this image as a time capsule of your research, which is shareable to anyone and executable by anyone who has Docker installed. When you execute this image on your or someone else's computer, it becomes a container, which actually lets you interact with and edit the code, sort of like if you were to open up the time capsule you just created. 
+
+    <h3 class="text-muted">Installing Docker</h3>
+    Follow the <a href="https://www.docker.com/community-edition" target="_blank">installation instructions on the Docker website</a>. Note for Windows users: Unless you have Microsoft Windows 10 Professional or Enterprise 64-bit, you need to install "Docker Toolbox" instead of Docker Community Edition. If this applies to you, look for the fine print on the Windows installation page. 
+    <hr>
+    <h2 class="text-muted">3. Upload your research dependencies, and build an image.</h2>
+   	<h3 class="text-muted">Build Image Form</h3>
+   	<image class="img-responsive" src="{{ url_for('static', filename='containr_instructions.png') }}"></image>
+   	The form for building an image on containR looks exactly as shown above, and can be found at the <a href="{{ url_for('containrize') }}">Build Image</a> page. The form provides two options for uploading the research dependencies: entering the DOI of the Dataset on Harvard University's Dataverse (a unique identifier) or uploading a ".zip" file of the research dependencies. Here's a Description of each form field:
+   	<ol>
+   		<li>The form field for the DOI of a dataset on Harvard University's <a href="https://dataverse.harvard.edu/" target="_blank">dataverse</a>. Should be similar to the form: "doi:10.7910/DVN/3XAMPL".</li>
+   		<li>An option to upload a ".zip" file <strong>instead of</strong> entering a DOI (only do one or the other). The ".zip" file should be a compressed version of a folder (a.k.a. directory) containing your R code and any data dependencies of your code. Please ensure that all code and data are contained in the folder and that the folder itself does not contain more nested folders. Here are instructions for how to create ".zip" files on <a href="https://support.apple.com/kb/PH25411?locale=en_US" target="_blank">macOS</a>, <a href="https://support.microsoft.com/en-us/help/14200/windows-compress-uncompress-zip-files" target="_blank">Windows</a>, and <a href="https://www.cyberciti.biz/faq/how-to-zip-a-folder-in-ubuntu-linux/" target="_blank">Ubuntu</a>.</li>
+   		<li>Here, you provide a custom name for the dataset. This name will be used to name the Docker image, and cannot be a name you have already used for a previous image on containR.</li>
+   		<li>An option to allow containR to try and automatically correct some common errors in your code. The errors and the corrections that would be attempted are outlined in this <a href="https://drive.google.com/file/d/1EBVFU9A5FdfGxdogU_X6zJHsSdTnUU3_/view?usp=sharing" target="_blank">document</a>.</li>
+   		<li>The submit button. Click here to tell containR to try and build an image with the data and information you provided.</li>
+   	</ol>
+   	<h3 class="text-muted">Build Status</h3>
+   	The <a href="{{ url_for('build_status') }}">Build Status</a> page provides a progress bar and information about the current build status of your image. You can only build one image at a time, though you can leave and return to the page without affecting the progress tracking. If containR successfully builds your image, the status page will look like this:
+   	<image style="padding-top:10px;padding-bottom:10px"class="img-responsive" src="{{ url_for('static', filename='containr_success.png') }}"></image>
+
+ 	If there is an error while executing your code, containR will provide the error output in addition to a helpful message about the likely cause of the error for certain types of common errors (see this <a href="https://drive.google.com/file/d/1EBVFU9A5FdfGxdogU_X6zJHsSdTnUU3_/view?usp=sharing" target="_blank">document</a> for details about these common errors):
+ 	<image style="padding-top:10px;padding-bottom:10px"class="img-responsive" src="{{ url_for('static', filename='containr_errors.png') }}"></image>
+
+ 	Once the image has been successfully built, an entry will appear on the containR homepage with the name of the image and a link to the image on DockerHub, a platform for storing and sharing Docker images analagous to what Github provides for code. See the example below:
+ 	
+ 	<h3 class="text-muted">Example</h3>
+ 	<p class="text-muted">Homepage before building image</p>
+ 	<image style="padding-top:10px;padding-bottom:10px"class="img-responsive" src="{{ url_for('static', filename='new_homepage.png') }}"></image>
+ 	<p class="text-muted">Build Image form</p>
+ 	<image style="padding-top:10px;padding-bottom:10px"class="img-responsive" src="{{ url_for('static', filename='example_containr_build.png') }}"></image>
+ 	<p class="text-muted">Homepage after building image</p>
+ 	<image style="padding-top:10px;padding-bottom:10px"class="img-responsive" src="{{ url_for('static', filename='homepage_after_build.png') }}"></image>
+
+ 	<hr>
+    <h2 class="text-muted">4. Download the image from DockerHub.</h2>
+
+    <h3 class="text-muted">Accessing the image on DockerHub</h3>
+    To access the image on DockerHub, follow the link corresponding to the image on the homepage (highlighted in the image below):
+    <image style="padding-top:10px;padding-bottom:10px"class="img-responsive" src="{{ url_for('static', filename='homepage_after_build_highlight.png') }}">
+    <strong>This page on DockerHub is public, and can therefore be shared with anyone.</strong> The actual DockerHub page looks like this:
+    <image style="padding-top:10px;padding-bottom:10px"class="img-responsive" src="{{ url_for('static', filename='example_dockerhub.png') }}"></image>
+
+	<h3 class="text-muted">Downloading from DockerHub</h3>
+	Anybody who wishes to run your research code can obtain the image by executing the "Docker Pull Command" on the DockerHub page (the <code>docker pull containr/chris-example</code> command highlighted in red in our example above) in their command-line interface (<a href="https://docs.docker.com/toolbox/toolbox_install_windows/" target="_blank">special instructions for getting to the command-line interface for Windows users running Docker Toolbox</a>). Example:
+	<image style="padding-top:10px;padding-bottom:10px"class="img-responsive" src="{{ url_for('static', filename='docker_pull_example.png') }}"></image>
+
+	<hr>
+    <h2 class="text-muted">5. Run the image.</h2>
+
+    <h3 class="text-muted">Docker Run</h2>
+    Once you have completed step 4 above, run the image by executing:
+    <pre><code>docker run -p 8787:8787 containr/chris-example</code></pre>
+    in your command-line interface, replacing "<code>containr/chris-example</code>" with the name of your image (which you can find at the end of the Docker Pull Command for your image if you're unsure). Example:
+    <image style="padding-top:10px;padding-bottom:10px"class="img-responsive" src="{{ url_for('static', filename='docker_run_example.png') }}"></image>
+    Wait for Docker to finish downloading the container's dependencies and booting up the container. You'll know the container is ready when you see the message highlighted by the red rectangle in the example above (<code>[services.d] done.</code>)
+    <h3 class="text-muted">Accessing RStudio Server</h2>
+   	After your container is ready, visit <a href="http://localhost:8787">http://localhost:8787</a> (or <a href="http://127.0.0.1:8787">http://127.0.0.1:8787</a> if the first doesn't work, which is more likely on Windows) in your favorite web browser. You should be greeted by an RStudio Server login screen. Enter "rstudio" for both the Username and the Password, as shown below, and sign in:
+   	<image style="padding-top:10px;padding-bottom:10px"class="img-responsive" src="{{ url_for('static', filename='rstudio_login.png') }}"></image>
+   	You'll be greeted by the familiar RStudio interface after logging in:
+   	<image style="padding-top:10px;padding-bottom:10px"class="img-responsive" src="{{ url_for('static', filename='rstudio_after_login.png') }}"></image>
+   	Highlighted in the red rectangle above is the folder containing our research dependencies. Clicking on the folder allows us to see the contents, including all the code and data, and reproduce all the results of the original code:
+   	<image style="padding-top:10px;padding-bottom:10px"class="img-responsive" src="{{ url_for('static', filename='rstudio_execution.png') }}"></image>
+   	<h3 class="text-muted">Port Numbers (Advanced)</h2>
+   	Examine the command for booting up a container:
+   	<pre><code>docker run -p 8787:8787 containr/chris-example</code></pre>
+   	The numbers in the middle <code>8787:8787</code> refer to port numbers. The first port number is the one your computer uses to communicate with the Docker container over the container's port (the second number). Your computer may already be using port <code>8787</code> (this can be used by other software, or even by a different Docker container), you can still run a new image. Simply <strong>enter a different 4-digit number in place of the number before the colon</strong>, and enter that same number at the end of the URL when accessing your computer in your web browser. For example, if I ran the command: 
+   	<pre><code>docker run -p 8080:8787 containr/chris-example</code></pre>
+   	Then I would access the container using <code>http://localhost:8080</code>.
+   	This functionality allows you to run multiple containers at once.<br><br> 
+   	<strong>Note: To follow convention, you should use a number greater than 8000 as your port number to be overly conservative, as many of the lower port numbers are reserved by your computer's operating system for special use cases.</strong>
+
+   	<div style="padding-bottom:50px"></div>
+   	
+{% endblock %}

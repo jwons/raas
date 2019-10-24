@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% import 'bootstrap/wtf.html' as wtf %}
+{% block styles %}
+{{super()}}
+<link rel="stylesheet"
+      href="{{url_for('static', filename='containrize.css')}}">
+{% endblock %}
+
+{% block app_content %}
+    <div class="row">
+        <h1 class="text-primary">Build Docker Image for Dataset</h1>
+        <p class="text-muted">For instructions, see Part 3 of the <a href=" {{url_for('instructions')}}">instructions page</a>.</h2>
+        <div class="col-md-4 text-muted">
+            {{ wtf.quick_form(form) }}
+        </div>
+    </div>  
+{% endblock %}

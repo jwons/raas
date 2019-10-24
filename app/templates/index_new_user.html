@@ -1,0 +1,6 @@
+{% extends "base.html" %}
+
+{% block app_content %}
+    <h1 class="text-primary">Hi, {{ current_user.username }}!</h1>
+    <h3 class="text-muted">You haven't built any images yet! Check out the <a href="{{ url_for('instructions') }}">instructions page</a> to learn how to get started, or head over to the <a href="{{ url_for('containrize') }}">Build Image</a> page to jump right in.</h3> 
+{% endblock %}
