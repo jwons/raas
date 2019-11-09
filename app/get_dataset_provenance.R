@@ -11,14 +11,15 @@
 args = commandArgs(trailingOnly=TRUE)
 # parse command line args for path to the directory and preprocessing
 dir_path_doi = args[1] # example: "doi--10.7910-DVN-26905"
-preproc = args[2] == "y" # preprocessing 
+preproc = args[2] == "y" # preprocessing    
 
 print(dir_path_doi)
 
 # set the working directory to the dataset directory
 setwd(dir_path_doi)
 library(stringr)
-library(provR)
+#library(provR) deprecated
+library(rdtLite)
 
 print("Creating directory!\n")
 # create directory to store provenance data
@@ -50,7 +51,7 @@ for (r_file in r_files) {
 	# save local variables in case the script clears the workspace
 	save(dir_path_doi, r_files, r_file, filename,
 		 file="prov_data/get_prov.RData")
-	error = try(prov.capture(r_file), silent = TRUE)
+	error = try(prov.run(r_file), silent = TRUE)
 	# restore local variables
 	load("prov_data/get_prov.RData")
 	# if there was an error

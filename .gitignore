@@ -1,0 +1,4 @@
+*.pyc
+.vscode
+app.db
+instance

@@ -13,12 +13,14 @@ import random
 import string
 import celery
 import time
+import cgi
 
 import pandas as pd
 import numpy as np
 from app.models import User, Dataset
 from app import app, db
 from celery.exceptions import Ignore
+from celery.contrib import rdb
 
 def doi_to_directory(doi):
 	"""Converts a doi string to a more directory-friendly name
@@ -66,12 +68,13 @@ def download_dataset(doi, destination, dataverse_key,
 	bool
 	whether the dataset was successfully downloaded to the destination
 	"""
+
 	api_url = api_url.strip("/")
 	# make a new directory to store the dataset
 	# (if one doesn't exist)
 	if not os.path.exists(destination):   
 		os.makedirs(destination)
-
+	
 	try:
 		# query the dataverse API for all the files in a dataverse
 		files = requests.get(api_url + "/datasets/:persistentId",
@@ -87,17 +90,22 @@ def download_dataset(doi, destination, dataverse_key,
 	# make a new directory to store the dataset
 	if not os.path.exists(doi_direct):   
 		os.makedirs(doi_direct)
-
 	# for each file result
 	for file in files:
 		try:
 			# parse the filename and fileid 
-			filename = file['dataFile']['filename']
+			#filename = file['dataFile']['filename']
 			fileid = file['dataFile']['id']
 
 			# query the API for the file contents
 			response = requests.get(api_url + "/access/datafile/" + str(fileid),
-									params={"key": dataverse_key})
+									params={"format":"original","key": dataverse_key})
+
+			value, params = cgi.parse_header(response.headers['Content-disposition'])
+			if 'filename*' in params:
+				filename = params['filename*'].split("'")[-1]
+			else:
+				filename = params['filename']
 
 			# write the response to correctly-named file in the dataset directory
 			with open(doi_direct + "/" + filename, 'wb') as handle:
@@ -654,6 +662,8 @@ def get_pkgs_from_prov_json(prov_json, optimize=False):
 	# regular expression to capture library name
 	library_regex = re.compile(r"library\((?P<lib_name>.*)\)", re.VERBOSE)
 
+	rdb.set_trace()
+
 	if optimize:
 		# set of used libraries
 		used_packages = set()
@@ -831,7 +841,7 @@ def naive_error_classifier(error_string):
 			   'Please ensure that you\'re not specifying an absolute path for your working directory. ' +\
 			   'To try and automatically correct this error, select the automatic error fixing option in the Build Image form.)'
 	if (re.search('file\s*\(', error_string) or re.search('cannot open the connection', error_string)
-		or re.search('No such file')):
+		or re.search('No such file', error_string)):
 		return '(This is likely an error importing data from a file. ' +\
 			   'Please ensure that you\'re specifying the correct path to your data, and that your data is ' +\
 			   'included in the file you uploaded. ' +\
@@ -1003,7 +1013,7 @@ def build_image(self, current_user_id, name, rclean, preprocess, dataverse_key='
 		new_docker.write('ADD ' + doi_to_directory(doi)\
 			  + ' /home/rstudio/'  + doi_to_directory(doi) + '\n')
 		new_docker.write('RUN chmod a+rwx -R /home/rstudio/' + doi_to_directory(doi) + '\n')
-
+	rdb.set_trace()
 	# create docker client instance
 	client = docker.from_env()
 	# build a docker image using docker file
@@ -1028,7 +1038,7 @@ def build_image(self, current_user_id, name, rclean, preprocess, dataverse_key='
 	########## UPDATING DB ######################################################################
 
 	# add dataset to database
-	new_dataset = Dataset(url="https://hub.docker.com/r/containr/" + image_name + "/",
+	new_dataset = Dataset(url="https://hub.docker.com/r/jwonsil/containr_dev" + image_name + "/",
 						  author=current_user_obj,
 						  name=name)
 	db.session.add(new_dataset)
