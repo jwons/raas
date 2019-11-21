@@ -51,7 +51,7 @@ for (r_file in r_files) {
 	# save local variables in case the script clears the workspace
 	save(dir_path_doi, r_files, r_file, filename,
 		 file="prov_data/get_prov.RData")
-	error = try(prov.run(r_file), silent = TRUE)
+	error = try(prov.run(r_file, prov.dir = "./prov_data"), silent = TRUE)
 	# restore local variables
 	load("prov_data/get_prov.RData")
 	# if there was an error

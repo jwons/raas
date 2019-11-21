@@ -15,6 +15,6 @@ class Config(object):
 	MAIL_USE_TLS = os.environ.get('MAIL_USE_TLS') is not None
 	MAIL_USERNAME = os.environ.get('MAIL_USERNAME')
 	MAIL_PASSWORD = os.environ.get('MAIL_PASSWORD')
-	ADMINS = ['chris.chen796@gmail.com']
+	ADMINS = ['joe.wonsil@gmail.com']
 	CELERY_BROKER_URL = 'redis://localhost:6379/0'
 	CELERY_RESULT_BACKEND = 'redis://localhost:6379/0'

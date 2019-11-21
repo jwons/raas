@@ -14,9 +14,12 @@ import string
 import celery
 import time
 import cgi
+import tarfile
 
 import pandas as pd
 import numpy as np
+import provdebug as pvd
+from urllib.parse import urlparse
 from app.models import User, Dataset
 from app import app, db
 from celery.exceptions import Ignore
@@ -662,7 +665,6 @@ def get_pkgs_from_prov_json(prov_json, optimize=False):
 	# regular expression to capture library name
 	library_regex = re.compile(r"library\((?P<lib_name>.*)\)", re.VERBOSE)
 
-	rdb.set_trace()
 
 	if optimize:
 		# set of used libraries
@@ -684,14 +686,16 @@ def get_pkgs_from_prov_json(prov_json, optimize=False):
 	packages = []
 	
 	# Filter packages in user's environment by which ones were used
-	for package_dict in prov_json['activity']["environment"]["rdt:installedPackages"]:
-		if package_dict["package"] not in set(['datasets', 'utils', 'graphics', 'grDevices',
+	for package_dict in prov_json.getLibs().iterrows():
+		package_name = package_dict[1][0]
+		package_version = package_dict[1][1]
+		if package_name not in set(['datasets', 'utils', 'graphics', 'grDevices',
 											   'methods', 'stats', 'provR', 'devtools', 'base']):
 			if optimize:
 				if package_dict["package"] in used_packages:
 					packages.append((package_dict["package"], package_dict["version"]))
 			else: 
-				packages.append((package_dict["package"], package_dict["version"]))
+				packages.append((package_name, package_version))
 
 	return packages
 
@@ -860,6 +864,40 @@ def clean_up_datasets():
 			except:
 				pass
 
+def gather_json_files_from_url(url):
+	json_files = []
+
+	# Strip the beginning of the url
+	container_name = urlparse(url)[2][3:]
+	# Strip the last '/'
+	image_name = container_name[:-1]
+
+	client = docker.from_env()
+	client.login(os.environ.get('DOCKER_USERNAME'), os.environ.get('DOCKER_PASSWORD'))
+
+	container = client.containers.run(image=image_name, detach=True, environment=["PASSWORD=llvis"], ports={'8787':'8787'})
+
+	result = container.exec_run("find /home/rstudio -name 'prov_data'")
+	f = open(os.path.join(app.instance_path, './docker_dir/prov.tar'), 'wb+')
+	bits, stat = container.get_archive(result[1].decode("ascii").strip())
+
+	for chunk in bits:
+	    f.write(chunk)
+
+	f.close()
+	container.kill()
+	tar = tarfile.open(os.path.join(app.instance_path, './docker_dir/prov.tar'), "r:")
+	tar.extractall(path=os.path.join(app.instance_path, './docker_dir/'))
+	tar.close()
+
+	for file in os.listdir(os.path.join(app.instance_path, './docker_dir/prov_data')):
+	    if file.endswith(".json"):
+	        json_files.append(file)
+
+
+
+	return(json_files)
+
 @celery.task(bind=True) # allows the task to be run in the background with Celery
 def build_image(self, current_user_id, name, rclean, preprocess, dataverse_key='', doi='', zip_file=''):
 	"""Build a docker image for a user-provided dataset
@@ -933,6 +971,7 @@ def build_image(self, current_user_id, name, rclean, preprocess, dataverse_key='
 
 	########## CHECKING FOR PROV ERRORS ##########################################################
 	# make sure an execution log exists
+
 	run_log_path = os.path.join(dataset_dir, 'prov_data', 'run_log.csv')
 	if not os.path.exists(run_log_path):
 		print(run_log_path, file=sys.stderr)
@@ -983,9 +1022,8 @@ def build_image(self, current_user_id, name, rclean, preprocess, dataverse_key='
 	# assemble a set of packages used
 	for prov_json in prov_jsons:
 		print(prov_json, file=sys.stderr)
-		with open(os.path.join(dataset_dir,'prov_data', prov_json)) as handle:
-			used_packages += get_pkgs_from_prov_json(\
-								json.load(handle))
+		used_packages += get_pkgs_from_prov_json(\
+								pvd.Parse.Parser(os.path.join(dataset_dir,'prov_data', prov_json)))
 
 	print(used_packages, file=sys.stderr)
 	docker_file_dir = os.path.join(app.instance_path,
@@ -1013,7 +1051,6 @@ def build_image(self, current_user_id, name, rclean, preprocess, dataverse_key='
 		new_docker.write('ADD ' + doi_to_directory(doi)\
 			  + ' /home/rstudio/'  + doi_to_directory(doi) + '\n')
 		new_docker.write('RUN chmod a+rwx -R /home/rstudio/' + doi_to_directory(doi) + '\n')
-	rdb.set_trace()
 	# create docker client instance
 	client = docker.from_env()
 	# build a docker image using docker file
@@ -1022,7 +1059,7 @@ def build_image(self, current_user_id, name, rclean, preprocess, dataverse_key='
 	current_user_obj = User.query.get(current_user_id)
 	# image_name = ''.join(random.choice(string.ascii_lowercase) for _ in range(5))
 	image_name = current_user_obj.username + '-' + name
-	client.images.build(path=docker_file_dir, tag='containr/' + image_name)
+	client.images.build(path=docker_file_dir, tag='jwonsil/' + image_name)
 	# except:
 	# 	clean_up_datasets()
 	# 	return {'current': 100, 'total': 100, 'status': ['Docker image build error.',
@@ -1033,12 +1070,12 @@ def build_image(self, current_user_id, name, rclean, preprocess, dataverse_key='
 
 	self.update_state(state='PROGRESS', meta={'current': 4, 'total': 5,
 											  'status': 'Pushing Docker image to Dockerhub... '})
-	print(client.images.push(repository='containr/' + image_name), file=sys.stderr)
+	print(client.images.push(repository='jwonsil/' + image_name), file=sys.stderr)
 
 	########## UPDATING DB ######################################################################
 
 	# add dataset to database
-	new_dataset = Dataset(url="https://hub.docker.com/r/jwonsil/containr_dev" + image_name + "/",
+	new_dataset = Dataset(url="https://hub.docker.com/r/jwonsil/" + image_name + "/",
 						  author=current_user_obj,
 						  name=name)
 	db.session.add(new_dataset)
