@@ -894,9 +894,9 @@ def gather_json_files_from_url(url):
 	    if file.endswith(".json"):
 	        json_files.append(file)
 
-
-
 	return(json_files)
+
+
 
 @celery.task(bind=True) # allows the task to be run in the background with Celery
 def build_image(self, current_user_id, name, rclean, preprocess, dataverse_key='', doi='', zip_file=''):
