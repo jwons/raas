@@ -69,14 +69,6 @@ To ensure everything up to this point is installed open a terminal, activate the
 celery -A app.celery worker
 ```
 
-## Configure Docker Authentication
-
-Set DOCKER_USERNAME and DOCKER_PASSWORD to the correct credentials to connect to Docker. 
-
-```{bash}
-export DOCKER_USERNAME="username"
-export DOCKER_PASSWORD="password" 
-```
 
 ## Install R 
 
@@ -101,6 +93,42 @@ sudo dpkg -i rstudio-1.2.5033-amd64.deb
 ```
 (I had to run a `sudo apt --fix-broken install` before RStudio would install)
 
+# Install Docker
+
+Install docker with 
+```{bash}
+sudo apt install docker.io
+
+sudo systemctl start docker
+sudo systemctl enable docker
+```
+
+To check to make sure it is installed correctly run
+```{bash}
+docker --version
+```
+and it should return something like ```Docker version 19.03.2, build 6a30dfca03```
+
+
+## Configure Docker Authentication
+
+To ensure docker can connect to Docker hub we need to add a new group and add the user to it. 
+
+```{bash}
+sudo groupadd docker
+sudo usermod -aG docker $USER
+```
+
+The group may already exist, but once these commands are run restart and try ```docker run hello-world``` and ensure it can be run without sudo. Additionally, run ```docker login``` to ensure you can authenticate. For authentication consider generating a token on the docker website instead of using your password. 
+
+Set DOCKER_REPO, DOCKER_USERNAME, DOCKER_PASSWORD environment variables to the correct credentials to connect to Docker. The docker repo will be the account pushing to. It seems username and repo will likely be identical.  
+
+```{bash}
+export DOCKER_USERNAME="username"
+export DOCKER_PASSWORD="password" 
+export DOCKER_REPO="repo name, probably same as username"
+```
+
 ## Running ContainR
 
 Navigate to the containr directory in two terminals with the python virtual environment activated. 
@@ -115,3 +143,7 @@ export FLASK_APP=containr.py
 
 flask run
 ```
+
+## Instructions for using ContainR
+
+From the build image page it is possible to either upload a zip file *of a directory* or enter a Harvard Dataverse DOI which it will then try to scrape. When choosing a name for the dataset, the name *must* be in all-lowercase. 

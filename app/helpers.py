@@ -1059,7 +1059,8 @@ def build_image(self, current_user_id, name, rclean, preprocess, dataverse_key='
 	current_user_obj = User.query.get(current_user_id)
 	# image_name = ''.join(random.choice(string.ascii_lowercase) for _ in range(5))
 	image_name = current_user_obj.username + '-' + name
-	client.images.build(path=docker_file_dir, tag='jwonsil/' + image_name)
+	repo_name = os.environ.get('DOCKER_REPO') + '/'
+	client.images.build(path=docker_file_dir, tag=repo_name + image_name)
 	# except:
 	# 	clean_up_datasets()
 	# 	return {'current': 100, 'total': 100, 'status': ['Docker image build error.',
@@ -1070,7 +1071,7 @@ def build_image(self, current_user_id, name, rclean, preprocess, dataverse_key='
 
 	self.update_state(state='PROGRESS', meta={'current': 4, 'total': 5,
 											  'status': 'Pushing Docker image to Dockerhub... '})
-	print(client.images.push(repository='jwonsil/' + image_name), file=sys.stderr)
+	print(client.images.push(repository=repo_name + image_name), file=sys.stderr)
 
 	########## UPDATING DB ######################################################################
 
