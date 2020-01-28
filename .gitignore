@@ -3,3 +3,4 @@
 app.db
 instance
 .Rhistory
+__pycache__
