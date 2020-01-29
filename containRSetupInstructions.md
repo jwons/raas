@@ -1,20 +1,26 @@
 These installation instructions were created by installing containR on an Ubuntu 19.10 laptop. 
 
 ## Description of the software used in this tutorial
-Ubuntu 19.10 (has also been done on 19.04)
-Python 3.6.1 (Used through the virtualenv)
+- Ubuntu 19.10 (has also been done on 19.04)
+- Python 3.6.1 (Used through the virtualenv)
+- Redis Server 5.0.5
+- Docker 19.03.2
+- R 3.6.1
 
 
-## Download containR
+## Installation Instructions
+It is important to follow these instructions in the order they are presented as some of them rely on the things installed beforehand. 
+
+### Download containR
 
 clone this repository
 ```{bash}
 git clone <copy and paste repository name here>
 ```
 
-## Set up Python Virtual Environment
+### Set up Python Virtual Environment
 
-To set up the environment ensure Python 3.6.1 is installed on the system as either the default or alternative installation. By default the Python 3 version Ubuntu uses is 3.7.5. If necessary install Python 3.6.5 first, then from pip install virtualenv. 
+To set up the environment ensure Python 3.6.1 is installed on the system as either the default or alternative installation. By default the Python 3 version Ubuntu uses is 3.7.5. If necessary install Python 3.6.1 first, then from pip install virtualenv. 
 
 With the correct version of python installed, create a new virtual environment and the activate it.
 ```{bash}
@@ -23,9 +29,9 @@ virtualenv --python=python3.6 .containrPy
 source .containrPy/bin/activate
 ```
 
-When you want to deactivate the virtual environment run ```deactivate```.
+When you want to deactivate the virtual environment run ```deactivate```. However, after this point in the tutorial, assume any terminal started is also running the python virtual environment. 
 
-## Install Python Requirements
+### Install Python Requirements
 
 Make sure pip is up to date
  
@@ -38,7 +44,7 @@ Then to install the required Python packages, navigate to the containr repo if n
 pip install -r requirements.txt
 ```
 
-## ProvDebug
+### ProvDebug
 ContainR uses a package written to parse this type of provenance. It is not available from pip but must be installed from GitHub. 
 
 Before installing ensure you have your python virtual environment activated. 
@@ -50,7 +56,7 @@ cd MultilingualProvenanceDebugger
 python setup.py install
 ```
 
-## Redis
+### Redis
 
 ContainR uses Redis, a key-value store. It must be installed and run.
 https://tecadmin.net/install-redis-ubuntu/
@@ -70,7 +76,7 @@ celery -A app.celery worker
 ```
 
 
-## Install R 
+### Install R 
 
 To install R, run the following command
 ```{bash}
@@ -93,7 +99,28 @@ sudo dpkg -i rstudio-1.2.5033-amd64.deb
 ```
 (I had to run a `sudo apt --fix-broken install` before RStudio would install)
 
-# Install Docker
+### Install rdtLite and devtools
+To install rdtLite you will need the devtools R package which allows you to install packages from GitHub.
+In case you don't already have them, install these dependencies first:
+
+```{bash}
+sudo apt install build-essential libcurl4-gnutls-dev libxml2-dev libcurl4-openssl-dev
+```
+
+There may be additional dependencies not captured here, or you may already have these. Watch during the installation of devtools for any mention of missing requirements, a lot may show up on the screen and they could get lost. If there are any, the installation will finish with a note saying it had a non-zero exit status. 
+
+Then from an R console run:
+```{r}
+install.packages("devtools") # This could take a few minutes
+```
+Once that has finished run the following devtools command:
+
+```{r}
+devtools::install_github("End-to-end-provenance/rdtLite")
+```
+For more information on rdtLite visit the [GitHub repo](https://github.com/End-to-end-provenance/RDataTracker).
+
+### Install Docker
 
 Install docker with 
 ```{bash}
@@ -110,7 +137,7 @@ docker --version
 and it should return something like ```Docker version 19.03.2, build 6a30dfca03```
 
 
-## Configure Docker Authentication
+### Configure Docker Authentication
 
 To ensure docker can connect to Docker hub we need to add a new group and add the user to it. 
 
@@ -129,21 +156,4 @@ export DOCKER_PASSWORD="password"
 export DOCKER_REPO="repo name, probably same as username"
 ```
 
-## Running ContainR
 
-Navigate to the containr directory in two terminals with the python virtual environment activated. 
-
-In the first terminal run 
-```{bash}
-celery -A app.celery worker
-```
-
-```{bash}
-export FLASK_APP=containr.py
-
-flask run
-```
-
-## Instructions for using ContainR
-
-From the build image page it is possible to either upload a zip file *of a directory* or enter a Harvard Dataverse DOI which it will then try to scrape. When choosing a name for the dataset, the name *must* be in all-lowercase. 
