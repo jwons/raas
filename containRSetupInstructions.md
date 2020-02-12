@@ -20,7 +20,18 @@ git clone <copy and paste repository name here>
 
 ### Set up Python Virtual Environment
 
-To set up the environment ensure Python 3.6.1 is installed on the system as either the default or alternative installation. By default the Python 3 version Ubuntu uses is 3.7.5. If necessary install Python 3.6.1 first, then from pip install virtualenv. 
+Your environment can be setup in whatever your preffered virtual environment is. containR has been run from a conda and virtualenv environment. However, personal choice, conda tends to be easy to work with. Once a virtual environment is created, whether it be through conda or virtualenv (or venv which is not in this tutorial) make sure it is always activated when doing anything with containR. 
+
+To use conda run:
+
+```{bash}
+conda create --name containr python=3.6
+
+conda activate containr
+```
+When installing packages in the virtual environment in the next section, make sure to use ```pip install``` not ```conda install```.
+
+To set up the environment in virtualenv ensure Python 3.6.1 is installed on the system as either the default or alternative installation. By default the Python 3 version Ubuntu uses is 3.7.5. If necessary install Python 3.6.1 first, then from pip install virtualenv. 
 
 With the correct version of python installed, create a new virtual environment and the activate it.
 ```{bash}
@@ -29,7 +40,7 @@ virtualenv --python=python3.6 .containrPy
 source .containrPy/bin/activate
 ```
 
-When you want to deactivate the virtual environment run ```deactivate```. However, after this point in the tutorial, assume any terminal started is also running the python virtual environment. 
+When you want to deactivate your virtual environment run ```deactivate```. However, after this point in the tutorial, assume any terminal started is also running the python virtual environment. 
 
 ### Install Python Requirements
 
