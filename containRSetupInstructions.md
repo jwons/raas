@@ -1,5 +1,3 @@
-These installation instructions were created by installing containR on an Ubuntu 19.10 laptop. 
-
 ## Description of the software used in this tutorial
 - Ubuntu 19.10 (has also been done on 19.04)
 - Python 3.6.1 (Used through the virtualenv)
