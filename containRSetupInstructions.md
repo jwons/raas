@@ -165,7 +165,7 @@ export DOCKER_PASSWORD="password"
 export DOCKER_REPO="repo name, probably same as username"
 ```
 
-# Initialize local database
+## Initialize local database
 
 To run containR using a local sqlite database, run the following command to initialize the database as app.db in the root containR directory.
 
