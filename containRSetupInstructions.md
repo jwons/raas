@@ -187,6 +187,3 @@ export FLASK_APP=containr.py
 
 flask run
 ```
-
-## Instructions for using ContainR
-
