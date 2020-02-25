@@ -864,39 +864,6 @@ def clean_up_datasets():
 			except:
 				pass
 
-def gather_json_files_from_url(url):
-	json_files = []
-
-	# Strip the beginning of the url
-	container_name = urlparse(url)[2][3:]
-	# Strip the last '/'
-	image_name = container_name[:-1]
-
-	client = docker.from_env()
-	client.login(os.environ.get('DOCKER_USERNAME'), os.environ.get('DOCKER_PASSWORD'))
-
-	container = client.containers.run(image=image_name, detach=True, environment=["PASSWORD=llvis"], ports={'8787':'8787'})
-
-	result = container.exec_run("find /home/rstudio -name 'prov_data'")
-	f = open(os.path.join(app.instance_path, './docker_dir/prov.tar'), 'wb+')
-	bits, stat = container.get_archive(result[1].decode("ascii").strip())
-
-	for chunk in bits:
-	    f.write(chunk)
-
-	f.close()
-	container.kill()
-	tar = tarfile.open(os.path.join(app.instance_path, './docker_dir/prov.tar'), "r:")
-	tar.extractall(path=os.path.join(app.instance_path, './docker_dir/'))
-	tar.close()
-
-	for file in os.listdir(os.path.join(app.instance_path, './docker_dir/prov_data')):
-	    if file.endswith(".json"):
-	        json_files.append(file)
-
-	return(json_files)
-
-
 
 @celery.task(bind=True) # allows the task to be run in the background with Celery
 def build_image(self, current_user_id, name, rclean, preprocess, dataverse_key='', doi='', zip_file=''):
