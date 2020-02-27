@@ -177,11 +177,3 @@ def about():
 @app.route('/instructions', methods=['GET', 'POST'])
 def instructions():
 	return render_template('instructions.html', title='Instructions')
-
-@app.route('/visualize', methods=['GET', 'POST'])
-def visualize():
-	if not os.path.exists(os.path.join(app.instance_path, 'docker_dir')):
-		os.makedirs(os.path.join(app.instance_path, 'docker_dir'))
-	data_url = request.args.get('data_url', None)
-	json_files = gather_json_files_from_url(data_url)
-	return render_template('visualize.html', title='Visualize', json_files = json_files)
