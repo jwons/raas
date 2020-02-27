@@ -17,6 +17,7 @@
 				<th scope="row">{{ dataset.name }}</th>
 		      	<td class="text-muted">{{ dataset.timestamp.strftime('%m/%d/%y %I:%M%p UTC') }}</td>
 				<td><a href="{{ dataset.url }}" target="_blank">{{ dataset.url }}</a></td>
+				<td><a href="{{ url_for('visualize', data_url=dataset.url) }}">Visualize</a></td>
 			</tr>
 		{% endfor %}	
 		</tbody>
