@@ -18,7 +18,6 @@ print(dir_path_doi)
 # set the working directory to the dataset directory
 setwd(dir_path_doi)
 library(stringr)
-#library(provR) deprecated
 library(rdtLite)
 
 print("Creating directory!\n")

@@ -24,6 +24,8 @@ from app.models import User, Dataset
 from app import app, db
 from celery.exceptions import Ignore
 from celery.contrib import rdb
+from shutil import copy
+
 
 def doi_to_directory(doi):
 	"""Converts a doi string to a more directory-friendly name
@@ -964,7 +966,7 @@ def build_image(self, current_user_id, name, rclean, preprocess, dataverse_key='
 												  'status': 'Collecting provenance data... ' +\
 												  '(This may take several minutes or longer,' +\
 												  ' depending on the complexity of your scripts)'})
-		subprocess.run(['bash', 'app/get_prov_for_doi.sh', dataset_dir])
+		subprocess.run(['bash', 'app/get_prov_for_doi.sh', dataset_dir, "app/get_dataset_provenance.R"])
 
 
 	########## CHECKING FOR PROV ERRORS ##########################################################
@@ -982,24 +984,7 @@ def build_image(self, current_user_id, name, rclean, preprocess, dataverse_key='
 														   error_message]]]}
 
 	# check the execution log for errors
-	error_list = []
-	errors_present = False
-	run_log_df = pd.read_csv(run_log_path)
-	# assemble error messages for each file
-	for _, my_row in run_log_df.iterrows():
-		my_file, my_error = my_row['filename'], my_row['error']
-		if my_error == 'success':
-			error_list.append(my_file + 'successfully ran!')
-		else:
-			errors_present = True
-			file_error_message = ['Error running \"' + my_file + '\"']
-			# try to add a friendlier error message for common errors
-			error_type = naive_error_classifier(my_error)
-			if error_type:
-				my_error += '<br>' + error_type 
-			# build up list of error messages
-			file_error_message.append(my_error)
-			error_list.append(file_error_message)
+	errors_present, error_list, my_file = checkLogForErrors(run_log_path)
 	
 	if errors_present:
 		clean_up_datasets()
@@ -1038,6 +1023,9 @@ def build_image(self, current_user_id, name, rclean, preprocess, dataverse_key='
 											  'status': 'Building Docker image... '})
 	# try:
 	# copy relevant packages and directory
+	
+	shutil.rmtree(os.path.join(dataset_dir, 'prov_data'))
+
 	with open(os.path.join(docker_file_dir, 'Dockerfile'), 'w') as new_docker:
 		new_docker.write('FROM rocker/tidyverse:latest\n')
 		used_packages = list(set(used_packages))
@@ -1048,6 +1036,12 @@ def build_image(self, current_user_id, name, rclean, preprocess, dataverse_key='
 		# copy the new directory and change permissions
 		new_docker.write('ADD ' + doi_to_directory(doi)\
 			  + ' /home/rstudio/'  + doi_to_directory(doi) + '\n')
+
+		copy("app/get_prov_for_doi.sh", "instance/r_datasets/" + doi_to_directory(doi))
+		copy("app/get_dataset_provenance.R", "instance/r_datasets/" + doi_to_directory(doi))
+
+		new_docker.write('COPY get_prov_for_doi.sh /home/rstudio/\n')
+		new_docker.write('COPY get_dataset_provenance.R /home/rstudio/\n')
 		new_docker.write('RUN chmod a+rwx -R /home/rstudio/' + doi_to_directory(doi) + '\n')
 	# create docker client instance
 	client = docker.from_env()
@@ -1059,6 +1053,58 @@ def build_image(self, current_user_id, name, rclean, preprocess, dataverse_key='
 	image_name = current_user_obj.username + '-' + name
 	repo_name = os.environ.get('DOCKER_REPO') + '/'
 	client.images.build(path=docker_file_dir, tag=repo_name + image_name)
+
+	self.update_state(state='PROGRESS', meta={'current': 4, 'total': 5,
+											  'status': 'Running scripts in container... '})
+
+	# Try running in the container to ensure reproducibility and installs worked. 
+	container = client.containers.run(image=repo_name + image_name,\
+		environment=["PASSWORD=" + repo_name + image_name], detach=True)
+
+	# Uncomment the following for debugging inside container
+	#rdb.set_trace()
+	#container.exec_run("ls /home/rstudio/" + dir_name)
+	#container.exec_run("rm -rd /home/rstudio/" + dir_name + "/prov_data")
+
+	result = container.exec_run("/bin/bash /home/rstudio/get_prov_for_doi.sh "\
+		 + "/home/rstudio/" + dir_name + " /home/rstudio/get_dataset_provenance.R")
+
+	########## CHECKING FOR PROV ERRORS ##########################################################
+	# make sure an execution log exists
+
+	run_log_path = "/home/rstudio/" + dir_name + "/prov_data/run_log.csv"
+
+
+
+	result = container.exec_run("cat " + run_log_path)
+
+	container.kill()
+
+	run_log_path = os.path.join(app.instance_path, 'r_datasets', dir_name, "run_log.csv") 
+	f = open(run_log_path, 'wb')
+	f.write(result[1])
+	f.close()
+
+	if not os.path.exists(run_log_path):
+		print(run_log_path, file=sys.stderr)
+		error_message = "ContainR could not locate any .R files to collect provenance for. " +\
+						"Please ensure that .R files to load dependencies for are placed in the " +\
+						"top-level directory."
+		clean_up_datasets()
+		return {'current': 100, 'total': 100, 'status': ['Provenance collection error.',
+														 [['Could not locate .R files',
+														   error_message]]]}
+
+	# check the execution log for errors
+	errors_present, error_list, my_file = checkLogForErrors(run_log_path)
+	
+	if errors_present:
+		clean_up_datasets()
+		return {'current': 100, 'total': 100, 'status': ['Provenance collection error while inside container.',
+														 error_list]}
+
+	#extractProvData(container)
+
 	# except:
 	# 	clean_up_datasets()
 	# 	return {'current': 100, 'total': 100, 'status': ['Docker image build error.',
@@ -1086,3 +1132,41 @@ def build_image(self, current_user_id, name, rclean, preprocess, dataverse_key='
 
 	return {'current': 5, 'total': 5, 'status': 'containR has finished! Your new image is accessible from the home page.',
             'result': 42, 'errors': 'No errors!'}
+
+def extractProvData(container):
+    result = container.exec_run("find /home/rstudio -name 'prov_data'")
+    f = open(os.path.join(app.instance_path, './docker_dir/prov.tar'), 'wb+')
+    bits, stat = container.get_archive(result[1].decode("ascii").strip())
+
+    for chunk in bits:
+        f.write(chunk)
+    rdb.set_trace()
+    f.close()
+    container.kill()
+    tar = tarfile.open(os.path.join(app.instance_path, './docker_dir/prov.tar'), "r:")
+    tar.extractall(path=os.path.join(app.instance_path, './docker_dir/'))
+    tar.close()
+			
+def checkLogForErrors(run_log_path):
+	# check the execution log for errors
+    error_list = []
+    errors_present = False
+    run_log_df = pd.read_csv(run_log_path)
+
+    # assemble error messages for each file
+    for _, my_row in run_log_df.iterrows():
+            my_file, my_error = my_row['filename'], my_row['error']
+            if my_error == 'success':
+                    error_list.append(my_file + 'successfully ran!')
+            else:
+                    errors_present = True
+                    file_error_message = ['Error running \"' + my_file + '\"']
+                    # try to add a friendlier error message for common errors
+                    error_type = naive_error_classifier(my_error)
+                    if error_type:
+                            my_error += '<br>' + error_type 
+                    # build up list of error messages
+                    file_error_message.append(my_error)
+                    error_list.append(file_error_message)
+    return errors_present, error_list, my_file
+
