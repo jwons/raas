@@ -1043,6 +1043,7 @@ def build_image(self, current_user_id, name, rclean, preprocess, dataverse_key='
 		new_docker.write('COPY get_prov_for_doi.sh /home/rstudio/\n')
 		new_docker.write('COPY get_dataset_provenance.R /home/rstudio/\n')
 		new_docker.write('RUN chmod a+rwx -R /home/rstudio/' + doi_to_directory(doi) + '\n')
+
 	# create docker client instance
 	client = docker.from_env()
 	# build a docker image using docker file
@@ -1076,12 +1077,11 @@ def build_image(self, current_user_id, name, rclean, preprocess, dataverse_key='
 	report["Container Report"] = {}
 	report["Individual Scripts"] = {}
 
-	rdb.set_trace()
-
+	# Grab the files from inside the container and the filter to just JSON files
 	prov_files = container.exec_run("ls /home/rstudio/" + dir_name + "/prov_data")[1].decode().split("\n")
-
 	json_files = [prov_file for prov_file in prov_files if ".json" in prov_file]
 
+	# Each json file will represent one execution so we need to grab the information from each.
 	for json_file in json_files:
 		report[json_file] = {}
 		prov_from_container = container.exec_run("cat /home/rstudio/" + dir_name + "/prov_data/" + json_file)[1].decode()
@@ -1090,8 +1090,8 @@ def build_image(self, current_user_id, name, rclean, preprocess, dataverse_key='
 		report["Individual Scripts"][json_file]["Output Files"] = set(prov_from_container.getOutputFiles()["name"].values.tolist())
 
 
+	# The run log will show us any errors in executions
 	run_log_path = "/home/rstudio/" + dir_name + "/prov_data/run_log.csv"
-
 	run_log_from_container = container.exec_run("cat " + run_log_path)
 
 	# Collect installed packages to ensure they were all succesfully created
