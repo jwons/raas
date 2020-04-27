@@ -18,7 +18,7 @@ import tarfile
 
 import pandas as pd
 import numpy as np
-import provdebug as pvd
+from app.Parse import Parser as ProvParser
 from urllib.parse import urlparse
 from app.models import User, Dataset
 from app import app, db
@@ -1006,7 +1006,7 @@ def build_image(self, current_user_id, name, rclean, preprocess, dataverse_key='
 	for prov_json in prov_jsons:
 		print(prov_json, file=sys.stderr)
 		used_packages += get_pkgs_from_prov_json(\
-								pvd.Parse.Parser(os.path.join(dataset_dir,'prov_data', prov_json)))
+								ProvParser(os.path.join(dataset_dir,'prov_data', prov_json)))
 
 	print(used_packages, file=sys.stderr)
 	docker_file_dir = os.path.join(app.instance_path,
@@ -1061,8 +1061,6 @@ def build_image(self, current_user_id, name, rclean, preprocess, dataverse_key='
 	container = client.containers.run(image=repo_name + image_name,\
 		environment=["PASSWORD=" + repo_name + image_name], detach=True)
 
-	# Uncomment the following for debugging inside container
-	#rdb.set_trace()
 	#container.exec_run("ls /home/rstudio/" + dir_name)
 	#container.exec_run("rm -rd /home/rstudio/" + dir_name + "/prov_data")
 
@@ -1072,17 +1070,60 @@ def build_image(self, current_user_id, name, rclean, preprocess, dataverse_key='
 	########## CHECKING FOR PROV ERRORS ##########################################################
 	# make sure an execution log exists
 
+	# The report will have various information from the creation of the container
+	# for the user
+	report = {}
+	report["Container Report"] = {}
+	report["Individual Scripts"] = {}
+
+	rdb.set_trace()
+
+	prov_files = container.exec_run("ls /home/rstudio/" + dir_name + "/prov_data")[1].decode().split("\n")
+
+	json_files = [prov_file for prov_file in prov_files if ".json" in prov_file]
+
+	for json_file in json_files:
+		report[json_file] = {}
+		prov_from_container = container.exec_run("cat /home/rstudio/" + dir_name + "/prov_data/" + json_file)[1].decode()
+		prov_from_container = ProvParser(prov_from_container, isFile=False)
+		report["Individual Scripts"][json_file]["Input Files"] = set(prov_from_container.getInputFiles()["name"].values.tolist()) 
+		report["Individual Scripts"][json_file]["Output Files"] = set(prov_from_container.getOutputFiles()["name"].values.tolist())
+
+
 	run_log_path = "/home/rstudio/" + dir_name + "/prov_data/run_log.csv"
 
+	run_log_from_container = container.exec_run("cat " + run_log_path)
 
-
-	result = container.exec_run("cat " + run_log_path)
+	# Collect installed packages to ensure they were all succesfully created
+	container_packages = container.exec_run("ls /usr/local/lib/R/library")[1].decode()
+	container_packages = container_packages.split("\n")
+	report["Container Report"]["Installed Packages"]  = container_packages + \
+		container.exec_run("ls /usr/local/lib/R/site-library")[1].decode().split("\n")
+	report["Container Report"]["Packages Used In Analysis"]  = used_packages
 
 	container.kill()
 
+	# Note any missing packages
+	missing_packages = []
+	for package in used_packages:
+		if package[0] not in container_packages:
+			missing_packages.append(package[0])
+	
+	# Error if a package or more is missing
+	if(len(missing_packages) > 0):
+		report["Container Report"]["Missing Packages"] = missing_packages
+		print(missing_packages, file=sys.stderr)
+		error_message = "ContainR could not correctly install all the R packages used in the upload inside of the container. " +\
+						"Docker container could not correctly be created." +\
+						"Missing packages are: " + " ".join(missing_packages)
+		clean_up_datasets()
+		return {'current': 100, 'total': 100, 'status': ['Docker Build Error.',
+														 [['Could not install R package',
+														   error_message]]]}
+
 	run_log_path = os.path.join(app.instance_path, 'r_datasets', dir_name, "run_log.csv") 
 	f = open(run_log_path, 'wb')
-	f.write(result[1])
+	f.write(run_log_from_container[1])
 	f.close()
 
 	if not os.path.exists(run_log_path):
