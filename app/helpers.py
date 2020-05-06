@@ -1023,11 +1023,15 @@ def build_image(self, current_user_id, name, rclean, preprocess, dataverse_key='
 											  'status': 'Building Docker image... '})
 	# try:
 	# copy relevant packages and directory
-	
+	sysreqs = []
+	with open(os.path.join(dataset_dir, 'prov_data', "sysreqs.txt")) as reqs:
+		sysreqs = reqs.readlines()
 	shutil.rmtree(os.path.join(dataset_dir, 'prov_data'))
-
 	with open(os.path.join(docker_file_dir, 'Dockerfile'), 'w') as new_docker:
 		new_docker.write('FROM rocker/tidyverse:latest\n')
+		if(len(sysreqs) == 1):
+			sysinstall = "RUN export DEBIAN_FRONTEND=noninteractive; apt-get -y update && apt-get install -y "
+			new_docker.write(sysinstall + sysreqs[0])
 		used_packages = list(set(used_packages))
 		if used_packages:
 			for package, version in used_packages:
@@ -1064,7 +1068,6 @@ def build_image(self, current_user_id, name, rclean, preprocess, dataverse_key='
 
 	#container.exec_run("ls /home/rstudio/" + dir_name)
 	#container.exec_run("rm -rd /home/rstudio/" + dir_name + "/prov_data")
-
 	result = container.exec_run("/bin/bash /home/rstudio/get_prov_for_doi.sh "\
 		 + "/home/rstudio/" + dir_name + " /home/rstudio/get_dataset_provenance.R")
 
@@ -1082,31 +1085,34 @@ def build_image(self, current_user_id, name, rclean, preprocess, dataverse_key='
 	json_files = [prov_file for prov_file in prov_files if ".json" in prov_file]
 
 	# Each json file will represent one execution so we need to grab the information from each.
+	container_packages = []
 	for json_file in json_files:
-		report[json_file] = {}
+		report["Individual Scripts"][json_file] = {}
 		prov_from_container = container.exec_run("cat /home/rstudio/" + dir_name + "/prov_data/" + json_file)[1].decode()
 		prov_from_container = ProvParser(prov_from_container, isFile=False)
+		container_packages += get_pkgs_from_prov_json(prov_from_container)
 		report["Individual Scripts"][json_file]["Input Files"] = set(prov_from_container.getInputFiles()["name"].values.tolist()) 
 		report["Individual Scripts"][json_file]["Output Files"] = set(prov_from_container.getOutputFiles()["name"].values.tolist())
 
+	container_packages = list(set([package[0] for package in container_packages]))
+	container.exec_run("R -e 'write(paste(as.data.frame(installed.packages(), stringsAsFactors = F)$Package, collapse =\"\n\"), \"./listOfPackages.txt\")'")
+	installed_packages = container.exec_run("cat listOfPackages.txt")[1].decode().split("\n")
 
-	# The run log will show us any errors in executions
+	# The run log will show us any errors in execution 
 	run_log_path = "/home/rstudio/" + dir_name + "/prov_data/run_log.csv"
 	run_log_from_container = container.exec_run("cat " + run_log_path)
 
 	# Collect installed packages to ensure they were all succesfully created
 	container_packages = container.exec_run("ls /usr/local/lib/R/library")[1].decode()
 	container_packages = container_packages.split("\n")
-	report["Container Report"]["Installed Packages"]  = container_packages + \
-		container.exec_run("ls /usr/local/lib/R/site-library")[1].decode().split("\n")
-	report["Container Report"]["Packages Used In Analysis"]  = used_packages
-
-	container.kill()
+	report["Container Report"]["Installed Packages"]  = installed_packages
+	report["Container Report"]["Packages Called In Analysis"]  = used_packages
+	report["Container Report"]["System Dependencies Explicitly Installed"] = sysreqs[0].split(" ")
 
 	# Note any missing packages
 	missing_packages = []
 	for package in used_packages:
-		if package[0] not in container_packages:
+		if package[0] not in installed_packages:
 			missing_packages.append(package[0])
 	
 	# Error if a package or more is missing
@@ -1120,11 +1126,10 @@ def build_image(self, current_user_id, name, rclean, preprocess, dataverse_key='
 		return {'current': 100, 'total': 100, 'status': ['Docker Build Error.',
 														 [['Could not install R package',
 														   error_message]]]}
-
+	container.kill()
 	run_log_path = os.path.join(app.instance_path, 'r_datasets', dir_name, "run_log.csv") 
-	f = open(run_log_path, 'wb')
-	f.write(run_log_from_container[1])
-	f.close()
+	with open(run_log_path, 'wb') as f:
+		f.write(run_log_from_container[1])
 
 	if not os.path.exists(run_log_path):
 		print(run_log_path, file=sys.stderr)
@@ -1153,7 +1158,6 @@ def build_image(self, current_user_id, name, rclean, preprocess, dataverse_key='
 	# 													 'We\'re sorry for the inconvenience. Please try again later.']}
 	
 	########## PUSHING IMG ######################################################################
-
 	self.update_state(state='PROGRESS', meta={'current': 4, 'total': 5,
 											  'status': 'Pushing Docker image to Dockerhub... '})
 	print(client.images.push(repository=repo_name + image_name), file=sys.stderr)
@@ -1181,7 +1185,6 @@ def extractProvData(container):
 
     for chunk in bits:
         f.write(chunk)
-    rdb.set_trace()
     f.close()
     container.kill()
     tar = tarfile.open(os.path.join(app.instance_path, './docker_dir/prov.tar'), "r:")

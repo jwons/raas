@@ -19,7 +19,7 @@ print(dir_path_doi)
 setwd(dir_path_doi)
 library(stringr)
 library(rdtLite)
-
+library(provParseR)
 print("Creating directory!\n")
 # create directory to store provenance data
 dir.create("prov_data", showWarnings = FALSE)
@@ -74,3 +74,19 @@ for (r_file in r_files) {
 	write.table(new_log_data, file="prov_data/run_log.csv", sep=",", append=TRUE,
 				row.names=FALSE, col.names=FALSE)
 }
+parsed.prov <- provParseR::prov.parse(prov.input = prov.json(), isFile = F)
+
+libs <- provParseR::get.libs(parsed.prov)
+
+all.libs <- unique(unlist(sapply(libs, function(lib){
+  tools::package_dependencies(lib, recursive = T)
+})))
+
+libs.request <- paste(all.libs, collapse=",")
+
+api.resp <- httr::content(httr::GET(paste("https://sysreqs.r-hub.io/pkg/", libs.request,"/linux-x86_64-ubuntu-gcc", sep = "")), as="parsed")
+api.resp <- unique(api.resp[api.resp != "NULL"])
+
+sys.deps <- paste(api.resp, collapse = " ")
+
+write(sys.deps, paste0("prov_data/", "sysreqs.txt"))
