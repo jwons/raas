@@ -1,7 +1,7 @@
 # containR
 A website that automatically creates RStudio Docker images from user-uploaded directories containing R code.
 
-For detailed set up instructions visit the [wiki](https://github.com/jwons/containr/wiki).
+For detailed set up instructions and other information visit the [wiki](https://github.com/jwons/containr/wiki).
 
 ## Running ContainR
 
@@ -12,7 +12,7 @@ In the first terminal run
 celery -A app.celery worker
 ```
 
-In the second terminal run the following code. For more information on flask apps check out [their website]{https://flask.palletsprojects.com/en/1.1.x/}
+In the second terminal run the following code. For more information on flask apps check out [their website](https://flask.palletsprojects.com/en/1.1.x/)
 ```{bash}
 export FLASK_APP=containr.py
 
