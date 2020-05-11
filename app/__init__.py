@@ -11,6 +11,7 @@ from flask_login import LoginManager
 from flask_mail import Mail
 from flask_bootstrap import Bootstrap
 from celery import Celery
+from sqlalchemy_utils import JSONType
 
 app = Flask(__name__)
 app.config.from_object(Config)

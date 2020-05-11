@@ -73,7 +73,6 @@ def download_dataset(doi, destination, dataverse_key,
 	bool
 	whether the dataset was successfully downloaded to the destination
 	"""
-
 	api_url = api_url.strip("/")
 	# make a new directory to store the dataset
 	# (if one doesn't exist)
@@ -101,9 +100,14 @@ def download_dataset(doi, destination, dataverse_key,
 			# parse the filename and fileid 
 			#filename = file['dataFile']['filename']
 			fileid = file['dataFile']['id']
+			contentType = file['dataFile']['contentType']
 
-			# query the API for the file contents
-			response = requests.get(api_url + "/access/datafile/" + str(fileid),
+			if(contentType == 'type/x-r-syntax'):
+				# query the API for the file contents
+				response = requests.get(api_url + "/access/datafile/" + str(fileid))
+			else:
+				# query the API for the file contents
+				response = requests.get(api_url + "/access/datafile/" + str(fileid),
 									params={"format":"original","key": dataverse_key})
 
 			value, params = cgi.parse_header(response.headers['Content-disposition'])
@@ -956,6 +960,7 @@ def build_image(self, current_user_id, name, rclean, preprocess, dataverse_key='
 													  			'collecting provenance data... ' +\
 													  			'(This may take several minutes or longer,' +\
 													  			' depending on the complexity of your scripts)'})
+			rdb.set_trace()
 			subprocess.run(['bash', 'app/get_prov_for_doi_preproc.sh', dataset_dir])
 			replace_files_with_preproc(dataset_dir, "r")
 			replace_files_with_preproc(os.path.join(dataset_dir, 'prov_data'), "json")
@@ -1002,6 +1007,7 @@ def build_image(self, current_user_id, name, rclean, preprocess, dataverse_key='
 				  if my_file.endswith('.json')]
 
 	used_packages = []
+
 	# assemble a set of packages used
 	for prov_json in prov_jsons:
 		print(prov_json, file=sys.stderr)
@@ -1022,7 +1028,7 @@ def build_image(self, current_user_id, name, rclean, preprocess, dataverse_key='
 	self.update_state(state='PROGRESS', meta={'current': 3, 'total': 5,
 											  'status': 'Building Docker image... '})
 	# try:
-	# copy relevant packages and directory
+	# copy relevant packages, system requirements, and directory
 	sysreqs = []
 	with open(os.path.join(dataset_dir, 'prov_data', "sysreqs.txt")) as reqs:
 		sysreqs = reqs.readlines()
@@ -1057,8 +1063,9 @@ def build_image(self, current_user_id, name, rclean, preprocess, dataverse_key='
 	# image_name = ''.join(random.choice(string.ascii_lowercase) for _ in range(5))
 	image_name = current_user_obj.username + '-' + name
 	repo_name = os.environ.get('DOCKER_REPO') + '/'
-	client.images.build(path=docker_file_dir, tag=repo_name + image_name)
 
+	client.images.build(path=docker_file_dir, tag=repo_name + image_name)
+		
 	self.update_state(state='PROGRESS', meta={'current': 4, 'total': 5,
 											  'status': 'Running scripts in container... '})
 
@@ -1091,8 +1098,8 @@ def build_image(self, current_user_id, name, rclean, preprocess, dataverse_key='
 		prov_from_container = container.exec_run("cat /home/rstudio/" + dir_name + "/prov_data/" + json_file)[1].decode()
 		prov_from_container = ProvParser(prov_from_container, isFile=False)
 		container_packages += get_pkgs_from_prov_json(prov_from_container)
-		report["Individual Scripts"][json_file]["Input Files"] = set(prov_from_container.getInputFiles()["name"].values.tolist()) 
-		report["Individual Scripts"][json_file]["Output Files"] = set(prov_from_container.getOutputFiles()["name"].values.tolist())
+		report["Individual Scripts"][json_file]["Input Files"] = list(set(prov_from_container.getInputFiles()["name"].values.tolist()))
+		report["Individual Scripts"][json_file]["Output Files"] = list(set(prov_from_container.getOutputFiles()["name"].values.tolist()))
 
 	container_packages = list(set([package[0] for package in container_packages]))
 	container.exec_run("R -e 'write(paste(as.data.frame(installed.packages(), stringsAsFactors = F)$Package, collapse =\"\n\"), \"./listOfPackages.txt\")'")
@@ -1106,8 +1113,8 @@ def build_image(self, current_user_id, name, rclean, preprocess, dataverse_key='
 	container_packages = container.exec_run("ls /usr/local/lib/R/library")[1].decode()
 	container_packages = container_packages.split("\n")
 	report["Container Report"]["Installed Packages"]  = installed_packages
-	report["Container Report"]["Packages Called In Analysis"]  = used_packages
-	report["Container Report"]["System Dependencies Explicitly Installed"] = sysreqs[0].split(" ")
+	report["Container Report"]["Packages Called In Analysis"]  = [list(package_pair) for package_pair in used_packages]
+	report["Container Report"]["System Dependencies Installed"] = sysreqs[0].split(" ")
 
 	# Note any missing packages
 	missing_packages = []
@@ -1149,8 +1156,6 @@ def build_image(self, current_user_id, name, rclean, preprocess, dataverse_key='
 		return {'current': 100, 'total': 100, 'status': ['Provenance collection error while inside container.',
 														 error_list]}
 
-	#extractProvData(container)
-
 	# except:
 	# 	clean_up_datasets()
 	# 	return {'current': 100, 'total': 100, 'status': ['Docker image build error.',
@@ -1160,6 +1165,7 @@ def build_image(self, current_user_id, name, rclean, preprocess, dataverse_key='
 	########## PUSHING IMG ######################################################################
 	self.update_state(state='PROGRESS', meta={'current': 4, 'total': 5,
 											  'status': 'Pushing Docker image to Dockerhub... '})
+	
 	print(client.images.push(repository=repo_name + image_name), file=sys.stderr)
 
 	########## UPDATING DB ######################################################################
@@ -1167,12 +1173,13 @@ def build_image(self, current_user_id, name, rclean, preprocess, dataverse_key='
 	# add dataset to database
 	new_dataset = Dataset(url="https://hub.docker.com/r/jwonsil/" + image_name + "/",
 						  author=current_user_obj,
-						  name=name)
+						  name=name,
+						  report=report)
 	db.session.add(new_dataset)
 	db.session.commit()
 
 	########## CLEANING UP ######################################################################
-
+	
 	clean_up_datasets()
 
 	return {'current': 5, 'total': 5, 'status': 'containR has finished! Your new image is accessible from the home page.',

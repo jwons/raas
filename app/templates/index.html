@@ -8,7 +8,7 @@
         	<tr class="text-primary">
          		<th scope="col">Name</th>
         		<th scope="col">Date Created</th>
-         		<th scope="col">URL</th>
+				 <th scope="col">URL</th>
     		</tr>
 		</thead>
 		<tbody>
@@ -17,6 +17,7 @@
 				<th scope="row">{{ dataset.name }}</th>
 		      	<td class="text-muted">{{ dataset.timestamp.strftime('%m/%d/%y %I:%M%p UTC') }}</td>
 				<td><a href="{{ dataset.url }}" target="_blank">{{ dataset.url }}</a></td>
+				<td><a href="{{ url_for('report', reportNum=dataset.id) }}">View Report</a></td>
 			</tr>
 		{% endfor %}	
 		</tbody>

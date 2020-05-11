@@ -177,3 +177,12 @@ def about():
 @app.route('/instructions', methods=['GET', 'POST'])
 def instructions():
 	return render_template('instructions.html', title='Instructions')
+
+@app.route('/report', methods=['GET', 'POST'])
+def report():
+	reportNum = request.args.get('reportNum', None)
+	dataset = Dataset.query.get(reportNum)
+	if(current_user.id != dataset.user_id):
+		return redirect(url_for('index'))
+	report = dataset.report
+	return render_template('report.html', title='Instructions', report = report)

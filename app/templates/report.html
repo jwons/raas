@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+
+{% block app_content %}
+<h1>Container Report</h1>
+{%for key in report.keys()%}
+<h2>{{key}}</h2>
+<p>{{report[key]}}</p>
+{%endfor%}
+{% endblock %}

@@ -2,7 +2,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
 from time import time
 import jwt
-from app import app, db, login
+from app import app, db, login, JSONType
 from flask_login import UserMixin
 
 class User(UserMixin, db.Model):
@@ -40,6 +40,7 @@ class Dataset(db.Model):
 	url = db.Column(db.String(140))
 	name = db.Column(db.String(50))
 	timestamp = db.Column(db.DateTime, index=True, default=datetime.utcnow)
+	report = db.Column(JSONType)
 	user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
 
 	def __repr__(self):
