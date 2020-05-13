@@ -960,7 +960,6 @@ def build_image(self, current_user_id, name, rclean, preprocess, dataverse_key='
 													  			'collecting provenance data... ' +\
 													  			'(This may take several minutes or longer,' +\
 													  			' depending on the complexity of your scripts)'})
-			rdb.set_trace()
 			subprocess.run(['bash', 'app/get_prov_for_doi_preproc.sh', dataset_dir])
 			replace_files_with_preproc(dataset_dir, "r")
 			replace_files_with_preproc(os.path.join(dataset_dir, 'prov_data'), "json")
@@ -1053,6 +1052,10 @@ def build_image(self, current_user_id, name, rclean, preprocess, dataverse_key='
 		new_docker.write('COPY get_prov_for_doi.sh /home/rstudio/\n')
 		new_docker.write('COPY get_dataset_provenance.R /home/rstudio/\n')
 		new_docker.write('RUN chmod a+rwx -R /home/rstudio/' + doi_to_directory(doi) + '\n')
+		new_docker.write("RUN /home/rstudio/get_prov_for_doi.sh "\
+		 + "/home/rstudio/" + dir_name + " /home/rstudio/get_dataset_provenance.R\n")
+		new_docker.write("RUN R -e 'write(paste(as.data.frame(installed.packages(),"\
+			+ "stringsAsFactors = F)$Package, collapse =\"\\n\"), \"./listOfPackages.txt\")'\n")
 
 	# create docker client instance
 	client = docker.from_env()
@@ -1067,31 +1070,26 @@ def build_image(self, current_user_id, name, rclean, preprocess, dataverse_key='
 	client.images.build(path=docker_file_dir, tag=repo_name + image_name)
 		
 	self.update_state(state='PROGRESS', meta={'current': 4, 'total': 5,
-											  'status': 'Running scripts in container... '})
+											  'status': 'Collecting container environment information... '})
 
-	# Try running in the container to ensure reproducibility and installs worked. 
-	container = client.containers.run(image=repo_name + image_name,\
-		environment=["PASSWORD=" + repo_name + image_name], detach=True)
-
-	#container.exec_run("ls /home/rstudio/" + dir_name)
-	#container.exec_run("rm -rd /home/rstudio/" + dir_name + "/prov_data")
-	result = container.exec_run("/bin/bash /home/rstudio/get_prov_for_doi.sh "\
-		 + "/home/rstudio/" + dir_name + " /home/rstudio/get_dataset_provenance.R")
-
-	########## CHECKING FOR PROV ERRORS ##########################################################
-	# make sure an execution log exists
-
+	########## Generate Report About Build Process ##########################################################
 	# The report will have various information from the creation of the container
 	# for the user
 	report = {}
 	report["Container Report"] = {}
 	report["Individual Scripts"] = {}
 
+	# There is provenance and other information from the analyses in the container. 
+	# to get it we need to run the container 
+	container = client.containers.run(image=repo_name + image_name,\
+		environment=["PASSWORD=" + repo_name + image_name], detach=True)
+
 	# Grab the files from inside the container and the filter to just JSON files
 	prov_files = container.exec_run("ls /home/rstudio/" + dir_name + "/prov_data")[1].decode().split("\n")
 	json_files = [prov_file for prov_file in prov_files if ".json" in prov_file]
 
 	# Each json file will represent one execution so we need to grab the information from each.
+	# Begin populating the report with information from the analysis and scripts
 	container_packages = []
 	for json_file in json_files:
 		report["Individual Scripts"][json_file] = {}
@@ -1100,20 +1098,24 @@ def build_image(self, current_user_id, name, rclean, preprocess, dataverse_key='
 		container_packages += get_pkgs_from_prov_json(prov_from_container)
 		report["Individual Scripts"][json_file]["Input Files"] = list(set(prov_from_container.getInputFiles()["name"].values.tolist()))
 		report["Individual Scripts"][json_file]["Output Files"] = list(set(prov_from_container.getOutputFiles()["name"].values.tolist()))
-
 	container_packages = list(set([package[0] for package in container_packages]))
-	container.exec_run("R -e 'write(paste(as.data.frame(installed.packages(), stringsAsFactors = F)$Package, collapse =\"\n\"), \"./listOfPackages.txt\")'")
+
+	# There should be a file written to the container's system that 
+	# lists the installed packages from when the analyses were run 
 	installed_packages = container.exec_run("cat listOfPackages.txt")[1].decode().split("\n")
 
 	# The run log will show us any errors in execution 
-	run_log_path = "/home/rstudio/" + dir_name + "/prov_data/run_log.csv"
-	run_log_from_container = container.exec_run("cat " + run_log_path)
+	# this will be used after report generation to check for errors when the script was 
+	# run inside the container
+	run_log_path_in_container = "/home/rstudio/" + dir_name + "/prov_data/run_log.csv"
+	run_log_from_container = container.exec_run("cat " + run_log_path_in_container)
 
-	# Collect installed packages to ensure they were all succesfully created
-	container_packages = container.exec_run("ls /usr/local/lib/R/library")[1].decode()
-	container_packages = container_packages.split("\n")
+	# information from the container is no longer needed 
+	container.kill()
+
+	# Finish out report generation
 	report["Container Report"]["Installed Packages"]  = installed_packages
-	report["Container Report"]["Packages Called In Analysis"]  = [list(package_pair) for package_pair in used_packages]
+	report["Container Report"]["Packages Called In Analysis"]  = container_packages #[list(package_pair) for package_pair in container_packages]
 	report["Container Report"]["System Dependencies Installed"] = sysreqs[0].split(" ")
 
 	# Note any missing packages
@@ -1124,7 +1126,6 @@ def build_image(self, current_user_id, name, rclean, preprocess, dataverse_key='
 	
 	# Error if a package or more is missing
 	if(len(missing_packages) > 0):
-		report["Container Report"]["Missing Packages"] = missing_packages
 		print(missing_packages, file=sys.stderr)
 		error_message = "ContainR could not correctly install all the R packages used in the upload inside of the container. " +\
 						"Docker container could not correctly be created." +\
@@ -1133,8 +1134,9 @@ def build_image(self, current_user_id, name, rclean, preprocess, dataverse_key='
 		return {'current': 100, 'total': 100, 'status': ['Docker Build Error.',
 														 [['Could not install R package',
 														   error_message]]]}
-	container.kill()
+	
 	run_log_path = os.path.join(app.instance_path, 'r_datasets', dir_name, "run_log.csv") 
+
 	with open(run_log_path, 'wb') as f:
 		f.write(run_log_from_container[1])
 
@@ -1153,7 +1155,7 @@ def build_image(self, current_user_id, name, rclean, preprocess, dataverse_key='
 	
 	if errors_present:
 		clean_up_datasets()
-		return {'current': 100, 'total': 100, 'status': ['Provenance collection error while inside container.',
+		return {'current': 100, 'total': 100, 'status': ['Provenance collection error while executing inside container.',
 														 error_list]}
 
 	# except:
@@ -1171,7 +1173,7 @@ def build_image(self, current_user_id, name, rclean, preprocess, dataverse_key='
 	########## UPDATING DB ######################################################################
 
 	# add dataset to database
-	new_dataset = Dataset(url="https://hub.docker.com/r/jwonsil/" + image_name + "/",
+	new_dataset = Dataset(url="https://hub.docker.com/r/"+repo_name + image_name + "/",
 						  author=current_user_obj,
 						  name=name,
 						  report=report)
