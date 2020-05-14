@@ -423,6 +423,7 @@ def preprocess_source(r_file, script_dir, from_preproc=False):
 							with open(sourced_path + '/' + re.sub('.R\$', '__preproc__.R\$', sourced_filename), 
 								      'r') as infile:
 								map(outfile.write, infile.readlines())
+							outfile.write(line)
 					else:
 						outfile.write(line)
 				else:

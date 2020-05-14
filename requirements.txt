@@ -30,7 +30,7 @@ itsdangerous==0.24
 Jinja2==2.10
 kombu==4.1.0
 Mako==1.0.7
-MarkupSafe==1.0
+MarkupSafe==1.1.1
 numpy==1.14.2
 pandas==0.22.0
 pycparser==2.18
@@ -43,6 +43,7 @@ redis==2.10.6
 requests==2.18.4
 six==1.11.0
 SQLAlchemy==1.2.6
+sqlalchemy_utils==0.36.5
 urllib3==1.22
 vine==1.1.4
 visitor==0.1.3
