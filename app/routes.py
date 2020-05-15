@@ -1,6 +1,10 @@
 import sys
 import os
 import copy
+import json 
+#For debugging with headless mode-----------
+from shutil import copyfile
+#-------------------------------------------
 from sqlalchemy import desc
 from flask import render_template, flash, redirect, url_for, request, g, jsonify, session
 from app import app, db, login
@@ -11,6 +15,7 @@ from werkzeug.urls import url_parse
 from werkzeug.utils import secure_filename
 from app.helpers import build_image, gather_json_files_from_url
 from threading import Thread
+
 
 @app.route('/')
 @app.route('/index')
@@ -33,11 +38,9 @@ def index():
 def containrize():
 	form = ContainrForm()
 	if form.validate_on_submit():
-		clean_code = True # placeholder, TODO: integrate with rclean
 		if form.doi.data:
 			task = build_image.apply_async(kwargs={'current_user_id': current_user.id,
 												   'doi': form.doi.data,
-												   'rclean': clean_code,
 												   'name': form.name.data,
 												   'preprocess': form.fix_code.data,
 												   'dataverse_key': os.environ.get('DATAVERSE_KEY')})
@@ -54,7 +57,6 @@ def containrize():
 			
 			task = build_image.apply_async(kwargs={'zip_file': filename,
 												   'current_user_id': current_user.id,
-												   'rclean': clean_code,
 												   'name': form.name.data,
 												   'preprocess': form.fix_code.data})
 		session['task_id'] = task.id
@@ -186,3 +188,56 @@ def report():
 		return redirect(url_for('index'))
 	report = dataset.report
 	return render_template('report.html', title='Instructions', report = report)
+
+@app.route('/api/build_image', methods=['GET', 'POST'])
+def api_build():
+	# Get arguments from url
+	user_id = 1
+	name = ''
+	preprocess = False
+	dataverse_key=''
+	doi=''
+	zip_file=''
+
+	if 'userID' in request.args:
+		user_id = int(request.args['userID'])
+	
+	if 'name' in request.args:
+		name = request.args['name']
+
+	if 'preprocess' in request.args:
+		preprocess = bool(int(request.args['preprocess']))
+	
+	if 'dataverse_key' in request.args:
+		dataverse_key = request.args['dataverse_key']
+	
+	if 'doi' in request.args:
+		doi = request.args['doi']
+	
+	if 'zipFile' in request.args:
+		zip_file = request.args['zipFile']
+	
+	if doi != '':
+		task = build_image.apply_async(kwargs={'current_user_id': user_id,
+												   'doi': doi,
+												   'name': name,
+												   'preprocess': preprocess,
+												   'dataverse_key': os.environ.get('DATAVERSE_KEY')})
+	else:
+		# create directories if they don't exists yet
+		if not os.path.exists(app.instance_path):
+			os.makedirs(app.instance_path)
+		if not os.path.exists(os.path.join(app.instance_path, 'r_datasets')):
+			os.makedirs(os.path.join(app.instance_path, 'r_datasets'))
+		# save the .zip file to the correct location
+		zip_base = os.path.basename(zip_file)
+		copyfile(os.path.join(app.instance_path, 'r_datasets', zip_base), zip_file)
+		
+		
+		task = build_image.apply_async(kwargs={'zip_file': zip_base,
+												   'current_user_id': user_id,
+												   'name': name,
+												   'preprocess': preprocess})
+	
+	return("True")
+

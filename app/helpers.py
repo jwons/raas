@@ -82,7 +82,7 @@ def download_dataset(doi, destination, dataverse_key,
 	try:
 		# query the dataverse API for all the files in a dataverse
 		files = requests.get(api_url + "/datasets/:persistentId",
-							 params= {"persistentId": doi, "key": dataverse_key})\
+							 params= {"persistentId": doi})\
 							 .json()['data']['latestVersion']['files']
 
 	except:
@@ -903,7 +903,7 @@ def gather_json_files_from_url(url):
 	return(json_files)
 
 @celery.task(bind=True) # allows the task to be run in the background with Celery
-def build_image(self, current_user_id, name, rclean, preprocess, dataverse_key='', doi='', zip_file=''):
+def build_image(self, current_user_id, name, preprocess, dataverse_key='', doi='', zip_file=''):
 	"""Build a docker image for a user-provided dataset
 	Parameters
 	----------
@@ -911,8 +911,6 @@ def build_image(self, current_user_id, name, rclean, preprocess, dataverse_key='
 			  	   	  id of current user
 	name : string
 		   name of the image
-	rclean : bool
-			 whether to apply rclean to the code in the dataset
 	preprocess : bool
 				 whether to preprocess the code in the dataset
 	dataverse_key : string
@@ -922,6 +920,7 @@ def build_image(self, current_user_id, name, rclean, preprocess, dataverse_key='
 	zip_file : string
 			   name of the .zip file if dataset uploaded as a .zip
 	"""
+	rdb.set_trace()
 	########## GETTING DATA ######################################################################
 	# either get the dataset from the .zip file or download it from dataverse
 	dataset_dir = ''
@@ -1053,7 +1052,7 @@ def build_image(self, current_user_id, name, rclean, preprocess, dataverse_key='
 		new_docker.write('COPY get_dataset_provenance.R /home/rstudio/\n')
 		new_docker.write('RUN chmod a+rwx -R /home/rstudio/' + doi_to_directory(doi) + '\n')
 		new_docker.write("RUN /home/rstudio/get_prov_for_doi.sh "\
-		 + "/home/rstudio/" + dir_name + " /home/rstudio/get_dataset_provenance.R\n")
+		 + "/home/rstudio/" + doi_to_directory(doi) + " /home/rstudio/get_dataset_provenance.R\n")
 		new_docker.write("RUN R -e 'write(paste(as.data.frame(installed.packages(),"\
 			+ "stringsAsFactors = F)$Package, collapse =\"\\n\"), \"./listOfPackages.txt\")'\n")
 
@@ -1085,7 +1084,7 @@ def build_image(self, current_user_id, name, rclean, preprocess, dataverse_key='
 		environment=["PASSWORD=" + repo_name + image_name], detach=True)
 
 	# Grab the files from inside the container and the filter to just JSON files
-	prov_files = container.exec_run("ls /home/rstudio/" + dir_name + "/prov_data")[1].decode().split("\n")
+	prov_files = container.exec_run("ls /home/rstudio/" + doi_to_directory(doi) + "/prov_data")[1].decode().split("\n")
 	json_files = [prov_file for prov_file in prov_files if ".json" in prov_file]
 
 	# Each json file will represent one execution so we need to grab the information from each.
@@ -1093,7 +1092,7 @@ def build_image(self, current_user_id, name, rclean, preprocess, dataverse_key='
 	container_packages = []
 	for json_file in json_files:
 		report["Individual Scripts"][json_file] = {}
-		prov_from_container = container.exec_run("cat /home/rstudio/" + dir_name + "/prov_data/" + json_file)[1].decode()
+		prov_from_container = container.exec_run("cat /home/rstudio/" + doi_to_directory(doi) + "/prov_data/" + json_file)[1].decode()
 		prov_from_container = ProvParser(prov_from_container, isFile=False)
 		container_packages += get_pkgs_from_prov_json(prov_from_container)
 		report["Individual Scripts"][json_file]["Input Files"] = list(set(prov_from_container.getInputFiles()["name"].values.tolist()))
@@ -1107,7 +1106,7 @@ def build_image(self, current_user_id, name, rclean, preprocess, dataverse_key='
 	# The run log will show us any errors in execution 
 	# this will be used after report generation to check for errors when the script was 
 	# run inside the container
-	run_log_path_in_container = "/home/rstudio/" + dir_name + "/prov_data/run_log.csv"
+	run_log_path_in_container = "/home/rstudio/" + doi_to_directory(doi) + "/prov_data/run_log.csv"
 	run_log_from_container = container.exec_run("cat " + run_log_path_in_container)
 
 	# information from the container is no longer needed 
@@ -1135,7 +1134,7 @@ def build_image(self, current_user_id, name, rclean, preprocess, dataverse_key='
 														 [['Could not install R package',
 														   error_message]]]}
 	
-	run_log_path = os.path.join(app.instance_path, 'r_datasets', dir_name, "run_log.csv") 
+	run_log_path = os.path.join(app.instance_path, 'r_datasets', doi_to_directory(doi), "run_log.csv") 
 
 	with open(run_log_path, 'wb') as f:
 		f.write(run_log_from_container[1])
@@ -1157,12 +1156,6 @@ def build_image(self, current_user_id, name, rclean, preprocess, dataverse_key='
 		clean_up_datasets()
 		return {'current': 100, 'total': 100, 'status': ['Provenance collection error while executing inside container.',
 														 error_list]}
-
-	# except:
-	# 	clean_up_datasets()
-	# 	return {'current': 100, 'total': 100, 'status': ['Docker image build error.',
-	# 													 'There was an error building your docker image. ' +\
-	# 													 'We\'re sorry for the inconvenience. Please try again later.']}
 	
 	########## PUSHING IMG ######################################################################
 	self.update_state(state='PROGRESS', meta={'current': 4, 'total': 5,
@@ -1183,7 +1176,7 @@ def build_image(self, current_user_id, name, rclean, preprocess, dataverse_key='
 	########## CLEANING UP ######################################################################
 	
 	clean_up_datasets()
-
+	print("Returning")
 	return {'current': 5, 'total': 5, 'status': 'containR has finished! Your new image is accessible from the home page.',
             'result': 42, 'errors': 'No errors!'}
 

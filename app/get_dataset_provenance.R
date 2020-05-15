@@ -74,19 +74,25 @@ for (r_file in r_files) {
 	write.table(new_log_data, file="prov_data/run_log.csv", sep=",", append=TRUE,
 				row.names=FALSE, col.names=FALSE)
 }
-parsed.prov <- provParseR::prov.parse(prov.input = prov.json(), isFile = F)
 
+# We will also need the system requirements from these packages to install in 
+# in the container. This is accomplished by finding all packages (recursively)
+# this analysis uses, and then queries a sysreqs database API to find system requirements
+
+# Libraries called in analysis
+parsed.prov <- provParseR::prov.parse(prov.input = prov.json(), isFile = F)
 libs <- provParseR::get.libs(parsed.prov)
 
+# All libraries including implicit
 all.libs <- unique(unlist(sapply(libs, function(lib){
   tools::package_dependencies(lib, recursive = T)
 })))
 
+# Make API call
 libs.request <- paste(all.libs, collapse=",")
-
 api.resp <- httr::content(httr::GET(paste("https://sysreqs.r-hub.io/pkg/", libs.request,"/linux-x86_64-ubuntu-gcc", sep = "")), as="parsed")
 api.resp <- unique(api.resp[api.resp != "NULL"])
-
 sys.deps <- paste(api.resp, collapse = " ")
 
+# Save sysreqs info 
 write(sys.deps, paste0("prov_data/", "sysreqs.txt"))
