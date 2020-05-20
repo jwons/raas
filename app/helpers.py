@@ -920,7 +920,6 @@ def build_image(self, current_user_id, name, preprocess, dataverse_key='', doi='
 	zip_file : string
 			   name of the .zip file if dataset uploaded as a .zip
 	"""
-	rdb.set_trace()
 	########## GETTING DATA ######################################################################
 	# either get the dataset from the .zip file or download it from dataverse
 	dataset_dir = ''
@@ -1031,6 +1030,15 @@ def build_image(self, current_user_id, name, preprocess, dataverse_key='', doi='
 	with open(os.path.join(dataset_dir, 'prov_data', "sysreqs.txt")) as reqs:
 		sysreqs = reqs.readlines()
 	shutil.rmtree(os.path.join(dataset_dir, 'prov_data'))
+
+	# Write the Dockkerfile
+	# 1.) First install system requirements, this will allow R packages to install with no errors (hopefully)
+	# 2.) Install R packages 
+	# 3.) Add the analysis folder
+	# 4.) Copy in the scripts that run the analysis
+	# 5.) Change pemissions? TODO: why?
+	# 6.) Run analyses
+	# 7.) Collect installed packages for report 
 	with open(os.path.join(docker_file_dir, 'Dockerfile'), 'w') as new_docker:
 		new_docker.write('FROM rocker/tidyverse:latest\n')
 		if(len(sysreqs) == 1):
@@ -1047,15 +1055,15 @@ def build_image(self, current_user_id, name, preprocess, dataverse_key='', doi='
 
 		copy("app/get_prov_for_doi.sh", "instance/r_datasets/" + doi_to_directory(doi))
 		copy("app/get_dataset_provenance.R", "instance/r_datasets/" + doi_to_directory(doi))
-
 		new_docker.write('COPY get_prov_for_doi.sh /home/rstudio/\n')
 		new_docker.write('COPY get_dataset_provenance.R /home/rstudio/\n')
+
 		new_docker.write('RUN chmod a+rwx -R /home/rstudio/' + doi_to_directory(doi) + '\n')
 		new_docker.write("RUN /home/rstudio/get_prov_for_doi.sh "\
 		 + "/home/rstudio/" + doi_to_directory(doi) + " /home/rstudio/get_dataset_provenance.R\n")
 		new_docker.write("RUN R -e 'write(paste(as.data.frame(installed.packages(),"\
 			+ "stringsAsFactors = F)$Package, collapse =\"\\n\"), \"./listOfPackages.txt\")'\n")
-
+	
 	# create docker client instance
 	client = docker.from_env()
 	# build a docker image using docker file
