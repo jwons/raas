@@ -923,6 +923,8 @@ def build_image(self, current_user_id, name, preprocess, dataverse_key='', doi='
 		  DOI of the dataset if retrieving dataset from dataverse
 	zip_file : string
 			   name of the .zip file if dataset uploaded as a .zip
+	install_instructions : string
+				a json encoded as string that contains special instructions for package installation
 	"""
 	########## GETTING DATA ######################################################################
 	# either get the dataset from the .zip file or download it from dataverse
