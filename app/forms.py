@@ -9,6 +9,7 @@ from flask_login import current_user, login_user, login_required, logout_user
 class ContainrForm(FlaskForm):
 	doi = StringField('Harvard Dataverse DOI', validators=[Optional()])
 	zip_file = FileField('Zip File Containing Dataset (if no DOI entered)')
+	json_file = FileField("JSON file containing special package installation instructions (Optional)")
 	name = StringField('Name of the Dataset', validators=[DataRequired()])
 	fix_code = BooleanField('Attempt to automatically fix code')
 	# clean_code = BooleanField('Attempt to automatically clean code')

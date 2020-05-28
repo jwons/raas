@@ -907,7 +907,7 @@ def gather_json_files_from_url(url):
 	return(json_files)
 
 @celery.task(bind=True) # allows the task to be run in the background with Celery
-def build_image(self, current_user_id, name, preprocess, dataverse_key='', doi='', zip_file=''):
+def build_image(self, current_user_id, name, preprocess, dataverse_key='', doi='', zip_file='', install_instructions=''):
 	"""Build a docker image for a user-provided dataset
 	Parameters
 	----------
@@ -927,6 +927,13 @@ def build_image(self, current_user_id, name, preprocess, dataverse_key='', doi='
 	########## GETTING DATA ######################################################################
 	# either get the dataset from the .zip file or download it from dataverse
 	dataset_dir = ''
+
+	# in case the user provided specific instructions for installing certain packages
+	special_packages = None
+	if (install_instructions is not ''):
+		special_install = json.loads(install_instructions)
+		special_packages = [special_install[key][0] for key in special_install.keys()]
+
 	if zip_file:
 		# assemble path to zip_file
 		zip_path = os.path.join(app.instance_path, 'r_datasets', zip_file)
@@ -1052,14 +1059,20 @@ def build_image(self, current_user_id, name, preprocess, dataverse_key='', doi='
 	# 6.) Run analyses
 	# 7.) Collect installed packages for report 
 	with open(os.path.join(docker_file_dir, 'Dockerfile'), 'w') as new_docker:
-		new_docker.write('FROM rocker/tidyverse:3.6.3-ubuntu18.04\n')
+		new_docker.write('FROM rocker/tidyverse:3.6.3\n')
 		if(len(sysreqs) == 1):
 			sysinstall = "RUN export DEBIAN_FRONTEND=noninteractive; apt-get -y update && apt-get install -y "
 			new_docker.write(sysinstall + sysreqs[0])
 		used_packages = list(set(used_packages))
 		if used_packages:
 			for package, version in used_packages:
+				if(package not in special_packages):
 					new_docker.write(build_docker_package_install(package, version))
+		
+		if special_packages:
+			for key in special_install.keys():
+				instruction = 'RUN R -e \"require(\'devtools\');' + special_install[key][1] +'"\n'
+				new_docker.write(instruction)
 
 		# copy the new directory and change permissions
 		new_docker.write('ADD ' + doi_to_directory(doi)\

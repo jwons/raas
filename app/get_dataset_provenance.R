@@ -84,9 +84,9 @@ parsed.prov <- provParseR::prov.parse(prov.input = prov.json(), isFile = F)
 libs <- provParseR::get.libs(parsed.prov)
 
 # All libraries including implicit
-all.libs <- unique(unlist(sapply(libs, function(lib){
+all.libs <- unique(unlist(append(libs, sapply(libs, function(lib){
   tools::package_dependencies(lib, recursive = T)
-})))
+}))))
 
 # Make API call
 libs.request <- paste(all.libs, collapse=",")
