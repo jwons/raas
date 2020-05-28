@@ -46,6 +46,10 @@ def containrize():
 												   'dataverse_key': os.environ.get('DATAVERSE_KEY')})
 		else:
 			zip_file = form.zip_file.data
+			json_file = form.json_file.data
+			install_instructions = ''
+			if (json_file is not None):
+				install_instructions = json_file.read().decode()
 			# create directories if they don't exists yet
 			if not os.path.exists(app.instance_path):
 				os.makedirs(app.instance_path)
@@ -56,6 +60,7 @@ def containrize():
 			zip_file.save(os.path.join(app.instance_path, 'r_datasets', filename))
 			
 			task = build_image.apply_async(kwargs={'zip_file': filename,
+												   'install_instructions': install_instructions,
 												   'current_user_id': current_user.id,
 												   'name': form.name.data,
 												   'preprocess': form.fix_code.data})

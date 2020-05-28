@@ -102,13 +102,17 @@ def download_dataset(doi, destination, dataverse_key,
 			fileid = file['dataFile']['id']
 			contentType = file['dataFile']['contentType']
 
-			if(contentType == 'type/x-r-syntax'):
-				# query the API for the file contents
-				response = requests.get(api_url + "/access/datafile/" + str(fileid))
-			else:
-				# query the API for the file contents
+			# query the API for the file contents
+			# In Dataverse, tabular data are converted to non-propietary formats for 
+			# archival purposes. These files we will need to specifically request for 
+			# the original file because the scripts will break otherwise. If the files
+			# have metadata denoting their original file size, they *should* be a file
+			# that was changed so we would need to grab the original 
+			if("originalFileSize" in file["dataFile"]):
 				response = requests.get(api_url + "/access/datafile/" + str(fileid),
-									params={"format":"original","key": dataverse_key})
+								params={"format":"original","key": dataverse_key})
+			else:
+				response = requests.get(api_url + "/access/datafile/" + str(fileid))
 
 			value, params = cgi.parse_header(response.headers['Content-disposition'])
 			if 'filename*' in params:
@@ -903,7 +907,7 @@ def gather_json_files_from_url(url):
 	return(json_files)
 
 @celery.task(bind=True) # allows the task to be run in the background with Celery
-def build_image(self, current_user_id, name, preprocess, dataverse_key='', doi='', zip_file=''):
+def build_image(self, current_user_id, name, preprocess, dataverse_key='', doi='', zip_file='', install_instructions=''):
 	"""Build a docker image for a user-provided dataset
 	Parameters
 	----------
@@ -919,10 +923,19 @@ def build_image(self, current_user_id, name, preprocess, dataverse_key='', doi='
 		  DOI of the dataset if retrieving dataset from dataverse
 	zip_file : string
 			   name of the .zip file if dataset uploaded as a .zip
+	install_instructions : string
+				a json encoded as string that contains special instructions for package installation
 	"""
 	########## GETTING DATA ######################################################################
 	# either get the dataset from the .zip file or download it from dataverse
 	dataset_dir = ''
+
+	# in case the user provided specific instructions for installing certain packages
+	special_packages = None
+	if (install_instructions is not ''):
+		special_install = json.loads(install_instructions)
+		special_packages = [special_install[key][0] for key in special_install.keys()]
+
 	if zip_file:
 		# assemble path to zip_file
 		zip_path = os.path.join(app.instance_path, 'r_datasets', zip_file)
@@ -959,6 +972,7 @@ def build_image(self, current_user_id, name, preprocess, dataverse_key='', doi='
 													  			'(This may take several minutes or longer,' +\
 													  			' depending on the complexity of your scripts)'})
 			subprocess.run(['bash', 'app/get_prov_for_doi_preproc.sh', dataset_dir])
+
 			replace_files_with_preproc(dataset_dir, "r")
 			replace_files_with_preproc(os.path.join(dataset_dir, 'prov_data'), "json")
 		except:
@@ -1019,35 +1033,48 @@ def build_image(self, current_user_id, name, preprocess, dataverse_key='', doi='
 	except:
 		pass
 
-
+	##### EVERYTHING BEFORE HERE ---> Static analysis? #########
+	# Variable Information from containR needed for build process:
+	# docker_file_dir is where the Dockerfile will be written to
+	# dataset_dir is a directory in the docker_file_dir named after the dataset.
+	# used_packages contains a list of tuples. Each tuple is a package AND its version
+	# doi is the dataverse doi if that was the provided dataset, OR a dataset name if it was uploaded
+	# current_user_id is the user's ID in the database
+	# name is what the user chose to be the name of the image, although their user name will be appended to the front
 	########## BUILDING DOCKER ###################################################################
 
 	self.update_state(state='PROGRESS', meta={'current': 3, 'total': 5,
 											  'status': 'Building Docker image... '})
-	# try:
+
 	# copy relevant packages, system requirements, and directory
 	sysreqs = []
 	with open(os.path.join(dataset_dir, 'prov_data', "sysreqs.txt")) as reqs:
 		sysreqs = reqs.readlines()
 	shutil.rmtree(os.path.join(dataset_dir, 'prov_data'))
 
-	# Write the Dockkerfile
+	# Write the Dockerfile
 	# 1.) First install system requirements, this will allow R packages to install with no errors (hopefully)
 	# 2.) Install R packages 
 	# 3.) Add the analysis folder
 	# 4.) Copy in the scripts that run the analysis
-	# 5.) Change pemissions? TODO: why?
+	# 5.) Change pemissions, containers have had issues with correct permissions previously
 	# 6.) Run analyses
 	# 7.) Collect installed packages for report 
 	with open(os.path.join(docker_file_dir, 'Dockerfile'), 'w') as new_docker:
-		new_docker.write('FROM rocker/tidyverse:latest\n')
+		new_docker.write('FROM rocker/tidyverse:3.6.3\n')
 		if(len(sysreqs) == 1):
 			sysinstall = "RUN export DEBIAN_FRONTEND=noninteractive; apt-get -y update && apt-get install -y "
 			new_docker.write(sysinstall + sysreqs[0])
 		used_packages = list(set(used_packages))
 		if used_packages:
 			for package, version in used_packages:
+				if(package not in special_packages):
 					new_docker.write(build_docker_package_install(package, version))
+		
+		if special_packages:
+			for key in special_install.keys():
+				instruction = 'RUN R -e \"require(\'devtools\');' + special_install[key][1] +'"\n'
+				new_docker.write(instruction)
 
 		# copy the new directory and change permissions
 		new_docker.write('ADD ' + doi_to_directory(doi)\
