@@ -1111,7 +1111,7 @@ def build_image(self, current_user_id, name, preprocess, dataverse_key='', doi='
 	repo_name = os.environ.get('DOCKER_REPO') + '/'
 
 	client.images.build(path=docker_file_dir, tag=repo_name + image_name)
-	rdb.set_trace()
+
 	self.update_state(state='PROGRESS', meta={'current': 4, 'total': 5,
 											  'status': 'Collecting container environment information... '})
 
