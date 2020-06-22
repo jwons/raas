@@ -831,8 +831,11 @@ def build_docker_package_install(package, version):
 	version : string
 			  Version number of the desired package
 	"""
-	return 'RUN R -e \"require(\'devtools\');install_version(\'' +\
-		package + '\', version=\'' + version + '\', repos=\'http://cran.rstudio.com\')\"\n'
+	return 'RUN R -e \"require(\'devtools\');if(!(\'' + package + '\'' \
+		'%in% rownames(installed.packages()))){install_version(\'' + package + \
+			'\', version=\'' + version + '\', repos=\'http://cran.rstudio.com\')}"\n'
+	#return 'RUN R -e \"require(\'devtools\');install_version(\'' +\
+#		package + '\', version=\'' + version + '\', repos=\'http://cran.rstudio.com\')\"\n'
 
 def naive_error_classifier(error_string):
 	"""Attempts to guess the cause of an error in R
@@ -932,9 +935,10 @@ def build_image(self, current_user_id, name, preprocess, dataverse_key='', doi='
 
 	# in case the user provided specific instructions for installing certain packages
 	special_packages = None
+	special_install = None
 	if (install_instructions is not ''):
 		special_install = json.loads(install_instructions)
-		special_packages = [special_install[key][0] for key in special_install.keys()]
+		special_packages = [special_install["packages"][key][0] for key in special_install["packages"].keys()]
 
 	if zip_file:
 		# assemble path to zip_file
@@ -960,7 +964,14 @@ def build_image(self, current_user_id, name, preprocess, dataverse_key='', doi='
 															   'There was a problem downloading your data from '+\
 							   								   'Dataverse. Please make sure the DOI is correct.']]]}
 	# print(dataset_dir, file=sys.stderr)
-
+	# In the event source scripts need to be skipped 
+	if(special_install):
+		if("source" in special_install.keys()):
+			# Add any files to ignore to the .srcignore
+			with open(os.path.join(app.instance_path, 'r_datasets', dir_name, '.srcignore'), 'w') as src_ignore:
+				for script in special_install["source"]:
+					src_ignore.write(script + '\n')
+	
 	########## GETTING PROV ######################################################################
 
 	# run the R code and collect errors (if any)
@@ -1059,7 +1070,6 @@ def build_image(self, current_user_id, name, preprocess, dataverse_key='', doi='
 											  'status': 'Building Docker image... '})
 
 
-
 	# Write the Dockerfile
 	# 1.) First install system requirements, this will allow R packages to install with no errors (hopefully)
 	# 2.) Install R packages 
@@ -1070,19 +1080,24 @@ def build_image(self, current_user_id, name, preprocess, dataverse_key='', doi='
 	# 7.) Collect installed packages for report 
 	with open(os.path.join(docker_file_dir, 'Dockerfile'), 'w') as new_docker:
 		new_docker.write('FROM rocker/tidyverse:3.6.3\n')
+		sysinstall = "RUN export DEBIAN_FRONTEND=noninteractive; apt-get -y update && apt-get install -y "
 		if(len(sysreqs) == 1):
-			sysinstall = "RUN export DEBIAN_FRONTEND=noninteractive; apt-get -y update && apt-get install -y "
 			new_docker.write(sysinstall + sysreqs[0])
+		if(special_install):
+			if("sys-libs" in special_install.keys()):
+				new_docker.write(sysinstall + ' '.join(special_install["sys-libs"]) + '\n')
+		if special_packages:
+			for key in special_install["packages"].keys():
+				instruction = 'RUN R -e \"require(\'devtools\');' + special_install["packages"][key][1] +'"\n'
+				new_docker.write(instruction)
 		used_packages = list(set(used_packages))
 		if used_packages:
 			for package, version in used_packages:
-				if(package not in special_packages):
+				if(special_packages and (package not in special_packages)):
+					new_docker.write(build_docker_package_install(package, version))
+				if(special_packages is None):
 					new_docker.write(build_docker_package_install(package, version))
 		
-		if special_packages:
-			for key in special_install.keys():
-				instruction = 'RUN R -e \"require(\'devtools\');' + special_install[key][1] +'"\n'
-				new_docker.write(instruction)
 
 		# copy the new directory and change permissions
 		new_docker.write('ADD ' + doi_to_directory(doi)\
@@ -1100,6 +1115,15 @@ def build_image(self, current_user_id, name, preprocess, dataverse_key='', doi='
 		new_docker.write("RUN R -e 'write(paste(as.data.frame(installed.packages(),"\
 			+ "stringsAsFactors = F)$Package, collapse =\"\\n\"), \"./listOfPackages.txt\")'\n")
 
+	# In the event source scripts need to be skipped 
+	if(special_install):
+		if("source" in special_install.keys()):
+			# Add any files to ignore to the .srcignore
+			with open(os.path.join(docker_file_dir, '.srcignore'), 'a+') as src_ignore:
+				for script in special_install["source"]:
+					src_ignore.write(script + '\n')
+	
+	
 	# create docker client instance
 	client = docker.from_env()
 	# build a docker image using docker file
@@ -1114,6 +1138,8 @@ def build_image(self, current_user_id, name, preprocess, dataverse_key='', doi='
 
 	self.update_state(state='PROGRESS', meta={'current': 4, 'total': 5,
 											  'status': 'Collecting container environment information... '})
+
+	
 
 	########## Generate Report About Build Process ##########################################################
 	# The report will have various information from the creation of the container

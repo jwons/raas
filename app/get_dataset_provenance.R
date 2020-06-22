@@ -55,9 +55,12 @@ if(file.exists("../.srcignore")){
 # for each R file
 for (r_file in r_files) {
   # If this is a sourced script do not run it independently, instead go to next file
-  if(substr(r_file, 2, nchar(r_file)) %in% sourced.scripts){
-    next
+  if(!is.na(sourced.scripts)){
+    if(substr(r_file, 2, nchar(r_file)) %in% sourced.scripts){
+      next
+    }
   }
+  
 	# parse out file name, leaving out the ".R" part
 	filename = substr(r_file, 1, nchar(r_file) - 2)
 	# save local variables in case the script clears the workspace
@@ -125,6 +128,9 @@ sys.deps <- paste(api.resp, collapse = " ")
 
 # Save sysreqs info 
 write(sys.deps, paste0("prov_data/", "sysreqs.txt"))
+
+# don't repeat scripts
+sourced.scripts <- unique(sourced.scripts)
 
 # Save Sourced Scripts
 write(unlist(sourced.scripts), "prov_data/sourced.txt")
