@@ -985,7 +985,6 @@ def build_image(self, current_user_id, name, preprocess, dataverse_key='', doi='
 													  			'(This may take several minutes or longer,' +\
 													  			' depending on the complexity of your scripts)'})
 			subprocess.run(['bash', 'app/get_prov_for_doi_preproc.sh', dataset_dir])
-
 			replace_files_with_preproc(dataset_dir, "r")
 			replace_files_with_preproc(os.path.join(dataset_dir, 'prov_data'), "json")
 		except:
@@ -1039,6 +1038,12 @@ def build_image(self, current_user_id, name, preprocess, dataverse_key='', doi='
 	# get list of json provenance files
 	jsons = [my_file for my_file in os.listdir(os.path.join(dataset_dir, 'static_analysis'))\
 				  if my_file.endswith('.json')]
+				  
+	prov_dirs = next(os.walk(os.path.join(dataset_dir, 'prov_data')))[1]
+	prov_jsons = []
+	for prov_dir in prov_dirs:
+		prov_jsons.extend([prov_dir + "/" + my_file for my_file in os.listdir(os.path.join(dataset_dir, 'prov_data', prov_dir))\
+				  if my_file.endswith('.json')])
 
 	used_packages = []
 
@@ -1079,6 +1084,16 @@ def build_image(self, current_user_id, name, preprocess, dataverse_key='', doi='
 	except:
 		pass
 
+	
+	# copy sourced scripts to avoid running them indepenently later
+	copy(os.path.join(dataset_dir, 'prov_data', "sourced.txt"), os.path.join(docker_file_dir,".srcignore"))
+	
+	# copy relevant packages, system requirements, and directory
+	sysreqs = []
+	with open(os.path.join(dataset_dir, 'prov_data', "sysreqs.txt")) as reqs:
+		sysreqs = reqs.readlines()
+	shutil.rmtree(os.path.join(dataset_dir, 'prov_data')) 
+
 	##### EVERYTHING BEFORE HERE ---> Static analysis? #########
 	# Variable Information from containR needed for build process:
 	# docker_file_dir is where the Dockerfile will be written to
@@ -1092,11 +1107,7 @@ def build_image(self, current_user_id, name, preprocess, dataverse_key='', doi='
 	self.update_state(state='PROGRESS', meta={'current': 3, 'total': 5,
 											  'status': 'Building Docker image... '})
 
-	# copy relevant packages, system requirements, and directory
-	sysreqs = []
-	with open(os.path.join(dataset_dir, 'prov_data', "sysreqs.txt")) as reqs:
-		sysreqs = reqs.readlines()
-	shutil.rmtree(os.path.join(dataset_dir, 'prov_data'))
+
 
 	# Write the Dockerfile
 	# 1.) First install system requirements, this will allow R packages to install with no errors (hopefully)
@@ -1131,13 +1142,14 @@ def build_image(self, current_user_id, name, preprocess, dataverse_key='', doi='
 		copy("app/get_dataset_provenance.R", "instance/r_datasets/" + doi_to_directory(doi))
 		new_docker.write('COPY get_prov_for_doi.sh /home/rstudio/\n')
 		new_docker.write('COPY get_dataset_provenance.R /home/rstudio/\n')
+		new_docker.write('COPY .srcignore /home/rstudio/\n')
 
 		new_docker.write('RUN chmod a+rwx -R /home/rstudio/' + doi_to_directory(doi) + '\n')
 		new_docker.write("RUN /home/rstudio/get_prov_for_doi.sh "\
 		 + "/home/rstudio/" + doi_to_directory(doi) + " /home/rstudio/get_dataset_provenance.R\n")
 		new_docker.write("RUN R -e 'write(paste(as.data.frame(installed.packages(),"\
 			+ "stringsAsFactors = F)$Package, collapse =\"\\n\"), \"./listOfPackages.txt\")'\n")
-	
+
 	# create docker client instance
 	client = docker.from_env()
 	# build a docker image using docker file
@@ -1149,7 +1161,7 @@ def build_image(self, current_user_id, name, preprocess, dataverse_key='', doi='
 	repo_name = os.environ.get('DOCKER_REPO') + '/'
 
 	client.images.build(path=docker_file_dir, tag=repo_name + image_name)
-		
+
 	self.update_state(state='PROGRESS', meta={'current': 4, 'total': 5,
 											  'status': 'Collecting container environment information... '})
 
