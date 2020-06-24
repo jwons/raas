@@ -834,6 +834,19 @@ def build_docker_package_install(package, version):
 	return 'RUN R -e \"require(\'devtools\');install_version(\'' +\
 		package + '\', version=\'' + version + '\', repos=\'http://cran.rstudio.com\')\"\n'
 
+def build_docker_package_install_no_version(package):
+	"""Outputs formatted dockerfile command to install a specific version
+	   of an R package into a docker image
+	Parameters
+	----------
+	package : string
+			  Name of the R package to be installed
+	version : string
+			  Version number of the desired package
+	"""
+	return 'RUN R -e \"require(\'devtools\');install.packages(\'' +\
+		package + '\', repos=\'http://cran.rstudio.com\')\"\n'		
+
 def naive_error_classifier(error_string):
 	"""Attempts to guess the cause of an error in R
 	Parameters
@@ -959,7 +972,7 @@ def build_image(self, current_user_id, name, preprocess, dataverse_key='', doi='
 															 [['Download error', 
 															   'There was a problem downloading your data from '+\
 							   								   'Dataverse. Please make sure the DOI is correct.']]]}
-	# print(dataset_dir, file=sys.stderr)
+	#print(dataset_dir, file=sys.stderr)
 
 	########## GETTING PROV ######################################################################
 
@@ -982,48 +995,81 @@ def build_image(self, current_user_id, name, preprocess, dataverse_key='', doi='
 												  'status': 'Collecting provenance data... ' +\
 												  '(This may take several minutes or longer,' +\
 												  ' depending on the complexity of your scripts)'})
-		subprocess.run(['bash', 'app/get_prov_for_doi.sh', dataset_dir, "app/get_dataset_provenance.R"])
 
+        # run static analysis instead of provenance
+	#	subprocess.run(['bash', 'app/get_prov_for_doi.sh', dataset_dir, "app/get_dataset_provenance.R"])
+
+		# static analysis
+		subprocess.run(['bash', 'app/static_analysis.sh', dataset_dir, "app/static_analysis.R"])
 
 	########## CHECKING FOR PROV ERRORS ##########################################################
 	# make sure an execution log exists
-
-	run_log_path = os.path.join(dataset_dir, 'prov_data', 'run_log.csv')
-	if not os.path.exists(run_log_path):
-		print(run_log_path, file=sys.stderr)
-		error_message = "ContainR could not locate any .R files to collect provenance for. " +\
-						"Please ensure that .R files to load dependencies for are placed in the " +\
-						"top-level directory."
-		clean_up_datasets()
-		return {'current': 100, 'total': 100, 'status': ['Provenance collection error.',
-														 [['Could not locate .R files',
-														   error_message]]]}
-
-	# check the execution log for errors
-	errors_present, error_list, my_file = checkLogForErrors(run_log_path)
 	
-	if errors_present:
-		clean_up_datasets()
-		return {'current': 100, 'total': 100, 'status': ['Provenance collection error.',
-														 error_list]}
+	# run_log_path = os.path.join(dataset_dir, 'prov_data', 'run_log.csv')
+	# if not os.path.exists(run_log_path):
+	# 	print(run_log_path, file=sys.stderr)
+	# 	error_message = "ContainR could not locate any .R files to collect provenance for. " +\
+	# 					"Please ensure that .R files to load dependencies for are placed in the " +\
+	# 					"top-level directory."
+	# 	print(error_message)
+	# 	clean_up_datasets()
+	# 	return {'current': 100, 'total': 100, 'status': ['Provenance collection error.',
+	# 													 [['Could not locate .R files',
+	# 													   error_message]]]}
+
+	# # check the execution log for errors
+	# errors_present, error_list, my_file = checkLogForErrors(run_log_path)
+
+	# if errors_present:
+	# 	clean_up_datasets()
+	# 	return {'current': 100, 'total': 100, 'status': ['Provenance collection error.',
+	# 													 error_list]}
 
 
 	########## PARSING PROV ######################################################################
 
 	self.update_state(state='PROGRESS', meta={'current': 2, 'total': 5,
 											  'status': 'Parsing provenance data... '})
-	# build dockerfile from provenance
+	# # build dockerfile from provenance
+	# # get list of json provenance files
+	# prov_jsons = [my_file for my_file in os.listdir(os.path.join(dataset_dir, 'prov_data'))\
+	# 			  if my_file.endswith('.json')]
+
+    # build dockerfile from provenance
 	# get list of json provenance files
-	prov_jsons = [my_file for my_file in os.listdir(os.path.join(dataset_dir, 'prov_data'))\
+	jsons = [my_file for my_file in os.listdir(os.path.join(dataset_dir, 'static_analysis'))\
 				  if my_file.endswith('.json')]
 
 	used_packages = []
 
+	# # assemble a set of packages used
+	# for prov_json in prov_jsons:
+	# 	print(prov_json, file=sys.stderr)
+	# 	used_packages += get_pkgs_from_prov_json(\
+	# 							ProvParser(os.path.join(dataset_dir,'prov_data', prov_json)))
+
+	# print(used_packages, file=sys.stderr)
+	# docker_file_dir = os.path.join(app.instance_path,
+	# 								'r_datasets', doi_to_directory(doi))
+	# try:
+	# 	os.makedirs(docker_file_dir)
+	# except:
+	# 	pass
+
 	# assemble a set of packages used
-	for prov_json in prov_jsons:
-		print(prov_json, file=sys.stderr)
-		used_packages += get_pkgs_from_prov_json(\
-								ProvParser(os.path.join(dataset_dir,'prov_data', prov_json)))
+	for json_obj in jsons:
+		print(json_obj, file=sys.stderr)
+		with open(os.path.join(dataset_dir,'static_analysis', json_obj)) as json_file:
+			data = json.load(json_file)
+			print(data)
+			for p in data['packages']:
+				used_packages.append(p)
+			for p in data['package_deps']:
+				used_packages.append(p)		
+            
+		# print(used_packages)	
+		# used_packages += get_pkgs_from_prov_json(\
+		# 						ProvParser(os.path.join(dataset_dir,'prov_data', prov_json)))
 
 	print(used_packages, file=sys.stderr)
 	docker_file_dir = os.path.join(app.instance_path,
@@ -1067,9 +1113,10 @@ def build_image(self, current_user_id, name, preprocess, dataverse_key='', doi='
 			new_docker.write(sysinstall + sysreqs[0])
 		used_packages = list(set(used_packages))
 		if used_packages:
-			for package, version in used_packages:
-				if(package not in special_packages):
-					new_docker.write(build_docker_package_install(package, version))
+			for package in used_packages:
+				#if(package not in special_packages):
+				new_docker.write(build_docker_package_install_no_version(package))
+			#	new_docker.write(build_docker_package_install(package, version))
 		
 		if special_packages:
 			for key in special_install.keys():
