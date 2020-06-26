@@ -15,7 +15,7 @@ class InputForm(FlaskForm):
 
     zip_file = FileField('Zip File Containing Dataset')
     set_file = FileField('or---A set of Data file and scripts', render_kw={'multiple': True})
-    name = StringField('Name of the Dataset',validators=[DataRequired()])
+    name = StringField('Name of the Dataset')
     fix_code = BooleanField('Attempt to automatically fix code')
     extended_lib = BooleanField('Extended Library handling')
 
@@ -42,7 +42,7 @@ class InputForm(FlaskForm):
 
     def validate_name(self, name):
         if name.data =="":
-            raise ValidationError('Name cannot be empty')
+            raise ValidationError('Name cannot be an empty string')
         if " " in name.data or not name.data.islower():
             raise ValidationError('Name is not allowed to contain uppercase letter or space.\nTry: '
                                   + name.data.replace(" ", "").lower())
