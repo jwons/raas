@@ -1,3 +1,4 @@
+#!/bin/bash
 doi_direct="$1"
 
 # suppress R output by redirecting to /dev/null

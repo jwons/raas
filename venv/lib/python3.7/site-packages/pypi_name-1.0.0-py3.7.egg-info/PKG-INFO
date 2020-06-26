@@ -1,0 +1,47 @@
+Metadata-Version: 2.1
+Name: pypi-name
+Version: 1.0.0
+Summary: Check whether a package name is available on PyPI
+Home-page: https://yoginth.com
+Author: Yoginth
+Author-email: me@yoginth.com
+License: UNKNOWN
+Project-URL: Source, https://gitlab.com/yoginth/pypi_name
+Description: ## PyPI Name [![pipeline status](https://gitlab.com/yoginth/pypi_name/badges/master/pipeline.svg)](https://gitlab.com/yoginth/pypi_name/commits/master)
+        
+        > Check whether a package name is available on PyPI
+        
+        ## Demo
+        
+        Demo on [Repl.it](https://repl.it/@yoginth/pypi_name)
+        
+        ## Install
+        
+        ```
+        $ pip install pypi_name
+        ```
+        
+        ## Usage
+        
+        ```python
+        from pypi_name import pypiName
+        
+        print(pypiName('yoginth')) # False
+        print(pypiName('testname_that_no_one_keep')) # True
+        
+        ```
+        
+        ## License
+        
+        [MIT][LICENSE] Yoginth
+        
+        [LICENSE]: https://mit.yoginth.com
+        
+Platform: UNKNOWN
+Classifier: Programming Language :: Python
+Classifier: Natural Language :: English
+Classifier: Environment :: Plugins
+Classifier: Operating System :: OS Independent
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Description-Content-Type: text/markdown

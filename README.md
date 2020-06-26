@@ -1,33 +1,29 @@
-# containR
-A website that automatically creates RStudio Docker images from user-uploaded directories containing R code.
+Installation is same as containR  
 
-For detailed set up instructions and other information visit the [wiki](https://github.com/jwons/containr/wiki).
+### Compared to the previous version:  
 
-## Running ContainR
+The build_image_py.py is renamed as "pyPlace.py" and now it is implementing an interface named "language_interface.py"  
 
-Navigate to the containR directory in two terminals with the python virtual environment activated. 
+The old build_image_py method is divided into 6 parts: preprocessing,build_docker_file,create_report,build_docker_img,push_docker_img and clean_up_datasets  
+preprocessing,build_docker_file,create_report and clean_up_datasets are specificed to language so they are implemented in pyPlace class and the rest of them can be commonly used among different language so they are implemented in the "language_interface.py"
+interface.  
 
-In the first terminal run 
-```{bash}
-celery -A app.celery worker
-```
+The frontend now will call a method called "start_raas" implemented in the "start.py" class, start_raas will:  
+1)check the language as input  
+2)create the corresponding language object(pyPlace)  
+3)it organize the order of the call of those 6 methods   
+__________________________________________________
+### How to support another language?
 
-In the second terminal run the following code. For more information on flask apps check out [their website](https://flask.palletsprojects.com/en/1.1.x/)
-```{bash}
-export FLASK_APP=containr.py
+1.Create a new object that implement the "language_interface".  
+The method you would need to implement are 
+  
+     preprocessing(self, preprocess, dataverse_key='', doi='', zip_file='', run_instr='', user_pkg='')
 
-flask run
-```
+     build_docker_file(self, dir_name, docker_pkgs, addtional_info):
+       
+     create_report(self, current_user_id, name, dir_name)
 
-## Instructions for using containR
-
-From the build image page it is possible to either upload a zip file *of a directory* or enter a Harvard Dataverse DOI which it will then try to scrape. When choosing a name for the dataset, the name *must* be in all-lowercase. 
-
-### Important Notes for Use
-
-- Dataset names should be all-lowercase when uploaded. Docker Hub will return an error if a name is not all lowercase that may not be clear to the user. 
-- While containR will install R packages that are necessary for a script to run, it cannot install external dependencies. For example if you install an R package that works as an interface for a specific type of database, but that type of database is not installed on the computer the script will not run correctly even if the package can install correctly.  
-
-### Headless Mode
-
-Included currently in containR is a ''headless'' mode. This is a method of interfacing almost directly with the build_image function from the command line. Currently this should be used for __debugging purposes only__ as it bypasses login information and allows someone to just provide a user ID as a parameter. To use it, run the headless_containr.py script on the same machine a containr instance is running. This means the flask app and a celery instance. Some dataset must be specificed, either zip or doi, and a dataset name. Optional parameters include port number for containR, whether to preprocess, and a user ID. For more information run `python headless_containr.py -h`.
+     clean_up_datasets(self, dir)
+2.in the start.py, add an if condition to check the input language name corresponding to your language  
+3.do not forget to change the frontend
