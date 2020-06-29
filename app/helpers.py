@@ -995,35 +995,34 @@ def build_image(self, current_user_id, name, preprocess, dataverse_key='', doi='
 												  '(This may take several minutes or longer,' +\
 												  ' depending on the complexity of your scripts)'})
 
-        # run static analysis instead of provenance
-	#	subprocess.run(['bash', 'app/get_prov_for_doi.sh', dataset_dir, "app/get_dataset_provenance.R"])
+		subprocess.run(['bash', 'app/get_prov_for_doi.sh', dataset_dir, "app/get_dataset_provenance.R"])
 
-		# static analysis
+    ########## RUNNING STATIC ANALYSIS ##########################################################
+
 		subprocess.run(['bash', 'app/static_analysis.sh', dataset_dir, "app/static_analysis.R"])
 
 	########## CHECKING FOR PROV ERRORS ##########################################################
 	# make sure an execution log exists
 	
-	# run_log_path = os.path.join(dataset_dir, 'prov_data', 'run_log.csv')
-	# if not os.path.exists(run_log_path):
-	# 	print(run_log_path, file=sys.stderr)
-	# 	error_message = "ContainR could not locate any .R files to collect provenance for. " +\
-	# 					"Please ensure that .R files to load dependencies for are placed in the " +\
-	# 					"top-level directory."
-	# 	print(error_message)
-	# 	clean_up_datasets()
-	# 	return {'current': 100, 'total': 100, 'status': ['Provenance collection error.',
-	# 													 [['Could not locate .R files',
-	# 													   error_message]]]}
+	run_log_path = os.path.join(dataset_dir, 'prov_data', 'run_log.csv')
+	if not os.path.exists(run_log_path):
+		print(run_log_path, file=sys.stderr)
+		error_message = "ContainR could not locate any .R files to collect provenance for. " +\
+						"Please ensure that .R files to load dependencies for are placed in the " +\
+						"top-level directory."
+		print(error_message)
+		clean_up_datasets()
+		return {'current': 100, 'total': 100, 'status': ['Provenance collection error.',
+														 [['Could not locate .R files',
+														   error_message]]]}
 
-	# # check the execution log for errors
-	# errors_present, error_list, my_file = checkLogForErrors(run_log_path)
+	# check the execution log for errors
+	errors_present, error_list, my_file = checkLogForErrors(run_log_path)
 
-	# if errors_present:
-	# 	clean_up_datasets()
-	# 	return {'current': 100, 'total': 100, 'status': ['Provenance collection error.',
-	# 													 error_list]}
-
+	if errors_present:
+		clean_up_datasets()
+		return {'current': 100, 'total': 100, 'status': ['Provenance collection error.',
+														 error_list]}
 
 	########## PARSING PROV ######################################################################
 
@@ -1031,52 +1030,24 @@ def build_image(self, current_user_id, name, preprocess, dataverse_key='', doi='
 											  'status': 'Parsing provenance data... '})
 	# # build dockerfile from provenance
 	# # get list of json provenance files
-	# prov_jsons = [my_file for my_file in os.listdir(os.path.join(dataset_dir, 'prov_data'))\
-	# 			  if my_file.endswith('.json')]
-
-    # build dockerfile from provenance
-	# get list of json provenance files
-	jsons = [my_file for my_file in os.listdir(os.path.join(dataset_dir, 'static_analysis'))\
+	prov_jsons = [my_file for my_file in os.listdir(os.path.join(dataset_dir, 'prov_data'))\
 				  if my_file.endswith('.json')]
-				  
+
 	prov_dirs = next(os.walk(os.path.join(dataset_dir, 'prov_data')))[1]
 	prov_jsons = []
 	for prov_dir in prov_dirs:
 		prov_jsons.extend([prov_dir + "/" + my_file for my_file in os.listdir(os.path.join(dataset_dir, 'prov_data', prov_dir))\
 				  if my_file.endswith('.json')])
+	
+	prov_packages = []
 
-	used_packages = []
-
-	# # assemble a set of packages used
-	# for prov_json in prov_jsons:
-	# 	print(prov_json, file=sys.stderr)
-	# 	used_packages += get_pkgs_from_prov_json(\
-	# 							ProvParser(os.path.join(dataset_dir,'prov_data', prov_json)))
-
-	# print(used_packages, file=sys.stderr)
-	# docker_file_dir = os.path.join(app.instance_path,
-	# 								'r_datasets', doi_to_directory(doi))
-	# try:
-	# 	os.makedirs(docker_file_dir)
-	# except:
-	# 	pass
-
-	# assemble a set of packages used
-	for json_obj in jsons:
-		print(json_obj, file=sys.stderr)
-		with open(os.path.join(dataset_dir,'static_analysis', json_obj)) as json_file:
-			data = json.load(json_file)
-			print(data)
-			for p in data['packages']:
-				used_packages.append(p)
-			for p in data['package_deps']:
-				used_packages.append(p)		
-            
-		# print(used_packages)	
-		# used_packages += get_pkgs_from_prov_json(\
-		# 						ProvParser(os.path.join(dataset_dir,'prov_data', prov_json)))
-
-	print(used_packages, file=sys.stderr)
+    # assemble a set of packages used
+	for prov_json in prov_jsons:
+		print(prov_json, file=sys.stderr)
+		prov_packages += get_pkgs_from_prov_json(\
+								ProvParser(os.path.join(dataset_dir,'prov_data', prov_json)))
+    
+	print(prov_packages, file=sys.stderr)
 	docker_file_dir = os.path.join(app.instance_path,
 									'r_datasets', doi_to_directory(doi))
 	try:
@@ -1084,16 +1055,50 @@ def build_image(self, current_user_id, name, preprocess, dataverse_key='', doi='
 	except:
 		pass
 
-	
+	docker_file_dir = os.path.join(app.instance_path,
+									'r_datasets', doi_to_directory(doi))
+	try:
+		os.makedirs(docker_file_dir)
+	except:
+		pass
+
 	# copy sourced scripts to avoid running them indepenently later
 	copy(os.path.join(dataset_dir, 'prov_data', "sourced.txt"), os.path.join(docker_file_dir,".srcignore"))
 	
 	# copy relevant packages, system requirements, and directory
-	sysreqs = []
-	with open(os.path.join(dataset_dir, 'prov_data', "sysreqs.txt")) as reqs:
-		sysreqs = reqs.readlines()
 	shutil.rmtree(os.path.join(dataset_dir, 'prov_data')) 
 
+	########## CHECKING FOR STATIC ANALYSIS ERRORS ##########################################################
+
+    # get list of json files
+	jsons = [my_file for my_file in os.listdir(os.path.join(dataset_dir, 'static_analysis'))\
+				  if my_file.endswith('.json')]		  
+
+	for json_obj in jsons:
+		with open(os.path.join(dataset_dir,'static_analysis', json_obj)) as json_file:
+			data = json.load(json_file)
+			if data['errors']:
+				clean_up_datasets()
+				return {'current': 100, 'total': 100, 'status': ['Static analysis found errors in script.',
+															 data['errors']]}
+
+	########## PARSING STATIC ANALYSIS ######################################################################
+
+	# assemble a set of packages used and get system requirements
+	sysreqs = []
+	used_packages = []
+
+	for json_obj in jsons:
+		print(json_obj, file=sys.stderr)
+		with open(os.path.join(dataset_dir,'static_analysis', json_obj)) as json_file:
+			data = json.load(json_file)
+			for p in data['packages']:
+				print(p)
+				used_packages.append(p)	
+			sysreqs = data['sys_deps']
+
+	print(used_packages, file=sys.stderr)
+														
 	##### EVERYTHING BEFORE HERE ---> Static analysis? #########
 	# Variable Information from containR needed for build process:
 	# docker_file_dir is where the Dockerfile will be written to
@@ -1122,18 +1127,18 @@ def build_image(self, current_user_id, name, preprocess, dataverse_key='', doi='
 		if(len(sysreqs) == 1):
 			sysinstall = "RUN export DEBIAN_FRONTEND=noninteractive; apt-get -y update && apt-get install -y "
 			new_docker.write(sysinstall + sysreqs[0])
-		used_packages = list(set(used_packages))
+
 		if used_packages:
 			for package in used_packages:
-				#if(package not in special_packages):
-				new_docker.write(build_docker_package_install_no_version(package))
-			#	new_docker.write(build_docker_package_install(package, version))
+				if(package not in special_packages):
+					new_docker.write(build_docker_package_install_no_version(package))
+			    #new_docker.write(build_docker_package_install(package, version))
 		
 		if special_packages:
 			for key in special_install.keys():
 				instruction = 'RUN R -e \"require(\'devtools\');' + special_install[key][1] +'"\n'
 				new_docker.write(instruction)
-
+		
 		# copy the new directory and change permissions
 		new_docker.write('ADD ' + doi_to_directory(doi)\
 			  + ' /home/rstudio/'  + doi_to_directory(doi) + '\n')
@@ -1158,8 +1163,8 @@ def build_image(self, current_user_id, name, preprocess, dataverse_key='', doi='
 	current_user_obj = User.query.get(current_user_id)
 	# image_name = ''.join(random.choice(string.ascii_lowercase) for _ in range(5))
 	image_name = current_user_obj.username + '-' + name
-	repo_name = os.environ.get('DOCKER_REPO') + '/'
 
+	repo_name = os.environ.get('DOCKER_REPO') + '/'
 	client.images.build(path=docker_file_dir, tag=repo_name + image_name)
 
 	self.update_state(state='PROGRESS', meta={'current': 4, 'total': 5,
@@ -1209,13 +1214,13 @@ def build_image(self, current_user_id, name, preprocess, dataverse_key='', doi='
 	# Finish out report generation
 	report["Container Report"]["Installed Packages"]  = installed_packages
 	report["Container Report"]["Packages Called In Analysis"]  = container_packages #[list(package_pair) for package_pair in container_packages]
-	report["Container Report"]["System Dependencies Installed"] = sysreqs[0].split(" ")
+	report["Container Report"]["System Dependencies Installed"] = sysreqs
 
 	# Note any missing packages
 	missing_packages = []
 	for package in used_packages:
-		if package[0] not in installed_packages:
-			missing_packages.append(package[0])
+		if package not in installed_packages:
+			missing_packages.append(package)
 	
 	# Error if a package or more is missing
 	if(len(missing_packages) > 0):

@@ -26,7 +26,6 @@ library(rjson)
 print("Creating directory!\n")
 # create directory to store provenance data
 dir.create("static_analysis", showWarnings = FALSE)
-dir.create("prov_data", showWarnings = FALSE)
 
 # get correct list of r files to run the script on depending on commandline args
 if (preproc) {
@@ -143,31 +142,34 @@ errors = character()
 
 # save packages and lints from each .R file
 for (r_file in r_files) {
-  libs <- unique(c(identify_packages(r_file), libs))
+  libs <- unique(c(identify_packages(r_file), libs, 'rdtLite'))
   lints <- lint_file(r_file)
 
   new_warnings <- lints$warnings
   new_errors <- lints$errors
 
-  warnings <- c(warnings, new_warnings)
+  warnings <- append(warnings, new_warnings)
   errors <- c(errors, new_errors)
 }
 
-# get system dependencies
-# from get_dataset_provenance.R
+if (length(warnings))
+
+# get package dependencies
  all.libs <- unique(unlist(sapply(libs, function(lib){
    tools::package_dependencies(lib, recursive = T)
  })))
 
 libs.request <- paste(all.libs, collapse=",")
 
+# get system dependencies
 api.resp <- httr::content(httr::GET(paste("https://sysreqs.r-hub.io/pkg/", libs.request,"/linux-x86_64-ubuntu-gcc", sep = "")), as="parsed")
 api.resp <- unique(api.resp[api.resp != "NULL"])
 
-sys.deps <- paste(api.resp, collapse = " ")
-write(sys.deps, paste0("prov_data/", "sysreqs.txt"))
-
-response = list( errors = list(errors), warnings = list(warnings), packages = list(libs), package_deps = all.libs, dependencies = sys.deps )
+response = list( errors = if (length(errors) == 1) list(errors) else errors, 
+                 warnings = if (length(warnings) == 1) list(warnings) else warnings, 
+                 packages = libs, 
+                 package_deps = all.libs, 
+                 sys_deps = api.resp)
 json = toJSON(response)
 print(json)
 write(json, "static_analysis/static_analyis.json")
