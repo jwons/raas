@@ -831,8 +831,11 @@ def build_docker_package_install(package, version):
 	version : string
 			  Version number of the desired package
 	"""
-	return 'RUN R -e \"require(\'devtools\');install_version(\'' +\
-		package + '\', version=\'' + version + '\', repos=\'http://cran.rstudio.com\')\"\n'
+	return 'RUN R -e \"require(\'devtools\');if(!(\'' + package + '\'' \
+		'%in% rownames(installed.packages()))){install_version(\'' + package + \
+			'\', version=\'' + version + '\', repos=\'http://cran.rstudio.com\')}"\n'
+	#return 'RUN R -e \"require(\'devtools\');install_version(\'' +\
+#		package + '\', version=\'' + version + '\', repos=\'http://cran.rstudio.com\')\"\n'
 
 def naive_error_classifier(error_string):
 	"""Attempts to guess the cause of an error in R
@@ -932,9 +935,10 @@ def build_image(self, current_user_id, name, preprocess, dataverse_key='', doi='
 
 	# in case the user provided specific instructions for installing certain packages
 	special_packages = None
+	special_install = None
 	if (install_instructions is not ''):
 		special_install = json.loads(install_instructions)
-		special_packages = [special_install[key][0] for key in special_install.keys()]
+		special_packages = [special_install["packages"][key][0] for key in special_install["packages"].keys()]
 
 	if zip_file:
 		# assemble path to zip_file
@@ -960,7 +964,14 @@ def build_image(self, current_user_id, name, preprocess, dataverse_key='', doi='
 															   'There was a problem downloading your data from '+\
 							   								   'Dataverse. Please make sure the DOI is correct.']]]}
 	# print(dataset_dir, file=sys.stderr)
-
+	# In the event source scripts need to be skipped 
+	if(special_install):
+		if("source" in special_install.keys()):
+			# Add any files to ignore to the .srcignore
+			with open(os.path.join(app.instance_path, 'r_datasets', dir_name, '.srcignore'), 'w') as src_ignore:
+				for script in special_install["source"]:
+					src_ignore.write(script + '\n')
+	
 	########## GETTING PROV ######################################################################
 
 	# run the R code and collect errors (if any)
@@ -972,7 +983,6 @@ def build_image(self, current_user_id, name, preprocess, dataverse_key='', doi='
 													  			'(This may take several minutes or longer,' +\
 													  			' depending on the complexity of your scripts)'})
 			subprocess.run(['bash', 'app/get_prov_for_doi_preproc.sh', dataset_dir])
-
 			replace_files_with_preproc(dataset_dir, "r")
 			replace_files_with_preproc(os.path.join(dataset_dir, 'prov_data'), "json")
 		except:
@@ -1014,8 +1024,11 @@ def build_image(self, current_user_id, name, preprocess, dataverse_key='', doi='
 											  'status': 'Parsing provenance data... '})
 	# build dockerfile from provenance
 	# get list of json provenance files
-	prov_jsons = [my_file for my_file in os.listdir(os.path.join(dataset_dir, 'prov_data'))\
-				  if my_file.endswith('.json')]
+	prov_dirs = next(os.walk(os.path.join(dataset_dir, 'prov_data')))[1]
+	prov_jsons = []
+	for prov_dir in prov_dirs:
+		prov_jsons.extend([prov_dir + "/" + my_file for my_file in os.listdir(os.path.join(dataset_dir, 'prov_data', prov_dir))\
+				  if my_file.endswith('.json')])
 
 	used_packages = []
 
@@ -1033,6 +1046,16 @@ def build_image(self, current_user_id, name, preprocess, dataverse_key='', doi='
 	except:
 		pass
 
+	
+	# copy sourced scripts to avoid running them indepenently later
+	copy(os.path.join(dataset_dir, 'prov_data', "sourced.txt"), os.path.join(docker_file_dir,".srcignore"))
+	
+	# copy relevant packages, system requirements, and directory
+	sysreqs = []
+	with open(os.path.join(dataset_dir, 'prov_data', "sysreqs.txt")) as reqs:
+		sysreqs = reqs.readlines()
+	shutil.rmtree(os.path.join(dataset_dir, 'prov_data')) 
+
 	##### EVERYTHING BEFORE HERE ---> Static analysis? #########
 	# Variable Information from containR needed for build process:
 	# docker_file_dir is where the Dockerfile will be written to
@@ -1046,11 +1069,6 @@ def build_image(self, current_user_id, name, preprocess, dataverse_key='', doi='
 	self.update_state(state='PROGRESS', meta={'current': 3, 'total': 5,
 											  'status': 'Building Docker image... '})
 
-	# copy relevant packages, system requirements, and directory
-	sysreqs = []
-	with open(os.path.join(dataset_dir, 'prov_data', "sysreqs.txt")) as reqs:
-		sysreqs = reqs.readlines()
-	shutil.rmtree(os.path.join(dataset_dir, 'prov_data'))
 
 	# Write the Dockerfile
 	# 1.) First install system requirements, this will allow R packages to install with no errors (hopefully)
@@ -1062,19 +1080,24 @@ def build_image(self, current_user_id, name, preprocess, dataverse_key='', doi='
 	# 7.) Collect installed packages for report 
 	with open(os.path.join(docker_file_dir, 'Dockerfile'), 'w') as new_docker:
 		new_docker.write('FROM rocker/tidyverse:3.6.3\n')
+		sysinstall = "RUN export DEBIAN_FRONTEND=noninteractive; apt-get -y update && apt-get install -y "
 		if(len(sysreqs) == 1):
-			sysinstall = "RUN export DEBIAN_FRONTEND=noninteractive; apt-get -y update && apt-get install -y "
 			new_docker.write(sysinstall + sysreqs[0])
+		if(special_install):
+			if("sys-libs" in special_install.keys()):
+				new_docker.write(sysinstall + ' '.join(special_install["sys-libs"]) + '\n')
+		if special_packages:
+			for key in special_install["packages"].keys():
+				instruction = 'RUN R -e \"require(\'devtools\');' + special_install["packages"][key][1] +'"\n'
+				new_docker.write(instruction)
 		used_packages = list(set(used_packages))
 		if used_packages:
 			for package, version in used_packages:
-				if(package not in special_packages):
+				if(special_packages and (package not in special_packages)):
+					new_docker.write(build_docker_package_install(package, version))
+				if(special_packages is None):
 					new_docker.write(build_docker_package_install(package, version))
 		
-		if special_packages:
-			for key in special_install.keys():
-				instruction = 'RUN R -e \"require(\'devtools\');' + special_install[key][1] +'"\n'
-				new_docker.write(instruction)
 
 		# copy the new directory and change permissions
 		new_docker.write('ADD ' + doi_to_directory(doi)\
@@ -1084,12 +1107,22 @@ def build_image(self, current_user_id, name, preprocess, dataverse_key='', doi='
 		copy("app/get_dataset_provenance.R", "instance/r_datasets/" + doi_to_directory(doi))
 		new_docker.write('COPY get_prov_for_doi.sh /home/rstudio/\n')
 		new_docker.write('COPY get_dataset_provenance.R /home/rstudio/\n')
+		new_docker.write('COPY .srcignore /home/rstudio/\n')
 
 		new_docker.write('RUN chmod a+rwx -R /home/rstudio/' + doi_to_directory(doi) + '\n')
 		new_docker.write("RUN /home/rstudio/get_prov_for_doi.sh "\
 		 + "/home/rstudio/" + doi_to_directory(doi) + " /home/rstudio/get_dataset_provenance.R\n")
 		new_docker.write("RUN R -e 'write(paste(as.data.frame(installed.packages(),"\
 			+ "stringsAsFactors = F)$Package, collapse =\"\\n\"), \"./listOfPackages.txt\")'\n")
+
+	# In the event source scripts need to be skipped 
+	if(special_install):
+		if("source" in special_install.keys()):
+			# Add any files to ignore to the .srcignore
+			with open(os.path.join(docker_file_dir, '.srcignore'), 'a+') as src_ignore:
+				for script in special_install["source"]:
+					src_ignore.write(script + '\n')
+	
 	
 	# create docker client instance
 	client = docker.from_env()
@@ -1102,9 +1135,11 @@ def build_image(self, current_user_id, name, preprocess, dataverse_key='', doi='
 	repo_name = os.environ.get('DOCKER_REPO') + '/'
 
 	client.images.build(path=docker_file_dir, tag=repo_name + image_name)
-		
+
 	self.update_state(state='PROGRESS', meta={'current': 4, 'total': 5,
 											  'status': 'Collecting container environment information... '})
+
+	
 
 	########## Generate Report About Build Process ##########################################################
 	# The report will have various information from the creation of the container
@@ -1119,20 +1154,24 @@ def build_image(self, current_user_id, name, preprocess, dataverse_key='', doi='
 		environment=["PASSWORD=" + repo_name + image_name], detach=True)
 
 	# Grab the files from inside the container and the filter to just JSON files
-	prov_files = container.exec_run("ls /home/rstudio/" + doi_to_directory(doi) + "/prov_data")[1].decode().split("\n")
-	json_files = [prov_file for prov_file in prov_files if ".json" in prov_file]
+	json_files = container.exec_run("find /home/rstudio/" + doi_to_directory(doi) + "/prov_data -name prov.json")[1].decode().split("\n")
 
 	# Each json file will represent one execution so we need to grab the information from each.
 	# Begin populating the report with information from the analysis and scripts
 	container_packages = []
 	for json_file in json_files:
+		if(json_file == ''):
+			continue
 		report["Individual Scripts"][json_file] = {}
-		prov_from_container = container.exec_run("cat /home/rstudio/" + doi_to_directory(doi) + "/prov_data/" + json_file)[1].decode()
+		prov_from_container = container.exec_run("cat " + json_file)[1].decode()
 		prov_from_container = ProvParser(prov_from_container, isFile=False)
 		container_packages += get_pkgs_from_prov_json(prov_from_container)
 		report["Individual Scripts"][json_file]["Input Files"] = list(set(prov_from_container.getInputFiles()["name"].values.tolist()))
 		report["Individual Scripts"][json_file]["Output Files"] = list(set(prov_from_container.getOutputFiles()["name"].values.tolist()))
-	container_packages = list(set([package[0] for package in container_packages]))
+		dataNodes = prov_from_container.getDataNodes()
+		dataNodes = dataNodes.loc[dataNodes["type"] == "Exception"]
+		dataNodes = dataNodes.loc[dataNodes["name"] == "warning.msg"]
+		report["Individual Scripts"][json_file]["Warnings"] = dataNodes["value"].values.tolist()
 
 	# There should be a file written to the container's system that 
 	# lists the installed packages from when the analyses were run 
@@ -1191,12 +1230,11 @@ def build_image(self, current_user_id, name, preprocess, dataverse_key='', doi='
 		clean_up_datasets()
 		return {'current': 100, 'total': 100, 'status': ['Provenance collection error while executing inside container.',
 														 error_list]}
-	
+
 	########## PUSHING IMG ######################################################################
 	self.update_state(state='PROGRESS', meta={'current': 4, 'total': 5,
 											  'status': 'Pushing Docker image to Dockerhub... '})
 	
-	print(client.images.push(repository=repo_name + image_name), file=sys.stderr)
 
 	########## UPDATING DB ######################################################################
 
@@ -1251,3 +1289,18 @@ def checkLogForErrors(run_log_path):
                     error_list.append(file_error_message)
     return errors_present, error_list, my_file
 
+def writeReadMe(repo_name, image_name):
+	readMeText = '''
+	# {title}
+	This container has been created by RAAS (Reproducibility as a Service). 
+
+	Its purpose is to create environments where data analyses can be executed regardless of the operating system they are running on.
+
+	All of the correct R packages and system libraries have already been installed. 
+
+	To run this container enter:
+	```
+	docker run -e PASSWORD=<yourpasswordhere> -p 8787:8787 {container}
+	```
+	'''.format(title= image_name, container=repo_name + image_name)
+	return readMeText
