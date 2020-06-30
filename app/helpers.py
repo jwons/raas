@@ -1154,20 +1154,24 @@ def build_image(self, current_user_id, name, preprocess, dataverse_key='', doi='
 		environment=["PASSWORD=" + repo_name + image_name], detach=True)
 
 	# Grab the files from inside the container and the filter to just JSON files
-	prov_files = container.exec_run("ls /home/rstudio/" + doi_to_directory(doi) + "/prov_data")[1].decode().split("\n")
-	json_files = [prov_file for prov_file in prov_files if ".json" in prov_file]
+	json_files = container.exec_run("find /home/rstudio/" + doi_to_directory(doi) + "/prov_data -name prov.json")[1].decode().split("\n")
 
 	# Each json file will represent one execution so we need to grab the information from each.
 	# Begin populating the report with information from the analysis and scripts
 	container_packages = []
 	for json_file in json_files:
+		if(json_file == ''):
+			continue
 		report["Individual Scripts"][json_file] = {}
-		prov_from_container = container.exec_run("cat /home/rstudio/" + doi_to_directory(doi) + "/prov_data/" + json_file)[1].decode()
+		prov_from_container = container.exec_run("cat " + json_file)[1].decode()
 		prov_from_container = ProvParser(prov_from_container, isFile=False)
 		container_packages += get_pkgs_from_prov_json(prov_from_container)
 		report["Individual Scripts"][json_file]["Input Files"] = list(set(prov_from_container.getInputFiles()["name"].values.tolist()))
 		report["Individual Scripts"][json_file]["Output Files"] = list(set(prov_from_container.getOutputFiles()["name"].values.tolist()))
-	container_packages = list(set([package[0] for package in container_packages]))
+		dataNodes = prov_from_container.getDataNodes()
+		dataNodes = dataNodes.loc[dataNodes["type"] == "Exception"]
+		dataNodes = dataNodes.loc[dataNodes["name"] == "warning.msg"]
+		report["Individual Scripts"][json_file]["Warnings"] = dataNodes["value"].values.tolist()
 
 	# There should be a file written to the container's system that 
 	# lists the installed packages from when the analyses were run 
@@ -1226,12 +1230,11 @@ def build_image(self, current_user_id, name, preprocess, dataverse_key='', doi='
 		clean_up_datasets()
 		return {'current': 100, 'total': 100, 'status': ['Provenance collection error while executing inside container.',
 														 error_list]}
-	
+
 	########## PUSHING IMG ######################################################################
 	self.update_state(state='PROGRESS', meta={'current': 4, 'total': 5,
 											  'status': 'Pushing Docker image to Dockerhub... '})
 	
-	print(client.images.push(repository=repo_name + image_name), file=sys.stderr)
 
 	########## UPDATING DB ######################################################################
 
@@ -1286,3 +1289,18 @@ def checkLogForErrors(run_log_path):
                     error_list.append(file_error_message)
     return errors_present, error_list, my_file
 
+def writeReadMe(repo_name, image_name):
+	readMeText = '''
+	# {title}
+	This container has been created by RAAS (Reproducibility as a Service). 
+
+	Its purpose is to create environments where data analyses can be executed regardless of the operating system they are running on.
+
+	All of the correct R packages and system libraries have already been installed. 
+
+	To run this container enter:
+	```
+	docker run -e PASSWORD=<yourpasswordhere> -p 8787:8787 {container}
+	```
+	'''.format(title= image_name, container=repo_name + image_name)
+	return readMeText
