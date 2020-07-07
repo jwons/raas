@@ -46,7 +46,10 @@ def containrize():
     #         if item.form.delete.data:
     #             form.pkg_asked.entries.remove(item)
     #             break
+    print(form.validate_on_submit())
+
     if form.validate_on_submit():
+
         # TODO: support for DOI or other libraries
         # if form.doi.data:
         #     task = build_image.apply_async(kwargs={'current_user_id': current_user.id,
