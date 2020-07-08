@@ -1,3 +1,5 @@
+import zipfile
+
 from flask_wtf import FlaskForm
 from flask_wtf.file import FileField
 from wtforms import StringField, PasswordField, BooleanField, SubmitField, SelectField, FormField, FieldList
@@ -33,12 +35,14 @@ class InputForm(FlaskForm):
 
     # clean_code = BooleanField('Attempt to automatically clean code')
 
-    def validate_zip_file(self, set_file):
+    def validate_zip_file(self, zip_file):
         # make sure there's either a DOI or a .zip file upload
         # if (not self.doi.data) and (self.zip_file.data is None) and (self.set_file.data is None):
         if (not self.zip_file.data) and (not self.set_file.data):
             raise ValidationError('Either the 1)a .zip or 2)a set of files '
                                   'containing the dataset is required.')
+        if not zipfile.is_zipfile(self.zip_file.data):
+            raise ValidationError('File is not a valid a zip file')
 
     def validate_name(self, name):
         if name.data =="":

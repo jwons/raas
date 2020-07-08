@@ -76,16 +76,17 @@ def containrize():
         if form.zip_file.data:
             zip_file = form.zip_file.data
             filename = secure_filename(zip_file.filename)
-            if form.language.data == "Python":
-                zipfile_path = os.path.join(app.instance_path, 'py_datasets', filename)
-            else:
-                zipfile_path = os.path.join(app.instance_path, 'r_datasets', filename)
-            zip_file.save(zipfile_path)
+            # if form.language.data == "Python":
+            #     zipfile_path = os.path.join(app.instance_path, 'py_datasets', filename)
+            # else:
+            #     zipfile_path = os.path.join(app.instance_path, 'r_datasets', filename)
+            # zip_file_local=None
+            # shutil.copyfileobj(zip_file,zip_file_local)
+            # zip_file_local.save(zipfile_path)
 
             multi = 0
             bool_dir = False
-
-            with zipfile.ZipFile(zipfile_path) as myzip:
+            with zipfile.ZipFile(zip_file,"r") as myzip:
                 namelist = myzip.infolist()
                 for i in namelist:
                     arr = i.filename.split('/')
@@ -115,7 +116,7 @@ def containrize():
                 zipfile_path = os.path.join(app.instance_path, 'py_datasets', form.name.data + ".zip")
             else:
                 zipfile_path = os.path.join(app.instance_path, 'r_datasets', form.name.data + ".zip")
-            zip_file = zipfile.ZipFile(zipfile_path, "w")
+            zip_file_local = zipfile.ZipFile(zipfile_path, "w")
             file_list = request.files.getlist('set_file')
             os.makedirs(os.path.join(app.instance_path, 'temp', form.name.data))
             for f in file_list:
@@ -123,9 +124,9 @@ def containrize():
             pth = os.path.join(app.instance_path, 'temp', form.name.data)
             for root, dirs, files in os.walk(pth):
                 for file in files:
-                    zip_file.write(os.path.join(pth, file),
+                    zip_file_local.write(os.path.join(pth, file),
                                    os.path.relpath(os.path.join(root, file), os.path.join(pth, '..')))
-            zip_file.close()
+            zip_file_local.close()
         print("MARK2")
         json_input = {'user_id': current_user.id, 'zipfile_path': zipfile_path,
                       'name': form.name.data, "language": form.language.data,
