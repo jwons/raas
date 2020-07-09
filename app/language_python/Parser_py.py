@@ -38,8 +38,6 @@ class Parser_py:
             script_current = Script(file_info[0][0])
             return script_current.get_script_report()
 
-
-
     def get_module_info(self):
         self.cursor.execute("select name,version from module where trial_id=?", (self.trial_id,))
         module_list = self.cursor.fetchall()

@@ -11,7 +11,6 @@ class ReportGenerator:
         with open(os.path.join(target_path,"script_info.json"), 'w+') as outputfile:
             json.dump(scripts, outputfile)
 
-        # print("HERE IS the output" + str(jsontext))
         return 0
 
     def get_pkg_report(self, pkg_list):

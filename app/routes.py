@@ -13,7 +13,7 @@ from flask_login import current_user, login_user, login_required, logout_user
 from app.models import User, Dataset
 from werkzeug.utils import secure_filename
 from app.helpers import build_image
-from app.start import start_raas
+from app.starter import start_raas
 
 
 @app.route('/')
@@ -71,22 +71,13 @@ def containrize():
             shutil.rmtree(os.path.join(app.instance_path, 'temp'))
             os.makedirs(os.path.join(app.instance_path, 'temp'))
 
-        print("MARK1")
-        print(form.zip_file)
         if form.zip_file.data:
             zip_file = form.zip_file.data
             folder_name = secure_filename(form.name.data)
-            # if form.language.data == "Python":
-            #     zipfile_path = os.path.join(app.instance_path, 'py_datasets', filename)
-            # else:
-            #     zipfile_path = os.path.join(app.instance_path, 'r_datasets', filename)
-            # zip_file_local=None
-            # shutil.copyfileobj(zip_file,zip_file_local)
-            # zip_file_local.save(zipfile_path)
 
             multi = 0
             bool_dir = False
-            with zipfile.ZipFile(zip_file,"r") as myzip:
+            with zipfile.ZipFile(zip_file, "r") as myzip:
                 namelist = myzip.infolist()
                 for i in namelist:
                     arr = i.filename.split('/')
@@ -96,9 +87,8 @@ def containrize():
                         if (i.is_dir()):
                             bool_dir = True
 
-                # zipList = list(zipfile.Path(myzip).iterdir())
-                file_name=form.zip_file.data.filename
-                if (multi != 1 or not (bool_dir)):
+                file_name = form.zip_file.data.filename
+                if multi != 1 or not bool_dir:
                     f_name = file_name[:(file_name.index('.'))]
                     os.makedirs(os.path.join(app.instance_path, 'py_datasets', f_name))
                     myzip.extractall(os.path.join(app.instance_path, 'py_datasets', f_name))
@@ -106,9 +96,9 @@ def containrize():
                     p = os.path.join(app.instance_path, 'py_datasets', f_name)
                     for root, dirs, files in os.walk(p):
                         for file in files:
-                            z.write(os.path.join(root,file),
+                            z.write(os.path.join(root, file),
                                     os.path.relpath(os.path.join(file), os.path.join(p, '..')))
-                    z.extractall(os.path.join(app.instance_path, 'py_datasets', folder_name,"data_set_content"))
+                    z.extractall(os.path.join(app.instance_path, 'py_datasets', folder_name, "data_set_content"))
                     z.close()
 
                     shutil.rmtree(os.path.join(app.instance_path, 'py_datasets', f_name), ignore_errors=True)
@@ -118,42 +108,17 @@ def containrize():
                 zipfile_path = os.path.join(app.instance_path, 'py_datasets', folder_name)
             else:
                 zipfile_path = os.path.join(app.instance_path, 'r_datasets', folder_name)
-            # zip_file_local = zipfile.ZipFile(zipfile_path, "w")
             file_list = request.files.getlist('set_file')
             os.makedirs(zipfile_path)
             for f in file_list:
-                f.save(os.path.join(zipfile_path,"data_set_content",f.filename))
-            # pth = os.path.join(app.instance_path, 'temp', form.name.data)
-            # for root, dirs, files in os.walk(pth):
-            #     for file in files:
-            #         zip_file_local.write(os.path.join(pth, file),
-            #                        os.path.relpath(os.path.join(root, file), os.path.join(pth, '..')))
-            # zip_file_local.close()
-        print("MARK2")
-        # json_input = {'user_id': current_user.id, 'zipfile_path': zipfile_path,
-        #               'name': form.name.data, "language": form.language.data,
-        #               'need_prepro': form.fix_code.data,
-        #               'extended_lib': form.extended_lib.data,
-        #               'adv_opt': None
-        #               }
-        # json_ad_input = {
-        #     'cmd': form.command_line.data,
-        #     'sample_output': form.sample_output.data,
-        #     'code_btw': form.code_btw.data,
-        #     'prov': form.provenance.data
-        # }
-        # for value in json_ad_input.values():
-        #     if value is not None:
-        #         json_input["adv_opt"] = json_ad_input
-        #         break
-        # covert the user package into json format
-        user_pkgs_list=[]
+                f.save(os.path.join(zipfile_path, "data_set_content", f.filename))
+        user_pkgs_list = []
         if form.pkg_asked.data:
             for entry in form.pkg_asked.data:
                 print(entry)
-                temp={"pkg_name": entry['package_name'], "PypI_name": entry['pypI_name']}
+                temp = {"pkg_name": entry['package_name'], "PypI_name": entry['pypI_name']}
                 user_pkgs_list.append(temp)
-        user_pkgs_total=str({"pkg":user_pkgs_list}).replace('\'','\"')
+        user_pkgs_total = str({"pkg": user_pkgs_list}).replace('\'', '\"')
         print(str(user_pkgs_total))
         # TODO: The backend function will be called here
         print("lang" + form.language.data)
