@@ -18,7 +18,7 @@ class language_interface(object):
         pass
 
     @abstractmethod  # 抽象方法
-    def build_docker_file(self, dir_name, docker_pkgs, addtional_info):
+    def build_docker_file(self, dir_name, docker_pkgs, addtional_info,code_btw):
         pass
 
     @abstractmethod  # 抽象方法

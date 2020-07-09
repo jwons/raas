@@ -41,7 +41,7 @@ class InputForm(FlaskForm):
         if (not self.zip_file.data) and (not self.set_file.data):
             raise ValidationError('Either the 1)a .zip or 2)a set of files '
                                   'containing the dataset is required.')
-        if not zipfile.is_zipfile(self.zip_file.data):
+        if (not self.set_file.data)and (not zipfile.is_zipfile(self.zip_file.data)):
             raise ValidationError('File is not a valid a zip file')
 
     def validate_name(self, name):

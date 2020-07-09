@@ -123,12 +123,12 @@ class py_place(language_interface):
     def preprocessing(self, preprocess, dataverse_key='', doi='', zip_file='', run_instr='',
                       user_pkg=''):
         if zip_file:  # if a set of scripts have been uploaded then its converted to a normal zip file format (ie. zip a folder)
-            zip_path = os.path.join(app.instance_path, 'py_datasets',
-                                    zip_file)  # instance_path -> key path in the server
+            # zip_path = os.path.join(app.instance_path, 'py_datasets',
+            #                         zip_file)  # instance_path -> key path in the server
             # unzip the zipped directory and keep the zip file
-            with zipfile.ZipFile(zip_path) as zip_ref:
-                dir_name = zip_ref.namelist()[0].strip('/').split('/')[0]
-                zip_ref.extractall(os.path.join(app.instance_path, 'py_datasets', dir_name))
+            # with open(zip_path) as zip_ref:
+            dir_name = zip_file
+                # zip_ref.extractall(os.path.join(app.instance_path, 'py_datasets', dir_name))
 
             # find name of unzipped directory
             dataset_dir = os.path.join(app.instance_path, 'py_datasets', dir_name)
@@ -221,6 +221,7 @@ class py_place(language_interface):
                                                                  [[
                                                                       'Error identified by static analysis of ' + p_obj.name,
                                                                       err_mesg]]]}
+
         return {"dir_name": dir_name, "docker_pkgs": docker_pkgs, "is_python_2": py2}
 
 
@@ -247,7 +248,7 @@ class py_place(language_interface):
     def build_docker_package_install(self, module):
         return "RUN pip install " + module + "\n"
 
-    def build_docker_file(self, dir_name, docker_pkgs, additional_info):
+    def build_docker_file(self, dir_name, docker_pkgs, additional_info,code_btw):
         docker_file_dir = os.path.join(app.instance_path,
                                        'py_datasets', dir_name)
         try:
@@ -261,7 +262,7 @@ class py_place(language_interface):
             else:
                 new_docker.write('FROM python:3\n')
             new_docker.write('WORKDIR /home/py_datasets/' + dir_name + '/\n')
-            new_docker.write('ADD ' + dir_name + ' /home/py_datasets/' + dir_name + '\n')
+            new_docker.write('ADD data_set_content /home/py_datasets/' + dir_name + '\n')
             # copy("app/get_prov_for_doi.sh", "instance/py_datasets/" + dir_name)
             copy("app/language_python/get_dataset_provenance.py", "instance/py_datasets/" + dir_name)
             copy("app/language_python/Parser_py.py", "instance/py_datasets/" + dir_name)
