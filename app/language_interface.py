@@ -3,7 +3,7 @@ from abc import abstractmethod, ABCMeta
 import docker
 import os
 
-from app import db, celery
+from app import db
 
 from app.models import User, Dataset
 
@@ -15,11 +15,11 @@ class language_interface(object):
     __metaclass__ = ABCMeta
 
     @abstractmethod
-    def preprocessing(self, preprocess, dataverse_key='', doi='', zip_file='', run_instr='', user_pkg=''):
+    def preprocessing(self, preprocess, dataverse_key='', doi='', zip_file='', user_pkg=''):
         pass
 
     @abstractmethod
-    def build_docker_file(self, dir_name, docker_pkgs, addtional_info,code_btw):
+    def build_docker_file(self, dir_name, docker_pkgs, addtional_info,ode_btw, run_instr):
         pass
 
     @abstractmethod
@@ -44,7 +44,6 @@ class language_interface(object):
 
         ########## PUSHING IMG ######################################################################
     def push_docker_img(self, dir_name,current_user_id, name, report):
-
         current_user_obj = User.query.get(current_user_id)
         image_name = current_user_obj.username + '-' + name
         repo_name = os.environ.get('DOCKER_REPO') + '/'

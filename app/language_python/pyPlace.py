@@ -120,15 +120,14 @@ class py_place(language_interface):
                 return False
         return files
 
-    def preprocessing(self, preprocess, dataverse_key='', doi='', zip_file='', run_instr='',
-                      user_pkg=''):
+    def preprocessing(self, preprocess, dataverse_key='', doi='', zip_file='', user_pkg=''):
         if zip_file:  # if a set of scripts have been uploaded then its converted to a normal zip file format (ie. zip a folder)
             # zip_path = os.path.join(app.instance_path, 'py_datasets',
             #                         zip_file)  # instance_path -> key path in the server
             # unzip the zipped directory and keep the zip file
             # with open(zip_path) as zip_ref:
             dir_name = zip_file
-                # zip_ref.extractall(os.path.join(app.instance_path, 'py_datasets', dir_name))
+            # zip_ref.extractall(os.path.join(app.instance_path, 'py_datasets', dir_name))
 
             # find name of unzipped directory
             dataset_dir = os.path.join(app.instance_path, 'py_datasets', dir_name)
@@ -219,11 +218,10 @@ class py_place(language_interface):
                 self.clean_up_datasets(dir_name)
                 return {'current': 100, 'total': 100, 'status': ['Error in code.',
                                                                  [[
-                                                                      'Error identified by static analysis of ' + p_obj.name,
-                                                                      err_mesg]]]}
+                                                                     'Error identified by static analysis of ' + p_obj.name,
+                                                                     err_mesg]]]}
 
         return {"dir_name": dir_name, "docker_pkgs": docker_pkgs, "is_python_2": py2}
-
 
     def create_report(self, current_user_id, name, dir_name):
         client = docker.from_env()
@@ -248,7 +246,7 @@ class py_place(language_interface):
     def build_docker_package_install(self, module):
         return "RUN pip install " + module + "\n"
 
-    def build_docker_file(self, dir_name, docker_pkgs, additional_info,code_btw):
+    def build_docker_file(self, dir_name, docker_pkgs, additional_info, code_btw, run_instr):
         docker_file_dir = os.path.join(app.instance_path,
                                        'py_datasets', dir_name)
         try:
@@ -285,5 +283,5 @@ class py_place(language_interface):
 
             new_docker.write("RUN python3 " \
                              + "/home/py_datasets/get_dataset_provenance.py" + " /home/py_datasets/" +
-                             dir_name + "/ \n")
+                             dir_name + "/ \"" +run_instr + "\" \n")
         return docker_file_dir

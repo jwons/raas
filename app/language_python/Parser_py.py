@@ -10,7 +10,7 @@ class Parser_py:
         conn = sqlite3.connect(dir_path + '/.noworkflow/db.sqlite')
         self.filepath = filepath
         self.cursor = conn.cursor()
-        self.cursor.execute('select MAX(id) from trial where command= ? ', (str("run " + filepath),))
+        self.cursor.execute('select MAX(id) from trial where command= ? ', (str("run " + filepath + " " + arguments),))
         self.trial_id = self.cursor.fetchall()[0][0]
 
     def get_file_info(self):
