@@ -37,8 +37,16 @@ def index():
 @login_required
 def containrize():
     form = InputForm()
-    if form.add.data:
+    if form.add_pkg.data:
         form.pkg_asked.append_entry()
+        return render_template('containrize.html',
+                               title='Containrize', form=form, show_adv=True)
+    if form.add_cmd.data:
+        form.command_line.append_entry()
+        return render_template('containrize.html',
+                               title='Containrize', form=form, show_adv=True)
+    if form.add_code.data:
+        form.code_btw.append_entry()
         return render_template('containrize.html',
                                title='Containrize', form=form, show_adv=True)
     # elif form.pkg_asked:

@@ -8,9 +8,16 @@ from app.models import User, Dataset
 from flask_login import current_user, login_user, login_required, logout_user
 
 
-class AddressEntryForm(FlaskForm):
+class PackagesForm(FlaskForm):
     package_name = StringField('package_name')
     pypI_name = StringField('pypI_name')
+
+class Code_btw_Form(FlaskForm):
+    code=StringField()
+
+class Cmd_Form(FlaskForm):
+    script_name = StringField('Script Name')
+    command = StringField('Command')
 
 
 class InputForm(FlaskForm):
@@ -22,13 +29,17 @@ class InputForm(FlaskForm):
 
     language = SelectField('What language is included in your upload', validators=[Required()],
                            choices=[('R', 'R'), ('Python', 'Python')])
-    command_line = StringField('Run instruction')
+    # command_line = StringField('Run instruction')
     provenance = StringField('Provenance')
-    code_btw = StringField('Line of code to run between package install and  execute')
+    # code_btw = StringField('Line of code to run between package install and  execute')
+    command_line = FieldList(FormField(Cmd_Form), min_entries=1)
+    code_btw= FieldList(FormField(Code_btw_Form), min_entries=1)
     sample_output = FileField('Sample output that you want to compare with', render_kw={'multiple': True})
-    pkg_asked = FieldList(FormField(AddressEntryForm), min_entries=1)
+    pkg_asked = FieldList(FormField(PackagesForm), min_entries=1)
     submit = SubmitField('Build Docker Image')
-    add = SubmitField("+ add more")
+    add_pkg = SubmitField("+ add more")
+    add_code = SubmitField("+ add more")
+    add_cmd = SubmitField("+ add more")
 
     def validate_zip_file(self, zip_file):
         # make sure there's either a set of scripts or a .zip file upload

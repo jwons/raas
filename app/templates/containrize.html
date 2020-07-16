@@ -77,22 +77,42 @@
             {{ wtf.form_field(form.submit) }}
         </div>
         <div id="advance">
-            {{ wtf.form_field(form.command_line) }}
-            {{ wtf.form_field(form.code_btw) }}
             {{ wtf.form_field(form.provenance) }}
             {{ wtf.form_field(form.sample_output) }}
             <label class="control-label">Additional Packages</label>
             <div id="pkg_table">
-
                 {% for f in form.pkg_asked %}
                     {{ f.hidden_tag() }}
                     {{ f.spot_id }}
-                    <label class="package name">Package name</label>
+
+                    <label class="package name" style="color:grey; font-weight: lighter">Package name {{ loop.index }}:</label>
                     {{ f.package_name }}
-                    <label class="pypI_name">pypI_name</label>
+                    <label class="pypI_name" style="color:grey; font-weight: lighter">pypI_name {{ loop.index }}:</label>
                     {{ f.pypI_name }}<br>
                 {% endfor %}
-                {{ wtf.form_field(form.add) }}
+                {{ wtf.form_field(form.add_pkg) }}
+            </div>
+         <label class="control-label">Run instruction(Command line)</label>
+        <div id="cmd">
+                {% for f in form.command_line %}
+                    {{ f.hidden_tag() }}
+                    {{ f.spot_id }}
+                    <label class="script_name" style="color:grey; font-weight: lighter">Script Name {{ loop.index }}:</label>
+               {{ f.script_name }}
+                    <label class="command" style="color:grey; font-weight: lighter">Command {{ loop.index }}:</label>
+                    {{ f.command }}<br>
+                {% endfor %}
+                {{ wtf.form_field(form.add_cmd) }}
+            </div>
+         <label class="control-label">Line of code to run between package install and execute</label>
+        <div id="pkg_table">
+                {% for f in form.code_btw %}
+                    {{ f.hidden_tag() }}
+                    {{ f.spot_id }}
+                    <label class="command" style="color:grey; font-weight: lighter">{{ loop.index }}</label>
+                    {{ f.code }}<br>
+                {% endfor %}
+                {{ wtf.form_field(form.add_code) }}
             </div>
         </div>
 

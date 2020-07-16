@@ -152,13 +152,13 @@ class py_place(language_interface):
             try:
 
                 # iterate through list of all python files to figure out if its python2 or python3
-                hash = generate_multimap(dataset_dir)
+                hash = generate_multimap(dataset_dir + "/data_set_content")
                 for file in pyfiles:
-                    path_preprocess(file, dataset_dir, hash)
+                    path_preprocess(file, dataset_dir + "/data_set_content", hash)
             except:
                 pass
 
-        user_defined_modules = generate_modules(dataset_dir)
+        user_defined_modules = generate_modules(dataset_dir + "/data_set_content")
 
         unknown_pkgs = set()
         docker_pkgs = set()
@@ -280,8 +280,12 @@ class py_place(language_interface):
                     new_docker.write(self.build_docker_package_install(module))
 
             new_docker.write("RUN pip list > /home/py_datasets/" + dir_name + "/listOfPackages.txt \n")
-
-            new_docker.write("RUN python3 " \
-                             + "/home/py_datasets/get_dataset_provenance.py" + " /home/py_datasets/" +
-                             dir_name + "/ \"" +run_instr + "\" \n")
+            if run_instr != "":
+                new_docker.write("RUN python3 " \
+                                 + "/home/py_datasets/get_dataset_provenance.py" + " /home/py_datasets/" +
+                                 dir_name + "/ \"" + run_instr + "\" \n")
+            else:
+                new_docker.write("RUN python3 " \
+                                 + "/home/py_datasets/get_dataset_provenance.py" + " /home/py_datasets/" +
+                                 dir_name + "/\n")
         return docker_file_dir
