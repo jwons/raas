@@ -17,6 +17,7 @@ def start_raas(self, language, current_user_id, name, preprocess, dataverse_key=
                                                         '(This may take several minutes or longer,' + \
                                                         ' depending on the complexity of your scripts)'})
     after_preprocess = language_obj.preprocessing(preprocess, dataverse_key, doi, data_folder, user_pkgs)
+    print(str(after_preprocess))
     dir_name = after_preprocess["dir_name"]
     docker_pkgs = after_preprocess["docker_pkgs"]
     self.update_state(state='PROGRESS', meta={'current': 3, 'total': 10,

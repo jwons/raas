@@ -118,6 +118,7 @@ def containrize():
                 zipfile_path = os.path.join(app.instance_path, 'r_datasets', folder_name)
             file_list = request.files.getlist('set_file')
             os.makedirs(zipfile_path)
+            os.makedirs(os.path.join(zipfile_path, "data_set_content"))
             for f in file_list:
                 f.save(os.path.join(zipfile_path, "data_set_content", f.filename))
         user_pkgs_list = []
@@ -126,6 +127,18 @@ def containrize():
                 print(entry)
                 temp = {"pkg_name": entry['package_name'], "PypI_name": entry['pypI_name']}
                 user_pkgs_list.append(temp)
+        allinstr = []
+        ext_pkgs = []
+        for instr in form.command_line.data:
+            cur=instr['command']
+            if(cur!=""):
+                allinstr.append(cur)
+            # allinstr = allinstr + instr['command'] + r"\n"
+
+        for pkg in form.code_btw.data:
+            cur=pkg['code']
+            if cur!="":
+                ext_pkgs.append(pkg['code'])
         user_pkgs_total = str({"pkg": user_pkgs_list}).replace('\'', '\"')
         print(str(user_pkgs_total))
         # TODO: The backend function will be called here
@@ -136,15 +149,16 @@ def containrize():
                                                    'name': form.name.data,
                                                    'preprocess': form.fix_code.data})
         else:
+
             task = start_raas.apply_async(kwargs={'language': form.language.data,
                                                   'data_folder': folder_name,
                                                   'current_user_id': current_user.id,
                                                   'name': form.name.data,
                                                   'preprocess': form.fix_code.data,
                                                   'user_pkgs': user_pkgs_total,
-                                                  'run_instr': form.command_line.data,
+                                                  'run_instr': allinstr,
                                                   'sample_output': form.sample_output.data,
-                                                  'code_btw': form.code_btw.data,
+                                                  'code_btw': ext_pkgs,
                                                   'prov': form.provenance.data
                                                   })
 

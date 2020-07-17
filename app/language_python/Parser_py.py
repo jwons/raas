@@ -4,13 +4,15 @@ import sqlite3
 
 
 class Parser_py:
-    def __init__(self, dir_path, filepath, arguments):
+    # modification made by Akash
+    # removed arguments parameter and added it to filepath, so its not filepath anymore, its command line
+    def __init__(self, dir_path, filepath):
 
         # os.system("now run " + filepath + " " + arguments)
         conn = sqlite3.connect(dir_path + '/.noworkflow/db.sqlite')
         self.filepath = filepath
         self.cursor = conn.cursor()
-        self.cursor.execute('select MAX(id) from trial where command= ? ', (str("run " + filepath + " " + arguments),))
+        self.cursor.execute('select MAX(id) from trial where command= ? ', (str("run " + filepath),))
         self.trial_id = self.cursor.fetchall()[0][0]
 
     def get_file_info(self):
@@ -48,7 +50,6 @@ class Parser_py:
         path_list = self.cursor.fetchall()
         pkg_list = []
         for p in path_list:
-            print(p[0])
             if p[0] is not None and "site-packages" in p[0]:
                 pkg_name = p[0].split("site-packages")[1].split("\\")[1].replace("_", "")
                 pkg_list.append((pkg_name.replace(".py", ""), p[1]))

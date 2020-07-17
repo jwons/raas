@@ -220,7 +220,6 @@ class py_place(language_interface):
                                                                  [[
                                                                      'Error identified by static analysis of ' + p_obj.name,
                                                                      err_mesg]]]}
-
         return {"dir_name": dir_name, "docker_pkgs": docker_pkgs, "is_python_2": py2}
 
     def create_report(self, current_user_id, name, dir_name):
@@ -233,8 +232,10 @@ class py_place(language_interface):
                                           environment=["PASSWORD=" + repo_name + image_name],
                                           detach=True, command="tail -f /dev/null")
 
-        container_packages = container.exec_run("cat /home/py_datasets/" + dir_name + "/script_info.json")[1].decode()
-        installed_packages = container.exec_run("cat /home/py_datasets/" + dir_name + "/listOfPackages.txt")[
+        container_packages = \
+        container.exec_run("cat /home/py_datasets/" + dir_name + "/data_set_content/script_info.json")[1].decode()
+        installed_packages = \
+        container.exec_run("cat /home/py_datasets/" + dir_name + "/data_set_content/listOfPackages.txt")[
             1].decode().split("\n")
         container.kill()
         report = {"Container Report": {}, "Individual Scripts": {}}
@@ -247,45 +248,69 @@ class py_place(language_interface):
         return "RUN pip install " + module + "\n"
 
     def build_docker_file(self, dir_name, docker_pkgs, additional_info, code_btw, run_instr):
-        docker_file_dir = os.path.join(app.instance_path,
-                                       'py_datasets', dir_name)
+        allinstr = ""
+        ext_pkgs = code_btw
+        for instr in run_instr:
+            allinstr = allinstr + instr + r"\n"
+
+        docker_wrk_dir = '/home/py_datasets/' + dir_name + '/'
+        docker_file_dir = '/home/py_datasets/' + dir_name + '/data_set_content/'
+        docker_home = '/home/py_datasets/' + dir_name + '/'
         try:
-            os.makedirs(docker_file_dir)
+            os.makedirs(os.path.join(app.instance_path, 'py_datasets', dir_name, 'data_set_content'))
         except:
             pass
-        with open(os.path.join(docker_file_dir, 'Dockerfile'), 'w+') as new_docker:
+        with open(os.path.join(app.instance_path, 'py_datasets', dir_name, 'Dockerfile'), 'w+') as new_docker:
 
             if additional_info["is_python_2"]:
                 new_docker.write('FROM python:2\n')
             else:
                 new_docker.write('FROM python:3\n')
-            new_docker.write('WORKDIR /home/py_datasets/' + dir_name + '/\n')
-            new_docker.write('ADD data_set_content /home/py_datasets/' + dir_name + '\n')
+
+            # Some changes due to nature of path preprocessing by AkashS
+
+            # new_docker.write('WORKDIR /home/py_datasets/' + dir_name + '/\n')
+            new_docker.write('WORKDIR ' + docker_wrk_dir + '\n')
+            # new_docker.write('ADD data_set_content /home/py_datasets/' + dir_name + '\n')
+            new_docker.write('ADD data_set_content ' + docker_wrk_dir + '\n')
             copy("app/language_python/get_dataset_provenance.py", "instance/py_datasets/" + dir_name)
             copy("app/language_python/Parser_py.py", "instance/py_datasets/" + dir_name)
             copy("app/language_python/ReportGenerator.py", "instance/py_datasets/" + dir_name)
-            new_docker.write('COPY get_dataset_provenance.py /home/py_datasets/\n')
-            new_docker.write('COPY Parser_py.py /home/py_datasets/\n')
-            new_docker.write('COPY ReportGenerator.py /home/py_datasets/\n')
-            new_docker.write('RUN chmod a+rwx -R /home/py_datasets/' + dir_name + '\n')
+            copy("app/language_python/cmd_line.py", "instance/py_datasets/" + dir_name)
+            # new_docker.write('COPY get_dataset_provenance.py /home/py_datasets/\n')
+            new_docker.write('COPY get_dataset_provenance.py ' + docker_home + '\n')
+            # new_docker.write('COPY cmd_line.py /home/py_datasets/\n')
+            # new_docker.write('COPY Parser_py.py /home/py_datasets/\n')
+            # new_docker.write('COPY ReportGenerator.py /home/py_datasets/\n')
+
+            new_docker.write('COPY cmd_line.py ' + docker_home + '\n')
+            new_docker.write('COPY Parser_py.py ' + docker_home + '\n')
+            new_docker.write('COPY ReportGenerator.py ' + docker_home + '\n')
+
+            # new_docker.write('RUN chmod a+rwx -R /home/py_datasets/' + dir_name + '\n')
+            new_docker.write('RUN chmod a+rwx -R ' + docker_wrk_dir + '\n')
             new_docker.write('WORKDIR /home/\n')
             new_docker.write('RUN git clone https://github.com/gems-uff/noworkflow.git\n')
-            new_docker.write('WORKDIR /home/noworkflow\n')
+            new_docker.write('WORKDIR /home/noworkflow/\n')
             new_docker.write('RUN git checkout 2.0-alpha\n')
             new_docker.write('RUN python3 -m pip install -e capture\n')
-            new_docker.write('WORKDIR /home/py_datasets/' + dir_name + '/\n')
+            # new_docker.write('WORKDIR /home/py_datasets/' + dir_name + '/\n')
+            new_docker.write('WORKDIR ' + docker_file_dir + '\n')
 
+            for mod in ext_pkgs:
+                new_docker.write("RUN " + mod + "\n")
             if docker_pkgs:
                 for module in docker_pkgs:
                     new_docker.write(self.build_docker_package_install(module))
 
-            new_docker.write("RUN pip list > /home/py_datasets/" + dir_name + "/listOfPackages.txt \n")
-            if run_instr != "":
-                new_docker.write("RUN python3 " \
-                                 + "/home/py_datasets/get_dataset_provenance.py" + " /home/py_datasets/" +
-                                 dir_name + "/ \"" + run_instr + "\" \n")
-            else:
-                new_docker.write("RUN python3 " \
-                                 + "/home/py_datasets/get_dataset_provenance.py" + " /home/py_datasets/" +
-                                 dir_name + "/\n")
-        return docker_file_dir
+            # new_docker.write("RUN pip list > /home/py_datasets/" + dir_name + "/listOfPackages.txt \n")
+            new_docker.write("RUN pip list > " + docker_file_dir + "listOfPackages.txt \n")
+
+            # new_docker.write("RUN python3 " \
+            #                     + "/home/py_datasets/get_dataset_provenance.py" + " /home/py_datasets/" +
+            #                     dir_name + "/ " + allinstr +"\n")
+            new_docker.write("RUN echo -e \"" + allinstr + "\" >> run_instr.txt \n")
+            new_docker.write("RUN python3 " \
+                             + docker_home + "get_dataset_provenance.py" + " " + docker_wrk_dir + "\n")
+
+        return os.path.join(app.instance_path,'py_datasets', dir_name)

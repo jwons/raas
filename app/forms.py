@@ -16,7 +16,6 @@ class Code_btw_Form(FlaskForm):
     code=StringField()
 
 class Cmd_Form(FlaskForm):
-    script_name = StringField('Script Name')
     command = StringField('Command')
 
 

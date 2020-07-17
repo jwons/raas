@@ -97,9 +97,7 @@
                 {% for f in form.command_line %}
                     {{ f.hidden_tag() }}
                     {{ f.spot_id }}
-                    <label class="script_name" style="color:grey; font-weight: lighter">Script Name {{ loop.index }}:</label>
-               {{ f.script_name }}
-                    <label class="command" style="color:grey; font-weight: lighter">Command {{ loop.index }}:</label>
+                    <label class="command" style="color:grey; font-weight: lighter">Line    {{ loop.index }}:</label>
                     {{ f.command }}<br>
                 {% endfor %}
                 {{ wtf.form_field(form.add_cmd) }}
@@ -109,7 +107,7 @@
                 {% for f in form.code_btw %}
                     {{ f.hidden_tag() }}
                     {{ f.spot_id }}
-                    <label class="command" style="color:grey; font-weight: lighter">{{ loop.index }}</label>
+                    <label class="command" style="color:grey; font-weight: lighter">Line {{ loop.index }}:</label>
                     {{ f.code }}<br>
                 {% endfor %}
                 {{ wtf.form_field(form.add_code) }}

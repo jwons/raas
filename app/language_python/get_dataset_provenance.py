@@ -4,22 +4,59 @@ import sys
 from Parser_py import Parser_py
 from ReportGenerator import ReportGenerator
 
+from cmd_line import cmd_line_preprocessor
 
-def get_dataset_provenance(direct, run_instr):
-    print(run_instr)
-    run_instr=run_instr.replace(","," ")
-    print("!")
+
+def get_dataset_provenance(dire):
+    direct = dire + '/data_set_content/'
+    orig_dir = os.getcwd()
+    ins = []
+    with open(direct+'run_instr.txt') as infile:
+        print(infile.readlines())
+        for lines in infile.readlines():
+            lines = lines.rstrip("\n")
+            if(lines!=""):
+                ins.append(lines)
+
     parser_list = []
-    files = os.listdir(direct)
-    for f in files:
-        if ".py" in f:
-            os.system("now run " + direct + f + " " + run_instr)
-            p = Parser_py(direct, direct + f, run_instr)
+
+    if(len(ins)==0):
+        for dirpath,dirs,files in os.walk(direct):
+            for filename in files:
+                f = os.path.join(dirpath,filename)
+                if(".py" in f):
+                    os.system("now run "+f)
+                    p = Parser_py(direct,f)
+                    parser_list.append(p)
+                # if(".py" in f):
+                #     os.system("now run "+f)
+                #     p = Parser_py(direct,f)
+                #     parser_list.append(p)
+            r = ReportGenerator()
+            r.generate_report(parser_list, direct)
+
+    else:
+        print(ins)
+        for cmd in ins:
+            cmd = cmd.rstrip('\n')
+            arr = cmd.split(" ")
+            arr = list(filter(lambda x: x !='',arr))
+
+            arr[0] = "now run"
+            
+            cur_dir = cmd_line_preprocessor(cmd,direct)
+            
+            cmd_str = ""
+            for i in arr:
+                cmd_str = cmd_str + i + " "
+            os.chdir(cur_dir)
+            os.system(cmd_str)
+
+            p = Parser_py(direct,cmd)
             parser_list.append(p)
+        os.chdir(orig_dir)
+        r = ReportGenerator()
+        r.generate_report(parser_list, direct)
 
-    r = ReportGenerator()
-    r.generate_report(parser_list, direct)
-
-
-if len(sys.argv) > 1:
-    get_dataset_provenance(sys.argv[1],sys.argv[2])
+if len(sys.argv) == 2:
+    get_dataset_provenance(sys.argv[1])
