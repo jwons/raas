@@ -29,7 +29,7 @@ class InputForm(FlaskForm):
     language = SelectField('What language is included in your upload', validators=[Required()],
                            choices=[('R', 'R'), ('Python', 'Python')])
     # command_line = StringField('Run instruction')
-    provenance = StringField('Provenance')
+    provenance = FileField('Provenance')
     # code_btw = StringField('Line of code to run between package install and  execute')
     command_line = FieldList(FormField(Cmd_Form), min_entries=1)
     code_btw= FieldList(FormField(Code_btw_Form), min_entries=1)

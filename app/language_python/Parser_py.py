@@ -36,6 +36,7 @@ class Parser_py:
                 'SELECT DISTINCT t.script '
                 'FROM trial t '
                 'WHERE t.id = ? ', (self.trial_id,))
+
             file_info = self.cursor.fetchall()
             script_current = Script(file_info[0][0])
             return script_current.get_script_report()

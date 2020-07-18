@@ -110,6 +110,11 @@ def containrize():
                     z.close()
 
                     shutil.rmtree(os.path.join(app.instance_path, 'py_datasets', f_name), ignore_errors=True)
+                else:
+                    z = zipfile.ZipFile(zip_file)
+                    z.extractall(os.path.join(app.instance_path, 'py_datasets', folder_name, "data_set_content"))
+                    z.close()
+                    
         else:
             folder_name = secure_filename(form.name.data)
             if form.language.data == "Python":
@@ -121,6 +126,7 @@ def containrize():
             os.makedirs(os.path.join(zipfile_path, "data_set_content"))
             for f in file_list:
                 f.save(os.path.join(zipfile_path, "data_set_content", f.filename))
+
         user_pkgs_list = []
         if form.pkg_asked.data:
             for entry in form.pkg_asked.data:

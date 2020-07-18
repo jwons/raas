@@ -39,6 +39,23 @@ def generate_multimap(dir): # This maps filenames to their absolute path, this i
         arr[i.name].append(str(i.resolve()))
     return arr
 
+def get_parent(cmd,folder_name):
+    
+    arr = cmd.split(' ')
+    arr = list(filter(lambda x: x !='', arr)) # remove empty string elements from the array
+    path_of_file_to_be_executed = arr[1]
+    l = re.split(r'/|\\',path_of_file_to_be_executed) # Paths may contain back slash or forward slash
+            #l = path_of_file_to_be_executed.split('/') # Have to check with windows environment later
+            
+    l = list(filter(lambda x: x !='', l)) # remove empty string elements from the array
+    Dfdict = generate_multimap(folder_name)
+    ar = Dfdict[l[-1]]
+    if(ar==[]):
+        raise DirectoryError
+    else:
+        return finder(ar,l)
+    
+
 def finder(ar,l):
     # ar -> list of absolute paths of directories with the same name
     # l  -> rel. path given by user
@@ -83,7 +100,6 @@ def cmd_line_preprocessor(cmd,folder_name):
             l = list(filter(lambda x: x !='', l)) # remove empty string elements from the array
 
             if(len(l)==1): # Directory of execution will be the same location as the executable python file
-                l = ['test.py']
                 ar = Dfdict[l[0]]
                 if(len(ar)==1):
                     return str(Path(ar[0]).parent)
