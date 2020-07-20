@@ -55,7 +55,9 @@ def get_dataset_provenance(dire):
                 cmd_str = cmd_str + i + " "
             os.chdir(cur_dir)
             os.system(cmd_str)
-            p = Parser_py(par,file_to_exec)
+            file_path_to_exec = re.findall(r"^now run\s (.*)",cmd_str)[0]
+            print("file_path_to_exec："+file_path_to_exec)
+            p = Parser_py(par,file_path_to_exec)
             parser_list.append(p)
         os.chdir(orig_dir)
         r = ReportGenerator()

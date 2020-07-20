@@ -80,7 +80,7 @@
             {{ wtf.form_field(form.provenance) }}
             {{ wtf.form_field(form.sample_output) }}
             <label class="control-label">Additional Packages</label>
-            <div id="pkg_table">
+            <div id="pkg_table" style="line-height:25px">
                 {% for f in form.pkg_asked %}
                     {{ f.hidden_tag() }}
                     {{ f.spot_id }}
@@ -93,7 +93,7 @@
                 {{ wtf.form_field(form.add_pkg) }}
             </div>
          <label class="control-label">Run instruction(Command line)</label>
-        <div id="cmd">
+        <div id="cmd" style="line-height:25px">
                 {% for f in form.command_line %}
                     {{ f.hidden_tag() }}
                     {{ f.spot_id }}
@@ -103,7 +103,7 @@
                 {{ wtf.form_field(form.add_cmd) }}
             </div>
          <label class="control-label">Line of code to run between package install and execute</label>
-        <div id="pkg_table">
+        <div id="pkg_table" style="line-height:25px">
                 {% for f in form.code_btw %}
                     {{ f.hidden_tag() }}
                     {{ f.spot_id }}
