@@ -73,11 +73,6 @@ def containrize():
             os.makedirs(os.path.join(app.instance_path, 'r_datasets'))
         if not os.path.exists(os.path.join(app.instance_path, 'py_datasets')):
             os.makedirs(os.path.join(app.instance_path, 'py_datasets'))
-        if not os.path.exists(os.path.join(app.instance_path, 'temp')):
-            os.makedirs(os.path.join(app.instance_path, 'temp'))
-        else:
-            shutil.rmtree(os.path.join(app.instance_path, 'temp'))
-            os.makedirs(os.path.join(app.instance_path, 'temp'))
 
         if form.zip_file.data:
             zip_file = form.zip_file.data
@@ -148,7 +143,7 @@ def containrize():
         user_pkgs_total = str({"pkg": user_pkgs_list}).replace('\'', '\"')
         print(str(user_pkgs_total))
         # TODO: The backend function will be called here
-        print("lang" + form.language.data)
+        print("Language: " + form.language.data)
         if form.language.data == "R":
             task = build_image.apply_async(kwargs={'data_folder': folder_name,
                                                    'current_user_id': current_user.id,
@@ -170,7 +165,6 @@ def containrize():
 
         session['task_id'] = task.id
         return redirect(url_for('build_status'))
-    print("MARK3")
     return render_template('containrize.html',
                            title='Containrize', form=form, show_adv=False)
 

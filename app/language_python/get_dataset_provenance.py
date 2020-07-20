@@ -9,10 +9,9 @@ from cmd_line import cmd_line_preprocessor
 from cmd_line import get_parent
 
 def get_dataset_provenance(dire):
-    direct = dire + '/data_set_content/'
     orig_dir = os.getcwd()
     ins = []
-    with open(direct+'run_instr.txt') as infile:
+    with open(dire+'run_instr.txt') as infile:
         for lines in infile.readlines():
             lines = lines.rstrip("\n")
             if(lines!=""):
@@ -22,7 +21,7 @@ def get_dataset_provenance(dire):
 
 
     if(len(ins)==0):
-        for dirpath,dirs,files in os.walk(direct):
+        for dirpath,dirs,files in os.walk(dire):
             for filename in files:
                 f = os.path.join(dirpath,filename)
                 if(".py" in f):
@@ -35,7 +34,7 @@ def get_dataset_provenance(dire):
                 #     p = Parser_py(direct,f)
                 #     parser_list.append(p)
         r = ReportGenerator()
-        r.generate_report(parser_list, direct)
+        r.generate_report(parser_list, dire)
 
     else:
 
@@ -46,10 +45,8 @@ def get_dataset_provenance(dire):
 
             arr[0] = "now run"
             
-            file_to_exec = re.split(r'/|\\',arr[1])[-1]
-            
-            cur_dir = cmd_line_preprocessor(cmd,direct)
-            par = get_parent(cmd,direct)
+            cur_dir = cmd_line_preprocessor(cmd,dire)
+            par = get_parent(cmd,dire)
             cmd_str = ""
             for i in arr:
                 cmd_str = cmd_str + i + " "
@@ -61,7 +58,7 @@ def get_dataset_provenance(dire):
             parser_list.append(p)
         os.chdir(orig_dir)
         r = ReportGenerator()
-        r.generate_report(parser_list, direct)
+        r.generate_report(parser_list, dire)
 
 if len(sys.argv) == 2:
     get_dataset_provenance(sys.argv[1])

@@ -35,99 +35,13 @@ class py_place(language_interface):
             except:
                 pass
 
-    def doi_to_directory(self, doi):
-        """Converts a doi string to a more directory-friendly name
-        Parameters
-        ----------
-        doi : string
-              doi
-
-        Returns
-        -------
-        doi : string
-              doi with "/" and ":" replaced by "-" and "--" respectively
-        """
-        return doi.replace("/", "-").replace(":", "--")
-
-    def download_dataset(doi, destination, dataverse_key, api_url="https://dataverse.harvard.edu/api/"):
-        """Download doi to the destination directory
-        Parameters
-        ----------
-        doi : string
-              doi of the dataset to be downloaded
-        destination : string
-                      path to the destination in which to store the downloaded directory
-        dataverse_key : string
-                        dataverse api key to use for completing the download
-        api_url : string
-                  URL of the dataverse API to download the dataset from
-        Returns
-        -------
-        bool
-        whether the dataset was successfully downloaded to the destination
-        """
-        api_url = api_url.strip("/")
-        # make a new directory to store the dataset
-        # (if one doesn't exist)
-        if not os.path.exists(destination):
-            os.makedirs(destination)
-
-        try:
-            # query the dataverse API for all the files in a dataverse
-            files = requests.get(api_url + "/datasets/:persistentId",
-                                 params={"persistentId": doi}) \
-                .json()['data']['latestVersion']['files']
-
-        except:
-            return False
-
-        # convert DOI into a friendly directory name by replacing slashes and colons
-        doi_direct = destination + '/' + self.doi_to_directory(doi)
-
-        # make a new directory to store the dataset
-        if not os.path.exists(doi_direct):
-            os.makedirs(doi_direct)
-        # for each file result
-
-        for file in files:
-            try:
-                # parse the filename and fileid
-                # filename = file['dataFile']['filename']
-                fileid = file['dataFile']['id']
-                contentType = file['dataFile']['contentType']
-
-                # query the API for the file contents
-                # In Dataverse, tabular data are converted to non-propietary formats for
-                # archival purposes. These files we will need to specifically request for
-                # the original file because the scripts will break otherwise. If the files
-                # have metadata denoting their original file size, they *should* be a file
-                # that was changed so we would need to grab the original
-                if "originalFileSize" in file["dataFile"]:
-                    response = requests.get(api_url + "/access/datafile/" + str(fileid),
-                                            params={"format": "original", "key": dataverse_key})
-                else:
-                    response = requests.get(api_url + "/access/datafile/" + str(fileid))
-
-                value, params = cgi.parse_header(response.headers['Content-disposition'])
-                if 'filename*' in params:
-                    filename = params['filename*'].split("'")[-1]
-                else:
-                    filename = params['filename']
-
-                # write the response to correctly-named file in the dataset directory
-                with open(doi_direct + "/" + filename, 'wb') as handle:
-                    handle.write(response.content)
-            except:
-                return False
-        return files
-
-    def preprocessing(self, preprocess, dataverse_key='', doi='', zip_file='', user_pkg=''):
-        if zip_file:  # if a set of scripts have been uploaded then its converted to a normal zip file format (ie. zip a folder)
+    def preprocessing(self, preprocess, dataverse_key='', doi='', data_folder='', user_pkg=''):
+        if data_folder:  # if a set of scripts have been uploaded then its converted to a normal zip file format (ie. zip a folder)
             # zip_path = os.path.join(app.instance_path, 'py_datasets',
             #                         zip_file)  # instance_path -> key path in the server
             # unzip the zipped directory and keep the zip file
             # with open(zip_path) as zip_ref:
-            dir_name = zip_file
+            dir_name = data_folder
             # zip_ref.extractall(os.path.join(app.instance_path, 'py_datasets', dir_name))
 
             # find name of unzipped directory
@@ -328,6 +242,6 @@ class py_place(language_interface):
             #    new_docker.write("RUN echo -e \"" + allinstr + "\" > run_instr.txt \n")
             
             new_docker.write("RUN python3 " \
-                            + docker_home + "get_dataset_provenance.py" + " " + docker_wrk_dir + "\n")
+                            + docker_home + "get_dataset_provenance.py" + " " + docker_file_dir + "\n")
 
         return os.path.join(app.instance_path,'py_datasets', dir_name)
