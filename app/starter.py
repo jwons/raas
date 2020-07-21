@@ -43,3 +43,4 @@ def start_raas(self, language, current_user_id, name, preprocess, dataverse_key=
                 'result': 42, 'errors': 'No errors!'}
     except:
         language_obj.clean_up_datasets(data_folder)
+        raise
