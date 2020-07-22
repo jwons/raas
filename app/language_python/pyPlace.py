@@ -2,6 +2,7 @@ from pathlib import Path
 
 from app.files_list import generate_multimap, generate_modules, generate_set, generate_multimap2
 from app.language_python.py2or3 import python2or3
+from app.language_python.decommenter import remove_comments_and_docstrings
 from app.pathpreprocess import path_preprocess
 from app.ast_test import get_imports
 from app.language_python.pylint_parse import pylint_parser
@@ -9,6 +10,7 @@ from app.language_python.pylint_parse import pylint_parser
 import requests
 import subprocess
 import json
+from pathlib import Path
 
 import os
 import shutil
@@ -24,6 +26,8 @@ from shutil import copy
 from app.language_interface import language_interface
 
 
+
+
 class py_place(language_interface):
     def clean_up_datasets(self, dataset_directory):
         # delete any stored data
@@ -34,6 +38,15 @@ class py_place(language_interface):
                 os.remove(os.path.join(app.instance_path, 'py_datasets', dataset_directory))
             except:
                 pass
+                
+    def temp_name(self,path):
+        p_obj = Path(path)
+        filename = p_obj.stem
+        temp_filename = filename+'_temp.py'
+        par = p_obj.parent
+        temp_path = os.path.join(par,temp_filename)
+        return temp_path
+    
 
     def preprocessing(self, preprocess, dataverse_key='', doi='', data_folder='', user_pkg=''):
         if data_folder:  # if a set of scripts have been uploaded then its converted to a normal zip file format (ie. zip a folder)
@@ -60,13 +73,11 @@ class py_place(language_interface):
                                                                  [['Download error',
                                                                    'There was a problem downloading your data from ' + \
                                                                    'Dataverse. Please make sure the DOI is correct.']]]}
-        print("weird")
         pyfiles = generate_set(dataset_dir)
+        
         py2 = False
-        print(preprocess)
         if preprocess:
             #try:
-            print("hellow")
             # iterate through list of all python files to figure out if its python2 or python3
             hash = generate_multimap2(dataset_dir + "/data_set_content",dir_name)
             print(hash)
@@ -81,12 +92,24 @@ class py_place(language_interface):
         unknown_pkgs = set()
         docker_pkgs = set()
         pkgs_to_ask_user = set()
+        temp_pyfiles = [] 
+        
 
         for file in pyfiles:
-            py3 = python2or3(file)
-            # Commented out by Albert, but why, maybe buggy
+            with open(file) as infile:
+                inp = infile.read()
+            new_inp = remove_comments_and_docstrings(inp)
+            temp_filename = self.temp_name(file)
+            
+            temp_pyfiles.append(temp_filename)
+            
+            with open(temp_filename,'w+') as outfile:
+                outfile.write(new_inp)
+            
+            py3 = python2or3(temp_filename)
+
             try:
-                (unknown, dockerpkg) = get_imports(file, dir_name, user_defined_modules)
+                (unknown, dockerpkg) = get_imports(temp_filename, dir_name, user_defined_modules)
             except Exception as e:
                 p_ob = Path(file)
                 strp = ''
@@ -102,6 +125,9 @@ class py_place(language_interface):
             docker_pkgs = docker_pkgs.union(dockerpkg)
             if (py3 == False):
                 py2 = True
+
+        for temp in temp_pyfiles:
+            os.remove(temp)
 
         user_pkg_json = {}
         if (user_pkg != ''):
