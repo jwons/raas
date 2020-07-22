@@ -25,7 +25,11 @@ def get_dataset_provenance(dire):
             for filename in files:
                 f = os.path.join(dirpath,filename)
                 if(".py" in f):
-                    os.system("now run "+f)
+                    try:
+                        os.system("now run "+f)
+                    except:
+                        os.system("python "+f)
+                        continue
 
                     p = Parser_py(dirpath,f)
                     parser_list.append(p)
@@ -50,10 +54,14 @@ def get_dataset_provenance(dire):
             cmd_str = ""
             for i in arr:
                 cmd_str = cmd_str + i + " "
+            cmd_str = cmd_str.rstrip()
             os.chdir(cur_dir)
-            os.system(cmd_str)
-            file_path_to_exec = re.findall(r"^now run\s (.*)",cmd_str)[0]
-            print("file_path_to_exec："+file_path_to_exec)
+            try:
+                os.system(cmd_str)
+            except:
+                os.system(cmd)
+                continue
+            file_path_to_exec = re.findall("^now run\s(.*)",cmd_str)[0]
             p = Parser_py(par,file_path_to_exec)
             parser_list.append(p)
         os.chdir(orig_dir)
