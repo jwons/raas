@@ -214,9 +214,13 @@ class py_place(language_interface):
                 new_docker.write('FROM python:2\n')
             else:
                 new_docker.write('FROM python:3\n')
-
-            # Some changes due to nature of path preprocessing by AkashS
-
+            
+            new_docker.write('WORKDIR /home/\n')
+            new_docker.write('RUN git clone https://github.com/gems-uff/noworkflow.git\n')
+            
+            new_docker.write('WORKDIR /home/noworkflow/\n')
+            new_docker.write('RUN git checkout 2.0-alpha\n')
+            new_docker.write('RUN python3 -m pip install -e capture\n')
             # new_docker.write('WORKDIR /home/py_datasets/' + dir_name + '/\n')
             new_docker.write('WORKDIR ' + docker_wrk_dir + '\n')
             # new_docker.write('ADD data_set_content /home/py_datasets/' + dir_name + '\n')
@@ -240,14 +244,6 @@ class py_place(language_interface):
 
             # new_docker.write('RUN chmod a+rwx -R /home/py_datasets/' + dir_name + '\n')
             new_docker.write('RUN chmod a+rwx -R ' + docker_wrk_dir + '\n')
-            new_docker.write('WORKDIR /home/\n')
-            new_docker.write('RUN git clone https://github.com/gems-uff/noworkflow.git\n')
-            
-            new_docker.write('WORKDIR /home/noworkflow/\n')
-            new_docker.write('RUN git checkout 2.0-alpha\n')
-            new_docker.write('RUN python3 -m pip install -e capture\n')
-            
-
             new_docker.write('WORKDIR ' + docker_file_dir + '\n')
 
             for mod in ext_pkgs:
