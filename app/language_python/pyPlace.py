@@ -83,7 +83,7 @@ class py_place(language_interface):
             print(hash)
             for file in pyfiles:
                 print(file)
-                path_preprocess(file, dataset_dir + "/data_set_content", hash)
+                path_preprocess(file,"/home/py_datasets/"+ dir_name +"/data_set_content", hash)
             #except:
                 #pass
 
