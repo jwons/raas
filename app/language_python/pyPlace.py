@@ -108,8 +108,16 @@ class py_place(language_interface):
             
             py3 = python2or3(temp_filename)
 
+            
+            if (py3 == False):
+                py2 = True
+                
+        if(py2==True):
+            py3 = False
+            
+        for file in pyfiles:
             try:
-                (unknown, dockerpkg) = get_imports(temp_filename, dir_name, user_defined_modules)
+                (unknown, dockerpkg) = get_imports(file, dir_name, user_defined_modules,py3)
             except Exception as e:
                 p_ob = Path(file)
                 strp = ''
@@ -120,11 +128,8 @@ class py_place(language_interface):
                                                                  [[
                                                                      'Error in AST generation of ' + p_ob.name,
                                                                      strp]]]}
-
             unknown_pkgs = unknown_pkgs.union(unknown)
             docker_pkgs = docker_pkgs.union(dockerpkg)
-            if (py3 == False):
-                py2 = True
 
         for temp in temp_pyfiles:
             os.remove(temp)
