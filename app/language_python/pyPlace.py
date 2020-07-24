@@ -177,7 +177,8 @@ class py_place(language_interface):
                                           detach=True, command="tail -f /dev/null")
 
         container_packages = \
-        container.exec_run("cat /home/py_datasets/" + dir_name + "/data_set_content/script_info.json")[1].decode()
+            json.loads(container.exec_run("cat /home/py_datasets/" +
+                                          dir_name + "/data_set_content/script_info.json")[1].decode())
         installed_packages = \
         container.exec_run("cat /home/py_datasets/" + dir_name + "/data_set_content/listOfPackages.txt")[
             1].decode().split("\n")

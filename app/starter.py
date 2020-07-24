@@ -42,5 +42,5 @@ def start_raas(self, language, current_user_id, name, preprocess, dataverse_key=
                 'status': 'RAAS has finished! Your new image is accessible from the home page.',
                 'result': 42, 'errors': 'No errors!'}
     except:
-        language_obj.clean_up_datasets(data_folder)
+        # language_obj.clean_up_datasets(data_folder)
         raise
