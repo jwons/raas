@@ -1,4 +1,3 @@
-# This module modifies absolute paths found in the code
 
 import re
 import os
@@ -59,7 +58,7 @@ def get_correct_dir(arr,s,splitter):
     path_s = list(filter(lambda x: x !='',path_s)) # remove empty string elements from the array
     new_s = ''
     for i in range(0,len(path_s)-1):
-        new_s = new_s +splitter+i
+        new_s = new_s +splitter+path_s[i]
     return get_correct_path(arr,new_s,splitter)
 
 # preprocesses any absolute paths found in the script
@@ -128,49 +127,86 @@ def path_preprocess(file_name,folder_path,hash):
 
             if(check!=None):
                 arr = re.findall("[\'\"](\w:.*)[\'\"]",line)
+                print(arr)
 
                 for i in arr:
                     finish_with_slash = False
                     start = i[0:2]
                     i = i[2:]
-                    paths = i.split('\\')
-                    if(paths[-1]== ''):
-                        finish_with_slash = True
-                    paths = list(filter(lambda x: x !='',paths)) # remove empty string elements from the array
-                    pointer=-1
+                                        
+                    if('\\' in i):
+                        paths = i.split('\\')
+                        if(paths[-1]== ''):
+                            finish_with_slash = True
+                        paths = list(filter(lambda x: x !='',paths)) # remove empty string elements from the array
+                        pointer=-1
 
-                    if(len(paths)<=1):
-                        continue
+                        if(len(paths)<=1):
+                            continue
 
-                    needed_file = paths[pointer]
-                    needed_dir = paths[pointer-1]
+                        needed_file = paths[pointer]
+                        needed_dir = paths[pointer-1]
 
-                    ps = hash[needed_file]
+                        ps = hash[needed_file]
 
-                    new_path = get_correct_path(ps,i,'\\')
+                        new_path = get_correct_path(ps,i,'\\')
 
-                    if(new_path!=None):
-                        if(finish_with_slash):
-                            line = line.replace(start+i,new_path+'/',1)
-                        else:
-                            line = line.replace(start+i,new_path,1)
-                    else:
-                        ns = hash[needed_dir]
-                        new_dir = get_correct_dir(ns,i,'\\')
-                        if(new_dir!=None):
+                        if(new_path!=None):
                             if(finish_with_slash):
-                                line = line.replace(start+i,new_dir+'/'+needed_file+'/',1)
+                                line = line.replace(start+i,new_path+'/',1)
                             else:
-                                line = line.replace(start+i,new_dir+'/'+needed_file,1)
+                                line = line.replace(start+i,new_path,1)
                         else:
-                            if(finish_with_slash):
-                                line = line.replace(start+i,dir_path+needed_file+'/',1)
+                            ns = hash[needed_dir]
+                            new_dir = get_correct_dir(ns,i,'\\')
+                            if(new_dir!=None):
+                                if(finish_with_slash):
+                                    line = line.replace(start+i,new_dir+'/'+needed_file+'/',1)
+                                else:
+                                    line = line.replace(start+i,new_dir+'/'+needed_file,1)
                             else:
-                                line= line.replace(start+i,dir_path+needed_file,1) # Home directory of user's code
+                                if(finish_with_slash):
+                                    line = line.replace(start+i,dir_path+needed_file+'/',1)
+                                else:
+                                    line= line.replace(start+i,dir_path+needed_file,1) # Home directory of user's code
+
+                    elif('/' in i):
+                        paths = i.split('/')
+                        if(paths[-1]== ''):
+                            finish_with_slash = True
+                        paths = list(filter(lambda x: x !='',paths)) # remove empty string elements from the array
+                        pointer=-1
+
+                        if(len(paths)<=1):
+                            continue
+
+                        needed_file = paths[pointer]
+                        needed_dir = paths[pointer-1]
+
+                        ps = hash[needed_file]
+
+                        new_path = get_correct_path(ps,i,'/')
+
+                        if(new_path!=None):
+                            if(finish_with_slash):
+                                line = line.replace(start+i,new_path+'/',1)
+                            else:
+                                line = line.replace(start+i,new_path,1)
+                        else:
+                            ns = hash[needed_dir]
+                            new_dir = get_correct_dir(ns,i,'/')
+                            if(new_dir!=None):
+                                if(finish_with_slash):
+                                    line = line.replace(start+i,new_dir+'/'+needed_file+'/',1)
+                                else:
+                                    line = line.replace(start+i,new_dir+'/'+needed_file,1)
+                            else:
+                                if(finish_with_slash):
+                                    line = line.replace(start+i,dir_path+needed_file+'/',1)
+                                else:
+                                    line= line.replace(start+i,dir_path+needed_file,1) # Home directory of user's code
+
                 store[j] = line
-
-                print(line)
-
 
                 continue
             else:
@@ -182,9 +218,10 @@ def path_preprocess(file_name,folder_path,hash):
                 arr = re.findall(r"[\'\"](\\[^\'\"]*\\[^\'\"]*)[\'\"]",line) # search for ' \xyz\abc ', we see two slashes to prevent matching with common single escape sequences 
                 for i in arr:
                     finish_with_slash = False
+
                     paths = i.split('\\')
                     if(paths[1]!=''):
-                        if(paths[1][0] == 'r' or paths[1][0]=='t' or paths[1][0]== 'n' or paths[1][0]== ' ' or paths[1][0]=='"' or paths[1][0]=='a' or paths[1][0]== 'b' or paths[1][0]=='f' or paths[1][0]=='N' ): # paths[0] will exists as \ is matched
+                        if((paths[1][0] == 'r' or paths[1][0]=='t' or paths[1][0]== 'n' or paths[1][0]== ' ' or paths[1][0]=='"' or paths[1][0]=='a' or paths[1][0]== 'b' or paths[1][0]=='f' or paths[1][0]=='N' or paths[1][0]=='A' or paths[1][0] == 'B' or paths[1][0] == 'd'or paths[1][0] =='s' or paths[1][0] == 'w' or paths[1][0] == 'W' or paths[1][0] == 'S' or paths[1][0] == 'D' or paths[1][0] == 'u' or paths[1][0] == 'Z') and len(paths[1])==1): # paths[0] will exists as \ is matched
                             continue
                     if(paths[-1]== ''):
                         finish_with_slash = True
