@@ -106,13 +106,15 @@ def download_dataset(doi, destination, dataverse_key,
 
             if (contentType == 'type/x-r-syntax'):
                 # query the API for the file contents
-                response = requests.get(api_url + "/access/datafile/" + str(fileid))
+                response = requests.get(
+                    api_url + "/access/datafile/" + str(fileid))
             else:
                 # query the API for the file contents
                 response = requests.get(api_url + "/access/datafile/" + str(fileid),
                                         params={"format": "original", "key": dataverse_key})
 
-            value, params = cgi.parse_header(response.headers['Content-disposition'])
+            value, params = cgi.parse_header(
+                response.headers['Content-disposition'])
             if 'filename*' in params:
                 filename = params['filename*'].split("'")[-1]
             else:
@@ -143,7 +145,8 @@ def get_runlog_data(path_to_datasets):
 
     """
     # get list of dataset directories, ignoring macOS directory metadata file (if present)
-    doi_directs = [doi for doi in os.listdir(path_to_datasets) if doi != '.DS_Store']
+    doi_directs = [doi for doi in os.listdir(
+        path_to_datasets) if doi != '.DS_Store']
     # initialize empty dataframe to store run logs of all the files
     run_data_df = pd.DataFrame()
     # initialize empty list to store problem doi's
@@ -171,7 +174,8 @@ def get_missing_files(path_to_datasets, pickle_path):
                   path to pickle file to store the dictionary
     """
     # get list of dataset directories, ignoring macOS directory metadata file (if present)
-    doi_directs = [doi for doi in os.listdir(path_to_datasets) if doi != '.DS_Store']
+    doi_directs = [doi for doi in os.listdir(
+        path_to_datasets) if doi != '.DS_Store']
     missing_dict = {}
 
     # iterate through directories and concatenate run logs
@@ -370,18 +374,21 @@ def preprocess_setwd(r_file, script_dir, from_preproc=False):
                 if re.match("^#", line):
                     outfile.write(line)
                 else:
-                    contains_setwd = re.match("\s*setwd\s*\(\"?([^\"]*)\"?\)", line)
+                    contains_setwd = re.match(
+                        "\s*setwd\s*\(\"?([^\"]*)\"?\)", line)
                     # if the line contains a call to setwd
                     if contains_setwd:
                         # try to find the path to the working directory (if any)
-                        path_to_wd = find_rel_path(contains_setwd.group(1), curr_wd, is_dir=True)
+                        path_to_wd = find_rel_path(
+                            contains_setwd.group(1), curr_wd, is_dir=True)
                         if not path_to_wd:
                             path_to_wd = find_dir(os.path.basename(contains_setwd.group(1)),
                                                   curr_wd)
                         # if a path was found, append modified setwd call to file
                         if path_to_wd and path_to_wd != curr_wd:
                             curr_wd += '/' + path_to_wd
-                            outfile.write("setwd(" + "\"" + path_to_wd + "\"" + ")\n")
+                            outfile.write(
+                                "setwd(" + "\"" + path_to_wd + "\"" + ")\n")
                     else:
                         outfile.write(line)
 
@@ -501,28 +508,34 @@ def preprocess_file_paths(r_file, script_dir, from_preproc=False, report_missing
             for line in infile.readlines():
                 # if not a commented line
                 if not re.match('^#', line):
-                    contains_setwd = re.match("\s*setwd\s*\(\"?([^\"]+)\"?\)", line)
+                    contains_setwd = re.match(
+                        "\s*setwd\s*\(\"?([^\"]+)\"?\)", line)
                     # track calls to setwd to look in the right place for files
                     if contains_setwd:
                         curr_wd += '/' + contains_setwd.group(1)
-                    potential_path = re.search('\((?:.*?file\s*=\s*|\s*)[\"\']([^\"]+\.\w+)[\"\']', line)
+                    potential_path = re.search(
+                        '\((?:.*?file\s*=\s*|\s*)[\"\']([^\"]+\.\w+)[\"\']', line)
                     if potential_path:
                         # replace windows pathing with POSIX style
                         line = re.sub(re.escape('\\\\'), '/', line)
                         if maybe_import_operation(line):
                             potential_path = potential_path.group(1)
                             if potential_path:
-                                rel_path = find_rel_path(potential_path, curr_wd)
+                                rel_path = find_rel_path(
+                                    potential_path, curr_wd)
                                 if not rel_path:
                                     # try to find the path to the working directory (if any)
-                                    rel_path = find_file(extract_filename(potential_path), curr_wd)
+                                    rel_path = find_file(
+                                        extract_filename(potential_path), curr_wd)
                                 # if a path was found, change the file part of the line
                                 if rel_path:
-                                    line = re.sub(potential_path, rel_path, line)
+                                    line = re.sub(potential_path,
+                                                  rel_path, line)
                                 # if the path wasn't found, report file as missing
                                 elif report_missing:
                                     with open(report_path, 'a+') as missing_out:
-                                        missing_out.write(r_file + ',' + potential_path + '\n')
+                                        missing_out.write(
+                                            r_file + ',' + potential_path + '\n')
                 outfile.write(line)
 
     # remove the file with _temp suffix if file was previously preprocessed
@@ -566,11 +579,13 @@ def preprocess_source(r_file, script_dir, from_preproc=False):
             for line in infile.readlines():
                 # if not a commented line
                 if not re.match('^#', line):
-                    contains_setwd = re.match("\s*setwd\s*\(\"?([^\"]*)\"?\)", line)
+                    contains_setwd = re.match(
+                        "\s*setwd\s*\(\"?([^\"]*)\"?\)", line)
                     # if the line contains a call to setwd
                     if contains_setwd:
                         curr_wd += '/' + contains_setwd.group(1)
-                    sourced_file = re.match('^\s*source\s*\((?:.*?file\s*=\s*|\s*)[\"\']([^\"]+\.[Rr])[\"\']', line)
+                    sourced_file = re.match(
+                        '^\s*source\s*\((?:.*?file\s*=\s*|\s*)[\"\']([^\"]+\.[Rr])[\"\']', line)
                     if sourced_file:
                         sourced_file = sourced_file.group(1)
                         # replace windows pathing with POSIX style
@@ -578,12 +593,15 @@ def preprocess_source(r_file, script_dir, from_preproc=False):
                         # try to fine the relative path
                         rel_path = find_rel_path(sourced_file, curr_wd)
                         if not rel_path:
-                            rel_path = find_file(extract_filename(sourced_file), curr_wd)
+                            rel_path = find_file(
+                                extract_filename(sourced_file), curr_wd)
                         # if relative path found, recursively call function on the sourced file
                         if rel_path:
                             sourced_filename = os.path.basename(rel_path)
-                            sourced_path = '/'.join((curr_wd + '/' + rel_path).split('/')[:-1])
-                            preprocess_source(sourced_filename, sourced_path, from_preproc)
+                            sourced_path = '/'.join((curr_wd +
+                                                     '/' + rel_path).split('/')[:-1])
+                            preprocess_source(
+                                sourced_filename, sourced_path, from_preproc)
                             with open(sourced_path + '/' + re.sub('.R\$', '__preproc__.R\$', sourced_filename),
                                       'r') as infile:
                                 map(outfile.write, infile.readlines())
@@ -621,7 +639,8 @@ def all_preproc(r_file, path, error_string="error"):
     if error_string != "success":
         preprocess_source(r_file, path, from_preproc=True)
         preprocess_lib(r_file, path, from_preproc=True)
-        preprocess_file_paths(r_file, path, from_preproc=True, report_missing=True)
+        preprocess_file_paths(
+            r_file, path, from_preproc=True, report_missing=True)
     # else just copy and rename the file
     else:
         shutil.copyfile(file_path, preproc_path)
@@ -715,7 +734,8 @@ def get_pkgs_from_prov_json(prov_json, optimize=False):
                                     'methods', 'stats', 'provR', 'devtools', 'base']):
             if optimize:
                 if package_dict["package"] in used_packages:
-                    packages.append((package_dict["package"], package_dict["version"]))
+                    packages.append(
+                        (package_dict["package"], package_dict["version"]))
             else:
                 packages.append((package_name, package_version))
 
@@ -803,7 +823,7 @@ def convert_r_files(path, replace=False, output_path=''):
     # calculate correct output
     output_path = 'converted' if not output_path else output_path
     outputDir = path if replace else os.path.join(path, output_path)
-    orig_files = [my_file for my_file in os.listdir(path) if \
+    orig_files = [my_file for my_file in os.listdir(path) if
                   my_file.endswith(".R") or my_file.endswith(".r")]
     for my_file in orig_files:
         convertFileWithDetection(path, my_file, outputDir, 'utf-8', replace)
@@ -817,18 +837,18 @@ def replace_files_with_preproc(path, file_type):
                 either "r" or "json", the type of file to replace
     """
     if file_type == "r":
-        orig_files = [my_file for my_file in os.listdir(path) if \
-                      (my_file.endswith(".R") or my_file.endswith(".r")) and \
+        orig_files = [my_file for my_file in os.listdir(path) if
+                      (my_file.endswith(".R") or my_file.endswith(".r")) and
                       not "__preproc__" in my_file]
-        preproc_files = [my_file for my_file in os.listdir(path) if \
-                         (my_file.endswith(".R") or my_file.endswith(".r")) and \
+        preproc_files = [my_file for my_file in os.listdir(path) if
+                         (my_file.endswith(".R") or my_file.endswith(".r")) and
                          "__preproc__" in my_file]
     elif file_type == "json":
-        orig_files = [my_file for my_file in os.listdir(path) if \
-                      my_file.endswith(".json") and \
+        orig_files = [my_file for my_file in os.listdir(path) if
+                      my_file.endswith(".json") and
                       not "__preproc__" in my_file]
-        preproc_files = [my_file for my_file in os.listdir(path) if \
-                         my_file.endswith(".json") and \
+        preproc_files = [my_file for my_file in os.listdir(path) if
+                         my_file.endswith(".json") and
                          "__preproc__" in my_file]
     else:
         return
@@ -853,7 +873,22 @@ def build_docker_package_install(package, version):
               Version number of the desired package
     """
     return 'RUN R -e \"require(\'devtools\');install_version(\'' + \
-           package + '\', version=\'' + version + '\', repos=\'http://cran.rstudio.com\')\"\n'
+           package + '\', version=\'' + version + \
+        '\', repos=\'http://cran.rstudio.com\')\"\n'
+
+
+def build_docker_package_install_no_version(package):
+    """Outputs formatted dockerfile command to install a specific version
+       of an R package into a docker image
+    Parameters
+    ----------
+    package : string
+                      Name of the R package to be installed
+    version : string
+                      Version number of the desired package
+    """
+    return 'RUN R -e \"require(\'devtools\');install.packages(\'' +\
+        package + '\', repos=\'http://cran.rstudio.com\')\"\n'
 
 
 def naive_error_classifier(error_string):
@@ -889,10 +924,12 @@ def clean_up_datasets():
     # delete any stored data
     for dataset_directory in os.listdir(os.path.join(app.instance_path, 'r_datasets')):
         try:
-            shutil.rmtree(os.path.join(app.instance_path, 'r_datasets', dataset_directory))
+            shutil.rmtree(os.path.join(app.instance_path,
+                                       'r_datasets', dataset_directory))
         except:
             try:
-                os.remove(os.path.join(app.instance_path, 'r_datasets', dataset_directory))
+                os.remove(os.path.join(app.instance_path,
+                                       'r_datasets', dataset_directory))
             except:
                 pass
 
@@ -906,7 +943,8 @@ def gather_json_files_from_url(url):
     image_name = container_name[:-1]
 
     client = docker.from_env()
-    client.login(os.environ.get('DOCKER_USERNAME'), os.environ.get('DOCKER_PASSWORD'))
+    client.login(os.environ.get('DOCKER_USERNAME'),
+                 os.environ.get('DOCKER_PASSWORD'))
 
     container = client.containers.run(image=image_name, detach=True, environment=["PASSWORD=llvis"],
                                       ports={'8787': '8787'})
@@ -920,7 +958,8 @@ def gather_json_files_from_url(url):
 
     f.close()
     container.kill()
-    tar = tarfile.open(os.path.join(app.instance_path, './docker_dir/prov.tar'), "r:")
+    tar = tarfile.open(os.path.join(app.instance_path,
+                                    './docker_dir/prov.tar'), "r:")
     tar.extractall(path=os.path.join(app.instance_path, './docker_dir/'))
     tar.close()
 
@@ -931,39 +970,37 @@ def gather_json_files_from_url(url):
     return (json_files)
 
 
-@celery.task(bind=True)  # allows the task to be run in the background with Celery
-def build_image(self, current_user_id, name, preprocess, dataverse_key='', doi='', zip_file=''):
+# allows the task to be run in the background with Celery
+@celery.task(bind=True)
+def build_image(self, current_user_id, name, preprocess, dataverse_key='', doi='', zip_file='', install_instructions=''):
     """Build a docker image for a user-provided dataset
     Parameters
-    def build_image(self,user_id,zipfile_path,
-                      name,language,
-                      need_prepro,
-                      extended_lib,
-                      adv_opt)
     ----------
     current_user_id : int
-                      id of current user
+                                      id of current user
     name : string
-           name of the image
+               name of the image
     preprocess : bool
-                 whether to preprocess the code in the dataset
+                             whether to preprocess the code in the dataset
     dataverse_key : string
-                    API key for a dataverse instance
+                                    API key for a dataverse instance
     doi : string
-          DOI of the dataset if retrieving dataset from dataverse
+              DOI of the dataset if retrieving dataset from dataverse
     zip_file : string
-               name of the .zip file if dataset uploaded as a .zip
+                       name of the .zip file if dataset uploaded as a .zip
+    install_instructions : string
+                            a json encoded as string that contains special instructions for package installation
     """
     ########## GETTING DATA ######################################################################
     # either get the dataset from the .zip file or download it from dataverse
-
     dataset_dir = ''
-    # current_user_id = info.user_id
-    # name = info.name
-    # preprocess = info.need_prepro,
-    # dataverse_key = ''
-    # doi = ''
-    # zip_file = info.zipfile_path
+
+    # in case the user provided specific instructions for installing certain packages
+    special_packages = None
+    if (install_instructions is not ''):
+        special_install = json.loads(install_instructions)
+        special_packages = [special_install[key][0]
+                            for key in special_install.keys()]
 
     if zip_file:
         # assemble path to zip_file
@@ -971,10 +1008,12 @@ def build_image(self, current_user_id, name, preprocess, dataverse_key='', doi='
         # unzip the zipped directory and remove zip file
         with zipfile.ZipFile(zip_path) as zip_ref:
             dir_name = zip_ref.namelist()[0].strip('/')
-            zip_ref.extractall(os.path.join(app.instance_path, 'r_datasets', dir_name))
+            zip_ref.extractall(os.path.join(
+                app.instance_path, 'r_datasets', dir_name))
         os.remove(os.path.join(app.instance_path, 'r_datasets', zip_file))
         # find name of unzipped directory
-        dataset_dir = os.path.join(app.instance_path, 'r_datasets', dir_name, dir_name)
+        dataset_dir = os.path.join(
+            app.instance_path, 'r_datasets', dir_name, dir_name)
         doi = dir_name
     else:
         dataset_dir = os.path.join(app.instance_path, 'r_datasets', doi_to_directory(doi),
@@ -986,7 +1025,7 @@ def build_image(self, current_user_id, name, preprocess, dataverse_key='', doi='
             clean_up_datasets()
             return {'current': 100, 'total': 100, 'status': ['Data download error.',
                                                              [['Download error',
-                                                               'There was a problem downloading your data from ' + \
+                                                               'There was a problem downloading your data from ' +
                                                                'Dataverse. Please make sure the DOI is correct.']]]}
     # print(dataset_dir, file=sys.stderr)
 
@@ -996,21 +1035,30 @@ def build_image(self, current_user_id, name, preprocess, dataverse_key='', doi='
     if preprocess:
         try:
             self.update_state(state='PROGRESS', meta={'current': 1, 'total': 5,
-                                                      'status': 'Preprocessing files for errors and ' + \
-                                                                'collecting provenance data... ' + \
-                                                                '(This may take several minutes or longer,' + \
-                                                                ' depending on the complexity of your scripts)'})
-            subprocess.run(['bash', 'app/get_prov_for_doi_preproc.sh', dataset_dir])
+                                                      'status': 'Preprocessing files for errors and ' +
+                                                      'collecting provenance data... ' +
+                                                      '(This may take several minutes or longer,' +
+                                                      ' depending on the complexity of your scripts)'})
+            subprocess.run(
+                ['bash', 'app/get_prov_for_doi_preproc.sh', dataset_dir])
             replace_files_with_preproc(dataset_dir, "r")
-            replace_files_with_preproc(os.path.join(dataset_dir, 'prov_data'), "json")
+            replace_files_with_preproc(os.path.join(
+                dataset_dir, 'prov_data'), "json")
         except:
             clean_up_datasets()
     else:
         self.update_state(state='PROGRESS', meta={'current': 1, 'total': 5,
-                                                  'status': 'Collecting provenance data... ' + \
-                                                            '(This may take several minutes or longer,' + \
-                                                            ' depending on the complexity of your scripts)'})
-        subprocess.run(['bash', 'app/get_prov_for_doi.sh', dataset_dir, "app/get_dataset_provenance.R"])
+                                                  'status': 'Collecting provenance data... ' +
+                                                  '(This may take several minutes or longer,' +
+                                                  ' depending on the complexity of your scripts)'})
+
+        subprocess.run(['bash', 'app/get_prov_for_doi.sh',
+                        dataset_dir, "app/get_dataset_provenance.R"])
+
+    ########## RUNNING STATIC ANALYSIS ##########################################################
+
+        subprocess.run(['bash', 'app/static_analysis.sh',
+                        dataset_dir, "app/static_analysis.R"])
 
     ########## CHECKING FOR PROV ERRORS ##########################################################
     # make sure an execution log exists
@@ -1018,9 +1066,10 @@ def build_image(self, current_user_id, name, preprocess, dataverse_key='', doi='
     run_log_path = os.path.join(dataset_dir, 'prov_data', 'run_log.csv')
     if not os.path.exists(run_log_path):
         print(run_log_path, file=sys.stderr)
-        error_message = "ContainR could not locate any .R files to collect provenance for. " + \
-                        "Please ensure that .R files to load dependencies for are placed in the " + \
-                        "top-level directory."
+        error_message = "ContainR could not locate any .R files to collect provenance for. " +\
+            "Please ensure that .R files to load dependencies for are placed in the " +\
+            "top-level directory."
+        print(error_message)
         clean_up_datasets()
         return {'current': 100, 'total': 100, 'status': ['Provenance collection error.',
                                                          [['Could not locate .R files',
@@ -1038,20 +1087,26 @@ def build_image(self, current_user_id, name, preprocess, dataverse_key='', doi='
 
     self.update_state(state='PROGRESS', meta={'current': 2, 'total': 5,
                                               'status': 'Parsing provenance data... '})
-    # build dockerfile from provenance
-    # get list of json provenance files
-    prov_jsons = [my_file for my_file in os.listdir(os.path.join(dataset_dir, 'prov_data')) \
+    # # build dockerfile from provenance
+    # # get list of json provenance files
+    prov_jsons = [my_file for my_file in os.listdir(os.path.join(dataset_dir, 'prov_data'))
                   if my_file.endswith('.json')]
 
-    used_packages = []
+    prov_dirs = next(os.walk(os.path.join(dataset_dir, 'prov_data')))[1]
+    prov_jsons = []
+    for prov_dir in prov_dirs:
+        prov_jsons.extend([prov_dir + "/" + my_file for my_file in os.listdir(os.path.join(dataset_dir, 'prov_data', prov_dir))
+                           if my_file.endswith('.json')])
+
+    prov_packages = []
 
     # assemble a set of packages used
     for prov_json in prov_jsons:
         print(prov_json, file=sys.stderr)
-        used_packages += get_pkgs_from_prov_json( \
+        prov_packages += get_pkgs_from_prov_json(
             ProvParser(os.path.join(dataset_dir, 'prov_data', prov_json)))
 
-    print(used_packages, file=sys.stderr)
+    print(prov_packages, file=sys.stderr)
     docker_file_dir = os.path.join(app.instance_path,
                                    'r_datasets', doi_to_directory(doi))
     try:
@@ -1059,60 +1114,121 @@ def build_image(self, current_user_id, name, preprocess, dataverse_key='', doi='
     except:
         pass
 
+    docker_file_dir = os.path.join(app.instance_path,
+                                   'r_datasets', doi_to_directory(doi))
+    try:
+        os.makedirs(docker_file_dir)
+    except:
+        pass
+
+    # copy sourced scripts to avoid running them indepenently later
+    copy(os.path.join(dataset_dir, 'prov_data', "sourced.txt"),
+         os.path.join(docker_file_dir, ".srcignore"))
+
+    # copy relevant packages, system requirements, and directory
+    shutil.rmtree(os.path.join(dataset_dir, 'prov_data'))
+
+    ########## CHECKING FOR STATIC ANALYSIS ERRORS ##########################################################
+
+    # get list of json files
+    jsons = [my_file for my_file in os.listdir(os.path.join(dataset_dir, 'static_analysis'))
+             if my_file.endswith('.json')]
+
+    for json_obj in jsons:
+        with open(os.path.join(dataset_dir, 'static_analysis', json_obj)) as json_file:
+            data = json.load(json_file)
+            if data['errors']:
+                clean_up_datasets()
+                return {'current': 100, 'total': 100, 'status': ['Static analysis found errors in script.',
+                                                                 data['errors']]}
+
+    ########## PARSING STATIC ANALYSIS ######################################################################
+
+    # assemble a set of packages used and get system requirements
+    sysreqs = []
+    used_packages = []
+
+    for json_obj in jsons:
+        print(json_obj, file=sys.stderr)
+        with open(os.path.join(dataset_dir, 'static_analysis', json_obj)) as json_file:
+            data = json.load(json_file)
+            for p in data['packages']:
+                print(p)
+                used_packages.append(p)
+            sysreqs = data['sys_deps']
+
+    print(used_packages, file=sys.stderr)
+
+    ##### EVERYTHING BEFORE HERE ---> Static analysis? #########
+    # Variable Information from containR needed for build process:
+    # docker_file_dir is where the Dockerfile will be written to
+    # dataset_dir is a directory in the docker_file_dir named after the dataset.
+    # used_packages contains a list of tuples. Each tuple is a package AND its version
+    # doi is the dataverse doi if that was the provided dataset, OR a dataset name if it was uploaded
+    # current_user_id is the user's ID in the database
+    # name is what the user chose to be the name of the image, although their user name will be appended to the front
     ########## BUILDING DOCKER ###################################################################
 
     self.update_state(state='PROGRESS', meta={'current': 3, 'total': 5,
                                               'status': 'Building Docker image... '})
-    # try:
-    # copy relevant packages, system requirements, and directory
-    sysreqs = []
-    with open(os.path.join(dataset_dir, 'prov_data', "sysreqs.txt")) as reqs:
-        sysreqs = reqs.readlines()
-    shutil.rmtree(os.path.join(dataset_dir, 'prov_data'))
 
-    # Write the Dockkerfile
+    # Write the Dockerfile
     # 1.) First install system requirements, this will allow R packages to install with no errors (hopefully)
     # 2.) Install R packages
     # 3.) Add the analysis folder
     # 4.) Copy in the scripts that run the analysis
-    # 5.) Change pemissions? TODO: why?
+    # 5.) Change pemissions, containers have had issues with correct permissions previously
     # 6.) Run analyses
     # 7.) Collect installed packages for report
     with open(os.path.join(docker_file_dir, 'Dockerfile'), 'w') as new_docker:
-        new_docker.write('FROM rocker/tidyverse:latest\n')
-        if (len(sysreqs) == 1):
+        new_docker.write('FROM rocker/tidyverse:3.6.3\n')
+        if(len(sysreqs) == 1):
             sysinstall = "RUN export DEBIAN_FRONTEND=noninteractive; apt-get -y update && apt-get install -y "
             new_docker.write(sysinstall + sysreqs[0])
-        used_packages = list(set(used_packages))
+
         if used_packages:
-            for package, version in used_packages:
-                new_docker.write(build_docker_package_install(package, version))
+            for package in used_packages:
+                if(package not in special_packages):
+                    new_docker.write(
+                        build_docker_package_install_no_version(package))
+                    # new_docker.write(build_docker_package_install(package, version))
+
+        if special_packages:
+            for key in special_install.keys():
+                instruction = 'RUN R -e \"require(\'devtools\');' + \
+                    special_install[key][1] + '"\n'
+                new_docker.write(instruction)
 
         # copy the new directory and change permissions
-        new_docker.write('ADD ' + doi_to_directory(doi) \
+        new_docker.write('ADD ' + doi_to_directory(doi)
                          + ' /home/rstudio/' + doi_to_directory(doi) + '\n')
 
-        copy("app/get_prov_for_doi.sh", "instance/r_datasets/" + doi_to_directory(doi))
-        copy("app/get_dataset_provenance.R", "instance/r_datasets/" + doi_to_directory(doi))
+        copy("app/get_prov_for_doi.sh",
+             "instance/r_datasets/" + doi_to_directory(doi))
+        copy("app/get_dataset_provenance.R",
+             "instance/r_datasets/" + doi_to_directory(doi))
         new_docker.write('COPY get_prov_for_doi.sh /home/rstudio/\n')
         new_docker.write('COPY get_dataset_provenance.R /home/rstudio/\n')
+        new_docker.write('COPY .srcignore /home/rstudio/\n')
 
-        new_docker.write('RUN chmod a+rwx -R /home/rstudio/' + doi_to_directory(doi) + '\n')
-        new_docker.write("RUN /home/rstudio/get_prov_for_doi.sh " \
+        new_docker.write('RUN chmod a+rwx -R /home/rstudio/' +
+                         doi_to_directory(doi) + '\n')
+        new_docker.write("RUN /home/rstudio/get_prov_for_doi.sh "
                          + "/home/rstudio/" + doi_to_directory(doi) + " /home/rstudio/get_dataset_provenance.R\n")
-        new_docker.write("RUN R -e 'write(paste(as.data.frame(installed.packages()," \
+        new_docker.write("RUN R -e 'write(paste(as.data.frame(installed.packages(),"
                          + "stringsAsFactors = F)$Package, collapse =\"\\n\"), \"./listOfPackages.txt\")'\n")
 
     # create docker client instance
     client = docker.from_env()
     # build a docker image using docker file
-    client.login(os.environ.get('DOCKER_USERNAME'), os.environ.get('DOCKER_PASSWORD'))
+    client.login(os.environ.get('DOCKER_USERNAME'),
+                 os.environ.get('DOCKER_PASSWORD'))
     # name for docker image
     current_user_obj = User.query.get(current_user_id)
     # image_name = ''.join(random.choice(string.ascii_lowercase) for _ in range(5))
     image_name = current_user_obj.username + '-' + name
-    repo_name = os.environ.get('DOCKER_REPO') + '/'
 
+    repo_name = os.environ.get('DOCKER_REPO') + '/'
     client.images.build(path=docker_file_dir, tag=repo_name + image_name)
 
     self.update_state(state='PROGRESS', meta={'current': 4, 'total': 5,
@@ -1127,74 +1243,82 @@ def build_image(self, current_user_id, name, preprocess, dataverse_key='', doi='
 
     # There is provenance and other information from the analyses in the container.
     # to get it we need to run the container
-    container = client.containers.run(image=repo_name + image_name, \
+    container = client.containers.run(image=repo_name + image_name,
                                       environment=["PASSWORD=" + repo_name + image_name], detach=True)
 
     # Grab the files from inside the container and the filter to just JSON files
-    prov_files = container.exec_run("ls /home/rstudio/" + doi_to_directory(doi) + "/prov_data")[1].decode().split("\n")
-    json_files = [prov_file for prov_file in prov_files if ".json" in prov_file]
+    prov_files = container.exec_run(
+        "ls /home/rstudio/" + doi_to_directory(doi) + "/prov_data")[1].decode().split("\n")
+    json_files = [
+        prov_file for prov_file in prov_files if ".json" in prov_file]
 
     # Each json file will represent one execution so we need to grab the information from each.
     # Begin populating the report with information from the analysis and scripts
     container_packages = []
     for json_file in json_files:
         report["Individual Scripts"][json_file] = {}
-        prov_from_container = \
-            container.exec_run("cat /home/rstudio/" + doi_to_directory(doi) + "/prov_data/" + json_file)[1].decode()
+        prov_from_container = container.exec_run(
+            "cat /home/rstudio/" + doi_to_directory(doi) + "/prov_data/" + json_file)[1].decode()
         prov_from_container = ProvParser(prov_from_container, isFile=False)
         container_packages += get_pkgs_from_prov_json(prov_from_container)
         report["Individual Scripts"][json_file]["Input Files"] = list(
             set(prov_from_container.getInputFiles()["name"].values.tolist()))
         report["Individual Scripts"][json_file]["Output Files"] = list(
             set(prov_from_container.getOutputFiles()["name"].values.tolist()))
-    container_packages = list(set([package[0] for package in container_packages]))
+    container_packages = list(
+        set([package[0] for package in container_packages]))
 
     # There should be a file written to the container's system that
     # lists the installed packages from when the analyses were run
-    installed_packages = container.exec_run("cat listOfPackages.txt")[1].decode().split("\n")
+    installed_packages = container.exec_run("cat listOfPackages.txt")[
+        1].decode().split("\n")
 
     # The run log will show us any errors in execution
     # this will be used after report generation to check for errors when the script was
     # run inside the container
-    run_log_path_in_container = "/home/rstudio/" + doi_to_directory(doi) + "/prov_data/run_log.csv"
-    run_log_from_container = container.exec_run("cat " + run_log_path_in_container)
+    run_log_path_in_container = "/home/rstudio/" + \
+        doi_to_directory(doi) + "/prov_data/run_log.csv"
+    run_log_from_container = container.exec_run(
+        "cat " + run_log_path_in_container)
 
     # information from the container is no longer needed
     container.kill()
 
     # Finish out report generation
     report["Container Report"]["Installed Packages"] = installed_packages
-    report["Container Report"][
-        "Packages Called In Analysis"] = container_packages  # [list(package_pair) for package_pair in container_packages]
-    report["Container Report"]["System Dependencies Installed"] = sysreqs[0].split(" ")
+    # [list(package_pair) for package_pair in container_packages]
+    report["Container Report"]["Packages Called In Analysis"] = container_packages
+    report["Container Report"]["System Dependencies Installed"] = sysreqs
 
     # Note any missing packages
     missing_packages = []
     for package in used_packages:
-        if package[0] not in installed_packages:
-            missing_packages.append(package[0])
+        if package not in installed_packages:
+            missing_packages.append(package)
 
     # Error if a package or more is missing
-    if (len(missing_packages) > 0):
+    if(len(missing_packages) > 0):
         print(missing_packages, file=sys.stderr)
-        error_message = "ContainR could not correctly install all the R packages used in the upload inside of the container. " + \
-                        "Docker container could not correctly be created." + \
-                        "Missing packages are: " + " ".join(missing_packages)
+        error_message = "ContainR could not correctly install all the R packages used in the upload inside of the container. " +\
+            "Docker container could not correctly be created." +\
+            "Missing packages are: " + \
+            " ".join(missing_packages)
         clean_up_datasets()
         return {'current': 100, 'total': 100, 'status': ['Docker Build Error.',
                                                          [['Could not install R package',
                                                            error_message]]]}
 
-    run_log_path = os.path.join(app.instance_path, 'r_datasets', doi_to_directory(doi), "run_log.csv")
+    run_log_path = os.path.join(
+        app.instance_path, 'r_datasets', doi_to_directory(doi), "run_log.csv")
 
     with open(run_log_path, 'wb') as f:
         f.write(run_log_from_container[1])
 
     if not os.path.exists(run_log_path):
         print(run_log_path, file=sys.stderr)
-        error_message = "ContainR could not locate any .R files to collect provenance for. " + \
-                        "Please ensure that .R files to load dependencies for are placed in the " + \
-                        "top-level directory."
+        error_message = "ContainR could not locate any .R files to collect provenance for. " +\
+            "Please ensure that .R files to load dependencies for are placed in the " +\
+            "top-level directory."
         clean_up_datasets()
         return {'current': 100, 'total': 100, 'status': ['Provenance collection error.',
                                                          [['Could not locate .R files',
@@ -1205,9 +1329,8 @@ def build_image(self, current_user_id, name, preprocess, dataverse_key='', doi='
 
     if errors_present:
         clean_up_datasets()
-        return {'current': 100, 'total': 100,
-                'status': ['Provenance collection error while executing inside container.',
-                           error_list]}
+        return {'current': 100, 'total': 100, 'status': ['Provenance collection error while executing inside container.',
+                                                         error_list]}
 
     ########## PUSHING IMG ######################################################################
     self.update_state(state='PROGRESS', meta={'current': 4, 'total': 5,
@@ -1218,7 +1341,7 @@ def build_image(self, current_user_id, name, preprocess, dataverse_key='', doi='
     ########## UPDATING DB ######################################################################
 
     # add dataset to database
-    new_dataset = Dataset(url="https://hub.docker.com/r/" + repo_name + image_name + "/",
+    new_dataset = Dataset(url="https://hub.docker.com/r/"+repo_name + image_name + "/",
                           author=current_user_obj,
                           name=name,
                           report=report)
@@ -1229,8 +1352,7 @@ def build_image(self, current_user_id, name, preprocess, dataverse_key='', doi='
 
     clean_up_datasets()
     print("Returning")
-    return {'current': 5, 'total': 5,
-            'status': 'containR has finished! Your new image is accessible from the home page.',
+    return {'current': 5, 'total': 5, 'status': 'containR has finished! Your new image is accessible from the home page.',
             'result': 42, 'errors': 'No errors!'}
 
 
@@ -1243,7 +1365,8 @@ def extractProvData(container):
         f.write(chunk)
     f.close()
     container.kill()
-    tar = tarfile.open(os.path.join(app.instance_path, './docker_dir/prov.tar'), "r:")
+    tar = tarfile.open(os.path.join(app.instance_path,
+                                    './docker_dir/prov.tar'), "r:")
     tar.extractall(path=os.path.join(app.instance_path, './docker_dir/'))
     tar.close()
 

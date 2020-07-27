@@ -1,3 +1,5 @@
+from app.forms import ResetPasswordForm
+from app.email_support import send_password_reset_email
 import shutil
 import sys
 import os
@@ -24,8 +26,10 @@ def index():
     # get User's dataset with pagination
     datasets = Dataset.query.filter_by(user_id=current_user.id).order_by(desc(Dataset.timestamp)) \
         .paginate(page, 10, False)
-    next_url = url_for('index', page=datasets.next_num) if datasets.has_next else None
-    prev_url = url_for('index', page=datasets.prev_num) if datasets.has_prev else None
+    next_url = url_for(
+        'index', page=datasets.next_num) if datasets.has_next else None
+    prev_url = url_for(
+        'index', page=datasets.prev_num) if datasets.has_prev else None
     if datasets.items:
         return render_template('index.html', title='Home', datasets=datasets.items,
                                next_url=next_url, prev_url=prev_url)
@@ -86,7 +90,7 @@ def containrize():
 
             multi = 0
             bool_dir = False
-            with zipfile.ZipFile(zip_file,"r") as myzip:
+            with zipfile.ZipFile(zip_file, "r") as myzip:
                 namelist = myzip.infolist()
                 for i in namelist:
                     arr = i.filename.split('/')
@@ -99,33 +103,41 @@ def containrize():
                 # zipList = list(zipfile.Path(myzip).iterdir())
                 if (multi != 1 or not (bool_dir)):
                     f_name = filename[:(filename.index('.'))]
-                    os.makedirs(os.path.join(app.instance_path, 'py_datasets', f_name))
-                    myzip.extractall(os.path.join(app.instance_path, 'py_datasets', f_name))
+                    os.makedirs(os.path.join(
+                        app.instance_path, 'py_datasets', f_name))
+                    myzip.extractall(os.path.join(
+                        app.instance_path, 'py_datasets', f_name))
                     os.remove(zipfile_path)
-                    z = zipfile.ZipFile(os.path.join(app.instance_path, 'py_datasets', filename), 'w')
+                    z = zipfile.ZipFile(os.path.join(
+                        app.instance_path, 'py_datasets', filename), 'w')
                     p = os.path.join(app.instance_path, 'py_datasets', f_name)
                     for root, dirs, files in os.walk(p):
                         for file in files:
                             z.write(os.path.join(root, file),
                                     os.path.relpath(os.path.join(root, file), os.path.join(p, '..')))
                     z.close()
-                    shutil.rmtree(os.path.join(app.instance_path, 'py_datasets', f_name), ignore_errors=True)
+                    shutil.rmtree(os.path.join(app.instance_path,
+                                               'py_datasets', f_name), ignore_errors=True)
         else:
             filename = secure_filename(form.name.data + '.zip')
             if form.language.data == "Python":
-                zipfile_path = os.path.join(app.instance_path, 'py_datasets', form.name.data + ".zip")
+                zipfile_path = os.path.join(
+                    app.instance_path, 'py_datasets', form.name.data + ".zip")
             else:
-                zipfile_path = os.path.join(app.instance_path, 'r_datasets', form.name.data + ".zip")
+                zipfile_path = os.path.join(
+                    app.instance_path, 'r_datasets', form.name.data + ".zip")
             zip_file_local = zipfile.ZipFile(zipfile_path, "w")
             file_list = request.files.getlist('set_file')
-            os.makedirs(os.path.join(app.instance_path, 'temp', form.name.data))
+            os.makedirs(os.path.join(
+                app.instance_path, 'temp', form.name.data))
             for f in file_list:
-                f.save(os.path.join(app.instance_path, 'temp', form.name.data, f.filename))
+                f.save(os.path.join(app.instance_path,
+                                    'temp', form.name.data, f.filename))
             pth = os.path.join(app.instance_path, 'temp', form.name.data)
             for root, dirs, files in os.walk(pth):
                 for file in files:
                     zip_file_local.write(os.path.join(pth, file),
-                                   os.path.relpath(os.path.join(root, file), os.path.join(pth, '..')))
+                                         os.path.relpath(os.path.join(root, file), os.path.join(pth, '..')))
             zip_file_local.close()
         print("MARK2")
         json_input = {'user_id': current_user.id, 'zipfile_path': zipfile_path,
@@ -145,13 +157,14 @@ def containrize():
                 json_input["adv_opt"] = json_ad_input
                 break
         # covert the user package into json format
-        user_pkgs_list=[]
+        user_pkgs_list = []
         if form.pkg_asked.data:
             for entry in form.pkg_asked.data:
                 print(entry)
-                temp={"pkg_name": entry['package_name'], "PypI_name": entry['pypI_name']}
+                temp = {"pkg_name": entry['package_name'],
+                        "PypI_name": entry['pypI_name']}
                 user_pkgs_list.append(temp)
-        user_pkgs_total=str({"pkg":user_pkgs_list}).replace('\'','\"')
+        user_pkgs_total = str({"pkg": user_pkgs_list}).replace('\'', '\"')
         print(str(user_pkgs_total))
         # TODO: The backend function will be called here
         print("lang" + form.language.data)
@@ -256,9 +269,6 @@ def register():
     return render_template('register.html', title='Register', form=form)
 
 
-from app.email_support import send_password_reset_email
-
-
 @app.route('/reset_password_request', methods=['GET', 'POST'])
 def reset_password_request():
     if current_user.is_authenticated:
@@ -272,9 +282,6 @@ def reset_password_request():
         return redirect(url_for('login'))
     return render_template('reset_password_request.html',
                            title='Password Reset Request', form=form)
-
-
-from app.forms import ResetPasswordForm
 
 
 @app.route('/reset_password/<token>', methods=['GET', 'POST'])
@@ -355,7 +362,8 @@ def api_build():
             os.makedirs(os.path.join(app.instance_path, 'r_datasets'))
         # save the .zip file to the correct location
         zip_base = os.path.basename(zip_file)
-        copyfile(os.path.join(app.instance_path, 'r_datasets', zip_base), zip_file)
+        copyfile(os.path.join(app.instance_path,
+                              'r_datasets', zip_base), zip_file)
 
         task = build_image.apply_async(kwargs={'zip_file': zip_base,
                                                'current_user_id': user_id,

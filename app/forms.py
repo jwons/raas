@@ -7,6 +7,7 @@ from wtforms.validators import ValidationError, DataRequired, Email, EqualTo, Op
 from app.models import User, Dataset
 from flask_login import current_user, login_user, login_required, logout_user
 
+
 class AddressEntryForm(FlaskForm):
     package_name = StringField('package_name')
     pypI_name = StringField('pypI_name')
@@ -16,7 +17,8 @@ class InputForm(FlaskForm):
     # doi = StringField('Harvard Dataverse DOI', validators=[Optional()])
 
     zip_file = FileField('Zip File Containing Dataset')
-    set_file = FileField('or---A set of Data file and scripts', render_kw={'multiple': True})
+    set_file = FileField('or---A set of Data file and scripts',
+                         render_kw={'multiple': True})
     name = StringField('Name of the Dataset')
     fix_code = BooleanField('Attempt to automatically fix code')
     extended_lib = BooleanField('Extended Library handling')
@@ -25,13 +27,15 @@ class InputForm(FlaskForm):
                            choices=[('R', 'R'), ('Python', 'Python')])
     command_line = StringField('Run instruction')
     provenance = StringField('Provenance')
-    code_btw = StringField('Line of code to run between package install and  execute')
-    sample_output = FileField('Sample output that you want to compare with',render_kw={'multiple': True})
-    pkg_asked =  FieldList(FormField(AddressEntryForm),min_entries=1)
-        # StringField('Additional packages to be installed:'
-        #                     ' in the json format of {"pkg":[{"pkg_name":string,"PypI_name":string}]}')
+    code_btw = StringField(
+        'Line of code to run between package install and  execute')
+    sample_output = FileField(
+        'Sample output that you want to compare with', render_kw={'multiple': True})
+    pkg_asked = FieldList(FormField(AddressEntryForm), min_entries=1)
+    # StringField('Additional packages to be installed:'
+    #                     ' in the json format of {"pkg":[{"pkg_name":string,"PypI_name":string}]}')
     submit = SubmitField('Build Docker Image')
-    add=SubmitField("+ add more")
+    add = SubmitField("+ add more")
 
     # clean_code = BooleanField('Attempt to automatically clean code')
 
@@ -45,14 +49,16 @@ class InputForm(FlaskForm):
             raise ValidationError('File is not a valid a zip file')
 
     def validate_name(self, name):
-        if name.data =="":
+        if name.data == "":
             raise ValidationError('Name cannot be an empty string')
         if " " in name.data or not name.data.islower():
             raise ValidationError('Name is not allowed to contain uppercase letter or space.\nTry: '
                                   + name.data.replace(" ", "").lower())
-        dataset = Dataset.query.filter_by(user_id=current_user.id, name=name.data).first()
+        dataset = Dataset.query.filter_by(
+            user_id=current_user.id, name=name.data).first()
         if dataset is not None:
-            raise ValidationError('You already have a dataset with that name. Please choose a different name.')
+            raise ValidationError(
+                'You already have a dataset with that name. Please choose a different name.')
 
 
 # class PyplaceForm(FlaskForm):
@@ -102,9 +108,11 @@ class RegistrationForm(FlaskForm):
     def validate_username(self, username):
         user = User.query.filter_by(username=username.data).first()
         if user is not None:
-            raise ValidationError('That username is taken. Please use a different username.')
+            raise ValidationError(
+                'That username is taken. Please use a different username.')
 
     def validate_email(self, email):
         user = User.query.filter_by(email=email.data).first()
         if user is not None:
-            raise ValidationError('An account was found with that email address. Please use a different email address.')
+            raise ValidationError(
+                'An account was found with that email address. Please use a different email address.')
