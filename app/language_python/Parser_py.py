@@ -4,7 +4,9 @@ import sqlite3
 
 
 class Parser_py:
-    def __init__(self, dir_path, filepath, arguments):
+    # modification made by Akash
+    # removed arguments parameter and added it to filepath, so its not filepath anymore, its command line
+    def __init__(self, dir_path, filepath):
 
         # os.system("now run " + filepath + " " + arguments)
         conn = sqlite3.connect(dir_path + '/.noworkflow/db.sqlite')
@@ -34,11 +36,10 @@ class Parser_py:
                 'SELECT DISTINCT t.script '
                 'FROM trial t '
                 'WHERE t.id = ? ', (self.trial_id,))
+
             file_info = self.cursor.fetchall()
             script_current = Script(file_info[0][0])
             return script_current.get_script_report()
-
-
 
     def get_module_info(self):
         self.cursor.execute("select name,version from module where trial_id=?", (self.trial_id,))
@@ -50,7 +51,6 @@ class Parser_py:
         path_list = self.cursor.fetchall()
         pkg_list = []
         for p in path_list:
-            print(p[0])
             if p[0] is not None and "site-packages" in p[0]:
                 pkg_name = p[0].split("site-packages")[1].split("\\")[1].replace("_", "")
                 pkg_list.append((pkg_name.replace(".py", ""), p[1]))

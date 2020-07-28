@@ -1,9 +1,23 @@
 {% extends "base.html" %}
 
 {% block app_content %}
-<h1>Container Report</h1>
+<h1>RAAS Report</h1>
 {%for key in report.keys()%}
+
 <h2>{{key}}</h2>
+
+    {%for subkey in report[key] %}
+        <h3>{{subkey}}</h3>
+           <table border="1" style="border-color:lightsteelblue;  background-color: aliceblue">
+        {%for element in report[key][subkey]%}
+             <tr>
+            <td>{{element}}</td>
+             <td>{{report[key][subkey][element]}}</td>
+             </tr>
+        {% endfor %}
+        {% endfor %}
+  </table>
+<h4>JSON:</h4>
 <p>{{report[key]}}</p>
 {%endfor%}
 {% endblock %}

@@ -1,6 +1,7 @@
 # This module collects the packages to be installed from the AST installs them in an already open conda environment in the host machine and returns problematic modules
 
-import ast
+from typed_ast import ast3
+from typed_ast import ast27
 import sys
 import os
 import re
@@ -19,7 +20,26 @@ built_in_modules3 = {'__future__', '__main__', '_dummy_thread', '_thread', 'abc'
 built_in_modules2 = {'AL', 'BaseHTTPServer', 'Bastion', 'CGIHTTPServer', 'ColorPicker', 'ConfigParser', 'Cookie', 'DEVICE', 'DocXMLRPCServer', 'EasyDialogs', 'FL', 'FrameWork', 'GL', 'HTMLParser', 'MacOS', 'MimeWriter', 'MiniAEFrame', 'Nav', 'PixMapWrapper', 'Queue', 'SUNAUDIODEV', 'ScrolledText', 'SimpleHTTPServer', 'SimpleXMLRPCServer', 'SocketServer', 'StringIO', 'Tix', 'Tkinter', 'UserDict', 'UserList', 'UserString', 'W', '__builtin__', '__future__', '__main__', '_winreg', 'abc', 'aepack', 'aetools', 'aetypes', 'aifc', 'al', 'anydbm', 'applesingle', 'argparse', 'array', 'ast', 'asynchat', 'asyncore', 'atexit', 'audioop', 'autoGIL', 'base64', 'bdb', 'binascii', 'binhex', 'bisect', 'bsddb', 'buildtools', 'bz2', 'cPickle', 'cProfile', 'cStringIO', 'calendar', 'cd', 'cfmfile', 'cgi', 'cgitb', 'chunk', 'cmath', 'cmd', 'code', 'codecs', 'codeop', 'collections', 'colorsys', 'commands', 'compileall', 'compiler', 'contextlib', 'cookielib', 'copy', 'copy_reg', 'crypt', 'csv', 'ctypes', 'curses', 'datetime', 'dbhash', 'dbm', 'decimal', 'difflib', 'dircache', 'dis', 'distutils', 'dl', 'doctest', 'dumbdbm', 'dummy_thread', 'dummy_threading', 'email', 'ensurepip', 'errno', 'exceptions', 'fcntl', 'filecmp', 'fileinput', 'findertools', 'fl', 'flp', 'fm', 'fnmatch', 'formatter', 'fpectl', 'fpformat', 'fractions', 'ftplib', 'functools', 'future_builtins', 'gc', 'gdbm', 'gensuitemodule', 'getopt', 'getpass', 'gettext', 'gl', 'glob', 'grp', 'gzip', 'hashlib', 'heapq', 'hmac', 'hotshot', 'htmlentitydefs', 'htmllib', 'httplib', 'ic', 'icopen', 'imageop', 'imaplib', 'imgfile', 'imghdr', 'imp', 'importlib', 'imputil', 'inspect', 'io', 'itertools', 'jpeg', 'json', 'keyword', 'lib2to3', 'linecache', 'locale', 'logging', 'macerrors', 'macostools', 'macpath', 'macresource', 'mailbox', 'mailcap', 'marshal', 'math', 'md5', 'mhlib', 'mimetools', 'mimetypes', 'mimify', 'mmap', 'modulefinder', 'msilib', 'msvcrt', 'multifile', 'multiprocessing', 'mutex', 'netrc', 'new', 'nis', 'nntplib', 'numbers', 'operator', 'optparse', 'os', 'ossaudiodev', 'parser', 'pdb', 'pickle', 'pickletools', 'pipes', 'pkgutil', 'platform', 'plistlib', 'popen2', 'poplib', 'posix', 'posixfile', 'pprint', 'profile', 'pstats', 'pty', 'pwd', 'py_compile', 'pyclbr', 'pydoc', 'quopri', 'random', 're', 'readline', 'resource', 'rexec', 'rfc822', 'rlcompleter', 'robotparser', 'runpy', 'sched', 'select', 'sets', 'sgmllib', 'sha', 'shelve', 'shlex', 'shutil', 'signal', 'site', 'smtpd', 'smtplib', 'sndhdr', 'socket', 'spwd', 'sqlite3', 'ssl', 'stat', 'statvfs', 'string', 'stringprep', 'struct', 'subprocess', 'sunau', 'sunaudiodev', 'symbol', 'symtable', 'sys', 'sysconfig', 'syslog', 'tabnanny', 'tarfile', 'telnetlib', 'tempfile', 'termios', 'test', 'textwrap', 'thread', 'threading', 'time', 'timeit', 'token', 'tokenize', 'trace', 'traceback', 'ttk', 'tty', 'turtle', 'types', 'unicodedata', 'unittest', 'urllib', 'urllib2', 'urlparse', 'user', 'uu', 'uuid', 'videoreader', 'warnings', 'wave', 'weakref', 'webbrowser', 'whichdb', 'winsound', 'wsgiref', 'xdrlib', 'xml', 'xmlrpclib', 'zipfile', 'zipimport', 'zlib'}
 
 # AST analyzer to gather info from Import and ImportFrom nodes
-class Analyzer(ast.NodeVisitor):
+class Analyzer3(ast3.NodeVisitor):
+    def __init__(self):
+        self.stats = {"imports":[],"from":[]}
+
+    def visit_Import(self,node):
+        for alias in node.names:
+            self.stats["imports"].append(alias.name)
+        self.generic_visit(node)
+
+    def visit_ImportFrom(self,node):
+        for alias in node.names:
+            self.stats["from"].append(alias.name)
+        self.stats['imports'].append(node.module)
+        self.generic_visit(node)
+
+    def report(self):
+        imprts = self.stats["imports"]
+        return imprts
+        
+class Analyzer2(ast27.NodeVisitor):
     def __init__(self):
         self.stats = {"imports":[],"from":[]}
 
@@ -40,17 +60,26 @@ class Analyzer(ast.NodeVisitor):
 
 # The below module collects the packages and modules imported by the script and tries conda installing or pip installing them after it ensures it is not a built in or user defined module, if its not able to conda or pip install then its reported to user
 # Takes in a python filepath and its foldername and returns the problematic packages of the script
-def get_imports(path,foldername,user_defined_modules):
+def get_imports(path,foldername,user_defined_modules,py_ver3):
     import_sets = set()
     with open(path,'r') as source:
             try:
-                tree = ast.parse(source.read())
+                if(py_ver3):
+                    tree = ast3.parse(source.read())
+                else:
+                    tree = ast27.parse(source.read())
             except Exception as e:
                 raise exceptions.CodeError(e.args) # args contain information about syntax error to show to user
 
-            analyzer = Analyzer()
+            if(py_ver3):
+                analyzer = Analyzer3()
+                
+            else:
+                analyzer = Analyzer2()
+            
             analyzer.visit(tree)
-            imprts  = analyzer.report()
+            imprts  = analyzer.report()    
+            
             for i in range(0,len(imprts)):
                 import_sets.add(imprts[i].split('.')[0])
     

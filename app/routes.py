@@ -15,7 +15,7 @@ from flask_login import current_user, login_user, login_required, logout_user
 from app.models import User, Dataset
 from werkzeug.utils import secure_filename
 from app.helpers import build_image
-from app.start import start_raas
+from app.starter import start_raas
 
 
 @app.route('/')
@@ -41,8 +41,16 @@ def index():
 @login_required
 def containrize():
     form = InputForm()
-    if form.add.data:
+    if form.add_pkg.data:
         form.pkg_asked.append_entry()
+        return render_template('containrize.html',
+                               title='Containrize', form=form, show_adv=True)
+    if form.add_cmd.data:
+        form.command_line.append_entry()
+        return render_template('containrize.html',
+                               title='Containrize', form=form, show_adv=True)
+    if form.add_code.data:
+        form.code_btw.append_entry()
         return render_template('containrize.html',
                                title='Containrize', form=form, show_adv=True)
     # elif form.pkg_asked:
@@ -69,24 +77,10 @@ def containrize():
             os.makedirs(os.path.join(app.instance_path, 'r_datasets'))
         if not os.path.exists(os.path.join(app.instance_path, 'py_datasets')):
             os.makedirs(os.path.join(app.instance_path, 'py_datasets'))
-        if not os.path.exists(os.path.join(app.instance_path, 'temp')):
-            os.makedirs(os.path.join(app.instance_path, 'temp'))
-        else:
-            shutil.rmtree(os.path.join(app.instance_path, 'temp'))
-            os.makedirs(os.path.join(app.instance_path, 'temp'))
 
-        print("MARK1")
-        print(form.zip_file)
         if form.zip_file.data:
             zip_file = form.zip_file.data
-            filename = secure_filename(zip_file.filename)
-            # if form.language.data == "Python":
-            #     zipfile_path = os.path.join(app.instance_path, 'py_datasets', filename)
-            # else:
-            #     zipfile_path = os.path.join(app.instance_path, 'r_datasets', filename)
-            # zip_file_local=None
-            # shutil.copyfileobj(zip_file,zip_file_local)
-            # zip_file_local.save(zipfile_path)
+            folder_name = secure_filename(form.name.data)
 
             multi = 0
             bool_dir = False
@@ -100,63 +94,45 @@ def containrize():
                         if (i.is_dir()):
                             bool_dir = True
 
-                # zipList = list(zipfile.Path(myzip).iterdir())
-                if (multi != 1 or not (bool_dir)):
-                    f_name = filename[:(filename.index('.'))]
+                file_name = form.zip_file.data.filename
+                if multi != 1 or not bool_dir:
+                    f_name = file_name[:(file_name.index('.'))]
                     os.makedirs(os.path.join(
                         app.instance_path, 'py_datasets', f_name))
                     myzip.extractall(os.path.join(
                         app.instance_path, 'py_datasets', f_name))
-                    os.remove(zipfile_path)
                     z = zipfile.ZipFile(os.path.join(
-                        app.instance_path, 'py_datasets', filename), 'w')
+                        app.instance_path, 'py_datasets', file_name), 'w')
                     p = os.path.join(app.instance_path, 'py_datasets', f_name)
                     for root, dirs, files in os.walk(p):
                         for file in files:
                             z.write(os.path.join(root, file),
-                                    os.path.relpath(os.path.join(root, file), os.path.join(p, '..')))
+                                    os.path.relpath(os.path.join(file), os.path.join(p, '..')))
+                    z.extractall(os.path.join(
+                        app.instance_path, 'py_datasets', folder_name, "data_set_content"))
                     z.close()
                     shutil.rmtree(os.path.join(app.instance_path,
                                                'py_datasets', f_name), ignore_errors=True)
+                    else:
+                    z = zipfile.ZipFile(zip_file)
+                    z.extractall(os.path.join(
+                        app.instance_path, 'py_datasets', folder_name, "data_set_content"))
+                    z.close()
+
         else:
-            filename = secure_filename(form.name.data + '.zip')
+            folder_name = secure_filename(form.name.data)
             if form.language.data == "Python":
                 zipfile_path = os.path.join(
-                    app.instance_path, 'py_datasets', form.name.data + ".zip")
+                    app.instance_path, 'py_datasets', folder_name)
             else:
                 zipfile_path = os.path.join(
-                    app.instance_path, 'r_datasets', form.name.data + ".zip")
-            zip_file_local = zipfile.ZipFile(zipfile_path, "w")
+                    app.instance_path, 'r_datasets', folder_name)
             file_list = request.files.getlist('set_file')
-            os.makedirs(os.path.join(
-                app.instance_path, 'temp', form.name.data))
+            os.makedirs(zipfile_path)
+            os.makedirs(os.path.join(zipfile_path, "data_set_content"))
             for f in file_list:
-                f.save(os.path.join(app.instance_path,
-                                    'temp', form.name.data, f.filename))
-            pth = os.path.join(app.instance_path, 'temp', form.name.data)
-            for root, dirs, files in os.walk(pth):
-                for file in files:
-                    zip_file_local.write(os.path.join(pth, file),
-                                         os.path.relpath(os.path.join(root, file), os.path.join(pth, '..')))
-            zip_file_local.close()
-        print("MARK2")
-        json_input = {'user_id': current_user.id, 'zipfile_path': zipfile_path,
-                      'name': form.name.data, "language": form.language.data,
-                      'need_prepro': form.fix_code.data,
-                      'extended_lib': form.extended_lib.data,
-                      'adv_opt': None
-                      }
-        json_ad_input = {
-            'cmd': form.command_line.data,
-            'sample_output': form.sample_output.data,
-            'code_btw': form.code_btw.data,
-            'prov': form.provenance.data
-        }
-        for value in json_ad_input.values():
-            if value is not None:
-                json_input["adv_opt"] = json_ad_input
-                break
-        # covert the user package into json format
+                f.save(os.path.join(zipfile_path, "data_set_content", f.filename))
+
         user_pkgs_list = []
         if form.pkg_asked.data:
             for entry in form.pkg_asked.data:
@@ -164,27 +140,43 @@ def containrize():
                 temp = {"pkg_name": entry['package_name'],
                         "PypI_name": entry['pypI_name']}
                 user_pkgs_list.append(temp)
+        allinstr = []
+        ext_pkgs = []
+        for instr in form.command_line.data:
+            cur = instr['command']
+            if(cur != ""):
+                allinstr.append(cur)
+            # allinstr = allinstr + instr['command'] + r"\n"
+
+        for pkg in form.code_btw.data:
+            cur = pkg['code']
+            if cur != "":
+                ext_pkgs.append(pkg['code'])
         user_pkgs_total = str({"pkg": user_pkgs_list}).replace('\'', '\"')
         print(str(user_pkgs_total))
         # TODO: The backend function will be called here
-        print("lang" + form.language.data)
+        print("Language: " + form.language.data)
         if form.language.data == "R":
-            task = build_image.apply_async(kwargs={'zip_file': filename,
+            task = build_image.apply_async(kwargs={'data_folder': folder_name,
                                                    'current_user_id': current_user.id,
                                                    'name': form.name.data,
                                                    'preprocess': form.fix_code.data})
         else:
+
             task = start_raas.apply_async(kwargs={'language': form.language.data,
-                                                  'zip_file': filename,
+                                                  'data_folder': folder_name,
                                                   'current_user_id': current_user.id,
                                                   'name': form.name.data,
                                                   'preprocess': form.fix_code.data,
                                                   'user_pkgs': user_pkgs_total,
-                                                  'run_instr': form.command_line.data})
+                                                  'run_instr': allinstr,
+                                                  'sample_output': form.sample_output.data,
+                                                  'code_btw': ext_pkgs,
+                                                  'prov': form.provenance.data
+                                                  })
 
         session['task_id'] = task.id
         return redirect(url_for('build_status'))
-    print("MARK3")
     return render_template('containrize.html',
                            title='Containrize', form=form, show_adv=False)
 
