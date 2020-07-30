@@ -77,39 +77,41 @@ def containrize():
         if form.zip_file.data:
             zip_file = form.zip_file.data
             folder_name = secure_filename(form.name.data)
+            
+#             multi = 0
+#             bool_dir = False
+#             with zipfile.ZipFile(zip_file, "r") as myzip:
+#                 namelist = myzip.infolist()
+#                 for i in namelist:
+#                     arr = i.filename.split('/')
+#                     arr = list(filter(lambda x: x != '', arr))
+#                     if (len(arr) == 1):
+#                         multi = multi + 1
+#                         if (i.is_dir()):
+#                             bool_dir = True
 
-            multi = 0
-            bool_dir = False
-            with zipfile.ZipFile(zip_file, "r") as myzip:
-                namelist = myzip.infolist()
-                for i in namelist:
-                    arr = i.filename.split('/')
-                    arr = list(filter(lambda x: x != '', arr))
-                    if (len(arr) == 1):
-                        multi = multi + 1
-                        if (i.is_dir()):
-                            bool_dir = True
+#                 file_name = form.zip_file.data.filename
+#                 if multi != 1 or not bool_dir:
+#                     f_name = file_name[:(file_name.index('.'))]
+#                     os.makedirs(os.path.join(app.instance_path, 'py_datasets', f_name))
+#                     myzip.extractall(os.path.join(app.instance_path, 'py_datasets', f_name))
+#                     z = zipfile.ZipFile(os.path.join(app.instance_path, 'py_datasets', file_name), 'w')
+#                     p = os.path.join(app.instance_path, 'py_datasets', f_name)
+#                     for root, dirs, files in os.walk(p):
+#                         for file in files:
+#                             z.write(os.path.join(root, file),
+#                                     os.path.relpath(os.path.join(file), os.path.join(p, '..')))
+#                     z.extractall(os.path.join(app.instance_path, 'py_datasets', folder_name, "data_set_content"))
+#                     z.close()
 
-                file_name = form.zip_file.data.filename
-                if multi != 1 or not bool_dir:
-                    f_name = file_name[:(file_name.index('.'))]
-                    os.makedirs(os.path.join(app.instance_path, 'py_datasets', f_name))
-                    myzip.extractall(os.path.join(app.instance_path, 'py_datasets', f_name))
-                    z = zipfile.ZipFile(os.path.join(app.instance_path, 'py_datasets', file_name), 'w')
-                    p = os.path.join(app.instance_path, 'py_datasets', f_name)
-                    for root, dirs, files in os.walk(p):
-                        for file in files:
-                            z.write(os.path.join(root, file),
-                                    os.path.relpath(os.path.join(file), os.path.join(p, '..')))
-                    z.extractall(os.path.join(app.instance_path, 'py_datasets', folder_name, "data_set_content"))
-                    z.close()
-
-                    shutil.rmtree(os.path.join(app.instance_path, 'py_datasets', f_name), ignore_errors=True)
-                else:
-                    z = zipfile.ZipFile(zip_file)
-                    z.extractall(os.path.join(app.instance_path, 'py_datasets', folder_name, "data_set_content"))
-                    z.close()
-                    
+#                     shutil.rmtree(os.path.join(app.instance_path, 'py_datasets', f_name), ignore_errors=True)
+#                 else:
+#                     z = zipfile.ZipFile(zip_file)
+#                     z.extractall(os.path.join(app.instance_path, 'py_datasets', folder_name, "data_set_content"))
+#                     z.close()
+            z = zipfile.ZipFile(zip_file)
+            z.extractall(os.path.join(app.instance_path, 'py_datasets', folder_name, "data_set_content"))
+            z.close()        
         else:
             folder_name = secure_filename(form.name.data)
             if form.language.data == "Python":
