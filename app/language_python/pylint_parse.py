@@ -7,7 +7,7 @@ def pylint_parser(filename,py3):
     else:
         pylint_ver = 'pylint2'
 
-    ans = subprocess.Popen('eval "$(conda shell.bash hook)" && conda activate '+pylint_ver+'&& pylint -d C,R,W,E0401 --output-format=json '+filename,shell=True, stdout=subprocess.PIPE)    
+    ans = subprocess.Popen('eval "$(conda shell.bash hook)" && conda activate '+pylint_ver+'&& pylint -d C,R,W,E0401 --output-format=json "'+filename+'"',shell=True, stdout=subprocess.PIPE)    
     temp = ans.communicate()[0]
 
     if(temp==b''):
