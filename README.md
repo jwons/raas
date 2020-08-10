@@ -14,7 +14,11 @@ The frontend now will call a method called "start_raas" implemented in the "star
 3)it organize the order of the call of those 6 methods   
 __________________________________________________
 ### How to support another language?
+
+
 There are 3 steps you need to follow to support a new language:
+
+
 1.Create a new object that implement the "language_interface".  
 The method you would need to implement are 
   
@@ -23,6 +27,9 @@ The method you would need to implement are
      build_docker_file(self, dir_name, docker_pkgs, addtional_info):
        
      create_report(self, current_user_id, name, dir_name)
+     
 
 2.in the app/start.py line 9, add an if condition to call your language object
+
+
 3.in app/forms.py line 27, add your language name to the front end selection box
