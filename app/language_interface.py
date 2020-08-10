@@ -1,9 +1,10 @@
+import shutil
 import sys
 from abc import abstractmethod, ABCMeta
 import docker
 import os
 
-from app import db
+from app import db, app
 
 from app.models import User, Dataset
 
@@ -24,10 +25,6 @@ class language_interface(object):
 
     @abstractmethod
     def create_report(self, current_user_id, name, dir_name):
-        pass
-
-    @abstractmethod
-    def clean_up_datasets(self, dir):
         pass
 
     def build_docker_img(self, docker_file_dir, current_user_id, name):
@@ -61,5 +58,17 @@ class language_interface(object):
 
         ########## CLEANING UP ######################################################################
 
-        self.clean_up_datasets(dir_name)
+        self.clean_up_datasets()
         print("Returning")
+    def clean_up_datasets(self):
+        # delete any stored data
+        try:
+            del_list = os.listdir(os.path.join(app.instance_path,"datasets"))
+            for f in del_list:
+                file_path = os.path.join(app.instance_path,"datasets", f)
+                if os.path.isfile(file_path):
+                    os.remove(file_path)
+                elif os.path.isdir(file_path):
+                    shutil.rmtree(file_path)
+        except:
+            pass

@@ -10,7 +10,7 @@ from flask_login import current_user, login_user, login_required, logout_user
 
 class PackagesForm(FlaskForm):
     package_name = StringField('package_name')
-    pypI_name = StringField('pypI_name')
+    installation_cmd = StringField('installation_cmd')
 
 class Code_btw_Form(FlaskForm):
     code=StringField()
@@ -23,17 +23,16 @@ class InputForm(FlaskForm):
     zip_file = FileField('Zip File Containing Dataset')
     set_file = FileField('or---A set of Data file and scripts', render_kw={'multiple': True})
     name = StringField('Name of the Dataset')
-    fix_code = BooleanField('Attempt to automatically fix code')
-    extended_lib = BooleanField('Extended Library handling')
+    fix_code = BooleanField('Attempt to automatically fix code', default=True)
 
     language = SelectField('What language is included in your upload', validators=[Required()],
                            choices=[('R', 'R'), ('Python', 'Python')])
-    # command_line = StringField('Run instruction')
-    provenance = FileField('Provenance')
-    # code_btw = StringField('Line of code to run between package install and  execute')
+    #TODO: support using provanence files provided by user directly
+    #provenance = FileField('Provenance File')
     command_line = FieldList(FormField(Cmd_Form), min_entries=1)
     code_btw= FieldList(FormField(Code_btw_Form), min_entries=1)
-    sample_output = FileField('Sample output that you want to compare with', render_kw={'multiple': True})
+    # TODO: support comparing results with sample output for verification
+    #sample_output = FileField('Sample output that you want to compare with', render_kw={'multiple': True})
     pkg_asked = FieldList(FormField(PackagesForm), min_entries=1)
     submit = SubmitField('Build Docker Image')
     add_pkg = SubmitField("+ add more")

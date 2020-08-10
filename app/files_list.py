@@ -24,7 +24,7 @@ def generate_multimap2(dir,name):
     p = Path(dir)
     arr = defaultdict(list)
     for i in p.rglob('*'):
-        path = os.path.join('/home/py_datasets/'+name+'/data_set_content',i.relative_to(dir))
+        path = os.path.join('/home/datasets/'+name+'/data_set_content',i.relative_to(dir))
         arr[i.name].append(path)
     return arr
 
