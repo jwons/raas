@@ -29,7 +29,7 @@ The method you would need to implement are
      create_report(self, current_user_id, name, dir_name)
      
 
-2.in the app/start.py line 9, add an if condition to call your language object
+2.In the app/starter.py at line 9, add an if condition to call your language object
 
 
-3.in app/forms.py line 27, add your language name to the front end selection box
+3.In the app/forms.py at line 27, add your language name to the front end selection box
