@@ -925,14 +925,12 @@ def naive_error_classifier(error_string):
 
 def clean_up_datasets():
     # delete any stored data
-    for dataset_directory in os.listdir(os.path.join(app.instance_path, 'r_datasets')):
+    for dataset_directory in os.listdir(os.path.join(app.instance_path, 'datasets')):
         try:
-            shutil.rmtree(os.path.join(app.instance_path,
-                                       'r_datasets', dataset_directory))
+            shutil.rmtree(os.path.join(app.instance_path, 'datasets', dataset_directory))
         except:
             try:
-                os.remove(os.path.join(app.instance_path,
-                                       'r_datasets', dataset_directory))
+                os.remove(os.path.join(app.instance_path, 'datasets', dataset_directory))
             except:
                 pass
 
@@ -1008,37 +1006,28 @@ def build_image(self, current_user_id, name, preprocess, dataverse_key='', doi='
 
     if zip_file:
         # assemble path to zip_file
-        zip_path = os.path.join(app.instance_path, 'r_datasets', zip_file)
+        zip_path = os.path.join(app.instance_path, 'datasets', zip_file)
         # unzip the zipped directory and remove zip file
         with zipfile.ZipFile(zip_path) as zip_ref:
             dir_name = zip_ref.namelist()[0].strip('/')
-            zip_ref.extractall(os.path.join(
-                app.instance_path, 'r_datasets', dir_name))
-        os.remove(os.path.join(app.instance_path, 'r_datasets', zip_file))
+            zip_ref.extractall(os.path.join(app.instance_path, 'datasets', dir_name))
+        os.remove(os.path.join(app.instance_path, 'datasets', zip_file))
         # find name of unzipped directory
-        dataset_dir = os.path.join(
-            app.instance_path, 'r_datasets', dir_name, dir_name)
+        dataset_dir = os.path.join(app.instance_path, 'datasets', dir_name, dir_name)
         doi = dir_name
     else:
-        dataset_dir = os.path.join(app.instance_path, 'r_datasets', doi_to_directory(doi),
+        dataset_dir = os.path.join(app.instance_path, 'datasets', doi_to_directory(doi),
                                    doi_to_directory(doi))
-        success = download_dataset(doi=doi, dataverse_key=dataverse_key, destination=os.path.join(
-            app.instance_path, 'r_datasets', doi_to_directory(doi)))
-    if not success:
-        clean_up_datasets()
-        return {'current': 100, 'total': 100, 'status': ['Data download error.',
-                                                         [['Download error',
-                                                           'There was a problem downloading your data from ' +
-                                                           'Dataverse. Please make sure the DOI is correct.']]]}
-
-        # print(dataset_dir, file=sys.stderr)
-        # In the event source scripts need to be skipped
-    if(special_install):
-        if("source" in special_install.keys()):
-            # Add any files to ignore to the .srcignore
-            with open(os.path.join(app.instance_path, 'r_datasets', dir_name, '.srcignore'), 'w') as src_ignore:
-                for script in special_install["source"]:
-                    src_ignore.write(script + '\n')
+        success = download_dataset(doi=doi, dataverse_key=dataverse_key,
+                                   destination=os.path.join(app.instance_path, 'datasets',
+                                                            doi_to_directory(doi)))
+        if not success:
+            clean_up_datasets()
+            return {'current': 100, 'total': 100, 'status': ['Data download error.',
+                                                             [['Download error',
+                                                               'There was a problem downloading your data from ' + \
+                                                               'Dataverse. Please make sure the DOI is correct.']]]}
+    # print(dataset_dir, file=sys.stderr)
 
     ########## GETTING PROV ######################################################################
 
@@ -1126,7 +1115,7 @@ def build_image(self, current_user_id, name, preprocess, dataverse_key='', doi='
         pass
 
     docker_file_dir = os.path.join(app.instance_path,
-                                   'r_datasets', doi_to_directory(doi))
+                                   'datasets', doi_to_directory(doi))
     try:
         os.makedirs(docker_file_dir)
     except:
@@ -1219,10 +1208,8 @@ def build_image(self, current_user_id, name, preprocess, dataverse_key='', doi='
         new_docker.write('ADD ' + doi_to_directory(doi)
                          + ' /home/rstudio/' + doi_to_directory(doi) + '\n')
 
-        copy("app/get_prov_for_doi.sh",
-             "instance/r_datasets/" + doi_to_directory(doi))
-        copy("app/get_dataset_provenance.R",
-             "instance/r_datasets/" + doi_to_directory(doi))
+        copy("app/get_prov_for_doi.sh", "instance/datasets/" + doi_to_directory(doi))
+        copy("app/get_dataset_provenance.R", "instance/datasets/" + doi_to_directory(doi))
         new_docker.write('COPY get_prov_for_doi.sh /home/rstudio/\n')
         new_docker.write('COPY get_dataset_provenance.R /home/rstudio/\n')
         new_docker.write('COPY .srcignore /home/rstudio/\n')
@@ -1335,8 +1322,7 @@ def build_image(self, current_user_id, name, preprocess, dataverse_key='', doi='
                                                          [['Could not install R package',
                                                            error_message]]]}
 
-    run_log_path = os.path.join(
-        app.instance_path, 'r_datasets', doi_to_directory(doi), "run_log.csv")
+    run_log_path = os.path.join(app.instance_path, 'datasets', doi_to_directory(doi), "run_log.csv")
 
     with open(run_log_path, 'wb') as f:
         f.write(run_log_from_container[1])

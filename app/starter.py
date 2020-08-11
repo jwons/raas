@@ -1,5 +1,5 @@
 from app import celery
-from app.language_python.pyPlace import py_place
+from app.language_python.python_lang_obj import py_place
 
 
 @celery.task(bind=True)
@@ -41,7 +41,7 @@ def start_raas(self, language, current_user_id, name, preprocess, dataverse_key=
         language_obj.push_docker_img(dir_name, current_user_id, name, report)
         self.update_state(state='PROGRESS', meta={'current': 9, 'total': 10,
                                                   'status': 'Cleaning up...'})
-        language_obj.clean_up_datasets(dir_name)
+        language_obj.clean_up_datasets()
         return {'current': 10, 'total': 10,
                 'status': 'RAAS has finished! Your new image is accessible from the home page.',
                 'result': 42, 'errors': 'No errors!'}

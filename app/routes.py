@@ -73,60 +73,50 @@ def containrize():
         # create directories if they don't exists yet
         if not os.path.exists(app.instance_path):
             os.makedirs(app.instance_path)
-        if not os.path.exists(os.path.join(app.instance_path, 'r_datasets')):
-            os.makedirs(os.path.join(app.instance_path, 'r_datasets'))
-        if not os.path.exists(os.path.join(app.instance_path, 'py_datasets')):
-            os.makedirs(os.path.join(app.instance_path, 'py_datasets'))
+        if not os.path.exists(os.path.join(app.instance_path, 'datasets')):
+            os.makedirs(os.path.join(app.instance_path, 'datasets'))
 
         if form.zip_file.data:
             zip_file = form.zip_file.data
             folder_name = secure_filename(form.name.data)
+            
+#             multi = 0
+#             bool_dir = False
+#             with zipfile.ZipFile(zip_file, "r") as myzip:
+#                 namelist = myzip.infolist()
+#                 for i in namelist:
+#                     arr = i.filename.split('/')
+#                     arr = list(filter(lambda x: x != '', arr))
+#                     if (len(arr) == 1):
+#                         multi = multi + 1
+#                         if (i.is_dir()):
+#                             bool_dir = True
 
-            multi = 0
-            bool_dir = False
-            with zipfile.ZipFile(zip_file, "r") as myzip:
-                namelist = myzip.infolist()
-                for i in namelist:
-                    arr = i.filename.split('/')
-                    arr = list(filter(lambda x: x != '', arr))
-                    if (len(arr) == 1):
-                        multi = multi + 1
-                        if (i.is_dir()):
-                            bool_dir = True
+#                 file_name = form.zip_file.data.filename
+#                 if multi != 1 or not bool_dir:
+#                     f_name = file_name[:(file_name.index('.'))]
+#                     os.makedirs(os.path.join(app.instance_path, 'datasets', f_name))
+#                     myzip.extractall(os.path.join(app.instance_path, 'datasets', f_name))
+#                     z = zipfile.ZipFile(os.path.join(app.instance_path, 'datasets', file_name), 'w')
+#                     p = os.path.join(app.instance_path, 'datasets', f_name)
+#                     for root, dirs, files in os.walk(p):
+#                         for file in files:
+#                             z.write(os.path.join(root, file),
+#                                     os.path.relpath(os.path.join(file), os.path.join(p, '..')))
+#                     z.extractall(os.path.join(app.instance_path, 'datasets', folder_name, "data_set_content"))
+#                     z.close()
 
-                file_name = form.zip_file.data.filename
-                if multi != 1 or not bool_dir:
-                    f_name = file_name[:(file_name.index('.'))]
-                    os.makedirs(os.path.join(
-                        app.instance_path, 'py_datasets', f_name))
-                    myzip.extractall(os.path.join(
-                        app.instance_path, 'py_datasets', f_name))
-                    z = zipfile.ZipFile(os.path.join(
-                        app.instance_path, 'py_datasets', file_name), 'w')
-                    p = os.path.join(app.instance_path, 'py_datasets', f_name)
-                    for root, dirs, files in os.walk(p):
-                        for file in files:
-                            z.write(os.path.join(root, file),
-                                    os.path.relpath(os.path.join(file), os.path.join(p, '..')))
-                    z.extractall(os.path.join(
-                        app.instance_path, 'py_datasets', folder_name, "data_set_content"))
-                    z.close()
-                    shutil.rmtree(os.path.join(app.instance_path,
-                                               'py_datasets', f_name), ignore_errors=True)
-                    else:
-                    z = zipfile.ZipFile(zip_file)
-                    z.extractall(os.path.join(
-                        app.instance_path, 'py_datasets', folder_name, "data_set_content"))
-                    z.close()
-
+#                     shutil.rmtree(os.path.join(app.instance_path, 'datasets', f_name), ignore_errors=True)
+#                 else:
+#                     z = zipfile.ZipFile(zip_file)
+#                     z.extractall(os.path.join(app.instance_path, 'datasets', folder_name, "data_set_content"))
+#                     z.close()
+            z = zipfile.ZipFile(zip_file)
+            z.extractall(os.path.join(app.instance_path, 'datasets', folder_name, "data_set_content"))
+            z.close()        
         else:
             folder_name = secure_filename(form.name.data)
-            if form.language.data == "Python":
-                zipfile_path = os.path.join(
-                    app.instance_path, 'py_datasets', folder_name)
-            else:
-                zipfile_path = os.path.join(
-                    app.instance_path, 'r_datasets', folder_name)
+            zipfile_path = os.path.join(app.instance_path, 'datasets', folder_name)
             file_list = request.files.getlist('set_file')
             os.makedirs(zipfile_path)
             os.makedirs(os.path.join(zipfile_path, "data_set_content"))
@@ -137,8 +127,7 @@ def containrize():
         if form.pkg_asked.data:
             for entry in form.pkg_asked.data:
                 print(entry)
-                temp = {"pkg_name": entry['package_name'],
-                        "PypI_name": entry['pypI_name']}
+                temp = {"pkg_name": entry['package_name'], "installation_cmd": entry['installation_cmd']}
                 user_pkgs_list.append(temp)
         allinstr = []
         ext_pkgs = []
@@ -146,7 +135,6 @@ def containrize():
             cur = instr['command']
             if(cur != ""):
                 allinstr.append(cur)
-            # allinstr = allinstr + instr['command'] + r"\n"
 
         for pkg in form.code_btw.data:
             cur = pkg['code']
@@ -170,9 +158,9 @@ def containrize():
                                                   'preprocess': form.fix_code.data,
                                                   'user_pkgs': user_pkgs_total,
                                                   'run_instr': allinstr,
-                                                  'sample_output': form.sample_output.data,
+                                                  'sample_output': '',
                                                   'code_btw': ext_pkgs,
-                                                  'prov': form.provenance.data
+                                                  'prov': ''
                                                   })
 
         session['task_id'] = task.id
@@ -350,12 +338,11 @@ def api_build():
         # create directories if they don't exists yet
         if not os.path.exists(app.instance_path):
             os.makedirs(app.instance_path)
-        if not os.path.exists(os.path.join(app.instance_path, 'r_datasets')):
-            os.makedirs(os.path.join(app.instance_path, 'r_datasets'))
+        if not os.path.exists(os.path.join(app.instance_path, 'datasets')):
+            os.makedirs(os.path.join(app.instance_path, 'datasets'))
         # save the .zip file to the correct location
         zip_base = os.path.basename(zip_file)
-        copyfile(os.path.join(app.instance_path,
-                              'r_datasets', zip_base), zip_file)
+        copyfile(os.path.join(app.instance_path, 'datasets', zip_base), zip_file)
 
         task = build_image.apply_async(kwargs={'zip_file': zip_base,
                                                'current_user_id': user_id,

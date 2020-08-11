@@ -71,14 +71,14 @@
             {{ wtf.form_field(form.zip_file) }}
             {{ wtf.form_field(form.set_file) }}
             {{ wtf.form_field(form.name) }}
-            {{ wtf.form_field(form.extended_lib) }}
             {{ wtf.form_field(form.fix_code) }}
             {{ wtf.form_field(form.language) }}
             {{ wtf.form_field(form.submit) }}
         </div>
         <div id="advance">
-            {{ wtf.form_field(form.provenance) }}
-            {{ wtf.form_field(form.sample_output) }}
+{#        expected to be supported in future#}
+{#            {{ wtf.form_field(form.provenance) }}#}
+{#            {{ wtf.form_field(form.sample_output) }}#}
             <label class="control-label">Additional Packages</label>
             <div id="pkg_table" style="line-height:25px">
                 {% for f in form.pkg_asked %}
@@ -87,8 +87,8 @@
 
                     <label class="package name" style="color:grey; font-weight: lighter">Package name {{ loop.index }}:</label>
                     {{ f.package_name }}
-                    <label class="pypI_name" style="color:grey; font-weight: lighter">pypI_name {{ loop.index }}:</label>
-                    {{ f.pypI_name }}<br>
+                    <label class="installation_cmd" style="color:grey; font-weight: lighter">Installation Command {{ loop.index }}:</label>
+                    {{ f.installation_cmd }}<br>
                 {% endfor %}
                 {{ wtf.form_field(form.add_pkg) }}
             </div>

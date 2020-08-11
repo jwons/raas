@@ -1,1 +1,0 @@
-python ARTINALI#.py SMSample.csv InvSample.txt 0.98
