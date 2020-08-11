@@ -1,6 +1,18 @@
 {% extends "base.html" %}
 
 {% block app_content %}
+    <script>
+            function block(num) {
+            if (document.getElementById('div'+num).style.display === "none") {
+                document.getElementById('btn'+num).value = "Hide JSON";
+                document.getElementById('div'+num).style.display = "block"
+            } else {
+                document.getElementById('btn'+num).value = "Show information in JSON";
+                document.getElementById('div'+num).style.display = "none"
+
+            }
+        }
+    </script>
 <h1>RAAS Report</h1>
 {%for key in report.keys()%}
 
@@ -17,7 +29,10 @@
         {% endfor %}
         {% endfor %}
   </table>
+    <input type='button' id="btn{{loop.index}}" value="Show information in JSON" onclick="block({{loop.index}})">
+    <div id="div{{loop.index}}" style='display:none'>
 <h4>JSON:</h4>
 <p>{{report[key]}}</p>
+    </div>
 {%endfor%}
 {% endblock %}
