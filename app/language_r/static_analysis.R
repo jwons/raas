@@ -31,7 +31,7 @@ dir.create("static_analysis", showWarnings = FALSE)
 if (preproc) {
 	r_files = list.files(".", pattern="__preproc__\\.[Rr]\\>", recursive=FALSE, full.names=FALSE)
 } else {
-	r_files = list.files(".", pattern="\\.[Rr]\\>", recursive=FALSE, full.names=FALSE)
+  r_files = list.files(".", pattern="\\.[Rr]\\>", recursive=T, full.names=T)
 	# parse out preprocessed files
 	preproc_files = grep("__preproc__", r_files)
 	if (length(preproc_files) > 0) {
@@ -152,12 +152,12 @@ for (r_file in r_files) {
   errors <- c(errors, new_errors)
 }
 
-if (length(warnings))
-
 # get package dependencies
- all.libs <- unique(unlist(sapply(libs, function(lib){
-   tools::package_dependencies(lib, recursive = T)
- })))
+all.libs <- unique(unlist(sapply(libs, function(lib){
+  tools::package_dependencies(lib, recursive = T)
+})))
+
+all.libs <- unique(c(libs, all.libs))
 
 libs.request <- paste(all.libs, collapse=",")
 

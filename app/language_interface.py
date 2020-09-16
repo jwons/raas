@@ -16,11 +16,11 @@ class language_interface(object):
     __metaclass__ = ABCMeta
 
     @abstractmethod
-    def preprocessing(self, preprocess, dataverse_key='', doi='', zip_file='', user_pkg=''):
+    def script_analysis(self, preprocess, dataverse_key='', doi='', zip_file='', user_pkg=''):
         pass
 
     @abstractmethod
-    def build_docker_file(self, dir_name, docker_pkgs, addtional_info,ode_btw, run_instr):
+    def build_docker_file(self, dir_name, docker_pkgs, addtional_info, code_btw, run_instr):
         pass
 
     @abstractmethod

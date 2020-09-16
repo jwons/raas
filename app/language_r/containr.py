@@ -13,7 +13,7 @@ from app import app, db
 from app.language_interface import language_interface
 
 
-class containr(language_interface):
+class r_lang(language_interface):
     def clean_up_datasets(self, dataset_directory):
         # delete any stored data
         try:

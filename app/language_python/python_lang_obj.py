@@ -26,7 +26,7 @@ from shutil import copy
 from app.language_interface import language_interface
 
 
-class py_place(language_interface):
+class py_lang(language_interface):
 
     def temp_name(self, path):
         p_obj = Path(path)
@@ -36,7 +36,7 @@ class py_place(language_interface):
         temp_path = os.path.join(par, temp_filename)
         return temp_path
 
-    def preprocessing(self, preprocess, dataverse_key='', doi='', data_folder='', user_pkg=''):
+    def script_analysis(self, preprocess, dataverse_key='', doi='', data_folder='', user_pkg=''):
         if data_folder:  # if a set of scripts have been uploaded then its converted to a normal zip file format (ie. zip a folder)
             # zip_path = os.path.join(app.instance_path, 'datasets',
             #                         zip_file)  # instance_path -> key path in the server
@@ -49,12 +49,13 @@ class py_place(language_interface):
             dataset_dir = os.path.join(app.instance_path, 'datasets', dir_name)
             doi = dir_name
         else:
+            #TODO suppot this or remove it
             dataset_dir = os.path.join(app.instance_path, 'datasets', self.doi_to_directory(doi),
                                        self.doi_to_directory(doi))
             success = self.download_dataset(doi=doi, dataverse_key=dataverse_key,
                                             destination=os.path.join(app.instance_path, 'datasets',
                                                                      self.doi_to_directory(doi)))
-            dir_name = self.self.doi_to_directory(doi)
+            dir_name = self.doi_to_directory(doi)
             if not success:
                 self.clean_up_datasets()
                 return {'current': 100, 'total': 100, 'status': ['Data download error.',

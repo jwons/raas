@@ -11,12 +11,16 @@ import docker
 from app import app, db
 
 from app.language_interface import language_interface
-from app.language_r.Parse import Parser as ProvParser
+from app.Parse import Parser as ProvParser
 from app.models import User
 from shutil import copy
 
+#Debugging
+from celery.contrib import rdb
 
-class r_lang_obj(language_interface):
+
+class r_lang(language_interface):
+    '''
     def clean_up_datasets():
         # delete any stored data
         for dataset_directory in os.listdir(os.path.join(app.instance_path, 'datasets')):
@@ -27,7 +31,7 @@ class r_lang_obj(language_interface):
                     os.remove(os.path.join(app.instance_path, 'datasets', dataset_directory))
                 except:
                     pass
-
+'''
     def doi_to_directory(self, doi):
         """Converts a doi string to a more directory-friendly name
         Parameters
@@ -102,7 +106,7 @@ class r_lang_obj(language_interface):
             return False
 
         # convert DOI into a friendly directory name by replacing slashes and colons
-        doi_direct = destination + '/' + doi_to_directory(doi)
+        doi_direct = destination + '/' + self.doi_to_directory(doi)
 
         # make a new directory to store the dataset
         if not os.path.exists(doi_direct):
@@ -138,7 +142,7 @@ class r_lang_obj(language_interface):
                 return False
         return True
 
-    def preprocessing(self, preprocess, dataverse_key='', doi='', data_folder='', run_instr='', user_pkg=''):
+    def script_analysis(self, preprocess, dataverse_key='', doi='', data_folder='', run_instr='', user_pkg=''):
         if data_folder:  
             # if a set of scripts have been uploaded then its converted to a normal zip file format (ie. zip a folder)
             # zip_path = os.path.join(app.instance_path, 'datasets',
@@ -194,26 +198,16 @@ class r_lang_obj(language_interface):
         #                                                            'Dataverse. Please make sure the DOI is correct.']]]}
 
         ########## RUNNING STATIC ANALYSIS ######################################################################
-
         subprocess.run(['bash', 'app/language_r/static_analysis.sh',
-                        dataset_dir, "app//language_r/static_analysis.R"])
+                        dataset_dir, "app/language_r/static_analysis.R"])
 
         ########## CHECKING FOR STATIC ANALYSIS ERRORS ##########################################################
 
         # get list of json files
+        #TODO There should only be one of these....
         jsons = [my_file for my_file in os.listdir(os.path.join(dataset_dir, 'static_analysis'))
-                 if my_file.endswith('.json')]
-
-        for json_obj in jsons:
-            with open(os.path.join(dataset_dir, 'static_analysis', json_obj)) as json_file:
-                data = json.load(json_file)
-                if data['errors']:
-                    
-                    
-                    ()
-                    return {'current': 100, 'total': 100, 'status': ['Static analysis found errors in script.', data['errors']]}
+                 if my_file.endswith('.json')]    
                 
-
         ########## PARSING STATIC ANALYSIS ######################################################################
 
         # assemble a set of packages used and get system requirements
@@ -224,6 +218,8 @@ class r_lang_obj(language_interface):
             print(json_obj, file=sys.stderr)
             with open(os.path.join(dataset_dir, 'static_analysis', json_obj)) as json_file:
                 data = json.load(json_file)
+                if data['errors']:
+                    return {'current': 100, 'total': 100, 'status': ['Static analysis found errors in script.', data['errors']]}
                 for p in data['packages']:
                     used_packages.append(p)
                 sys_reqs = data['sys_deps']
@@ -233,17 +229,9 @@ class r_lang_obj(language_interface):
         return {"dir_name": dir_name, "docker_pkgs": used_packages, "sys_reqs": sys_reqs}
 
 
-    def build_docker_file(self, dir_name, docker_pkgs, sys_reqs, additional_info, code_btw, run_instr):
-        # Variable Information from containR needed for build process:
-        # dir_name is the dataset name 
-        # docker_pkgs is the packages required
-        # docker_file_dir is where the Dockerfile will be written to
-        # dataset_dir is a directory in the docker_file_dir named after the dataset.
-        # used_packages contains a list of tuples. Each tuple is a package AND its version
-        # current_user_id is the user's ID in the database
-        # name is what the user chose to be the name of the image, although their user name will be appended to the front
-
+    def build_docker_file(self, dir_name, docker_pkgs, additional_info, code_btw, run_instr):
         ext_pkgs = code_btw
+        sys_reqs = additional_info["sys_reqs"]
 
         # TODO: equivalent for install_instructions, is there a difference for R/Python?
         special_packages = None
@@ -254,11 +242,13 @@ class r_lang_obj(language_interface):
             special_packages = [special_install["packages"][key][0]
                             for key in special_install["packages"].keys()]
 
-
+        # We need a different way of adding run instuctions that doesn't modify a folder
+        # available to the whole program. 
+        '''
         with open('app/language_r/run_instr.txt', 'w+') as out:
             for instr in run_instr:
                 out.write(instr + '\n')
-
+        '''
 
         docker_wrk_dir = '/home/datasets/' + dir_name + '/'
         docker_file_dir = '/home/datasets/' + dir_name + '/data_set_content/'
@@ -286,10 +276,9 @@ class r_lang_obj(language_interface):
             # install system requirements
             sysinstall = "RUN export DEBIAN_FRONTEND=noninteractive; apt-get -y update && apt-get install -y "
             if(len(sys_reqs) != 0):
-                for req in sys_reqs:
-                    new_docker.write(sysinstall + req + '\n')
+                new_docker.write(sysinstall + ' '.join(sys_reqs) + '\n')
 
-            # perform any special installs
+            # perform any pre-specified installs
             if(special_install):
                 if("sys-libs" in special_install.keys()):
                     new_docker.write(sysinstall + ' '.join(special_install["sys-libs"]) + '\n')
@@ -310,81 +299,27 @@ class r_lang_obj(language_interface):
 
             # copy the new directory and change permissions
             print(dir_name)
-           # new_docker.write('ADD ' + dir_name + ' /home/datasets/' + dir_name + '\n')
 
-            new_docker.write('ADD data_set_content /home/datasets/' + dir_name + '\n')
-            new_docker.write('ADD data_set_content ' + docker_file_dir + '\n')
+            #Add the dataset to the container
+            new_docker.write('ADD data_set_content /home/rstudio/datasets/' + dir_name + '\n')
 
+            # These scripts will execute the analyses and collect provenance. Copy them to the 
+            # Dockerfile directory first since files copied to the image cannot be outside of it
             copy("app/language_r/get_prov_for_doi.sh", "instance/datasets/" + dir_name)
             copy("app/language_r/get_dataset_provenance.R", "instance/datasets/" + dir_name)
-           # new_docker.write('COPY get_prov_for_doi.sh \home/datasets/\n')
-            new_docker.write('COPY get_prov_for_doi.sh /home/datasets/\n')
-           # new_docker.write('COPY get_dataset_provenance.R /home/datasets/\n')
-            new_docker.write('COPY get_dataset_provenance.R /home/datasets/\n')
-           # new_docker.write('COPY .srcignore /home/rstudio/\n')
-            print(docker_home)
-            # new_docker.write('RUN chmod a+rwx -R /home/rstudio/' + dir_name + '\n')
-            new_docker.write('RUN chmod a+rwx -R /home/datasets/' + dir_name + '\n')
-           # new_docker.write("RUN /home/datasets/get_prov_for_doi.sh "
-            #                + "/home/datasets/" + dir_name + " /home/datasets/get_dataset_provenance.R\n")
-            new_docker.write('RUN /home/datasets/get_prov_for_doi.sh ' + docker_file_dir + ' ' + 'home/datasets/get_dataset_provenance.R' + '\n')                
+            new_docker.write('COPY get_prov_for_doi.sh /home/rstudio/datasets/\n')
+            new_docker.write('COPY get_dataset_provenance.R /home/rstudio/datasets/\n')
+
+            # Add permissions or the scripts will fail 
+            new_docker.write('RUN chmod a+rwx -R /home/rstudio/\n')
+
+            # Execute analysis and collect provenance
+            new_docker.write('RUN /home/rstudio/datasets/get_prov_for_doi.sh /home/rstudio/datasets/' + dir_name +\
+                 ' ' + '/home/rstudio/datasets/get_dataset_provenance.R' + '\n')   
+
+            # Collect installed package information for the report              
             new_docker.write("RUN R -e 'write(paste(as.data.frame(installed.packages(),"
                             + "stringsAsFactors = F)$Package, collapse =\"\\n\"), \"./listOfPackages.txt\")'\n")
-
-
-            # from pyPlace
-            # new_docker.write('WORKDIR /home/\n')
-            # new_docker.write('RUN git clone https://github.com/gems-uff/noworkflow.git\n')
-
-            # new_docker.write('WORKDIR /home/noworkflow/\n')
-            # new_docker.write('RUN git checkout 2.0-alpha\n')
-            # new_docker.write('RUN python' + str(python_ver) + ' -m pip install -e capture\n')
-            # # new_docker.write('WORKDIR /home/datasets/' + dir_name + '/\n')
-            # new_docker.write('WORKDIR ' + docker_wrk_dir + '\n')
-            # # new_docker.write('ADD data_set_content /home/datasets/' + dir_name + '\n')
-            # new_docker.write('ADD data_set_content ' + docker_file_dir + '\n')
-            # copy("app/language_python/get_dataset_provenance.py", "instance/datasets/" + dir_name)
-            # copy("app/language_python/Parser_py.py", "instance/datasets/" + dir_name)
-            # copy("app/language_python/ReportGenerator.py", "instance/datasets/" + dir_name)
-            # copy("app/language_python/cmd_line.py", "instance/datasets/" + dir_name)
-            # copy("app/language_python/run_instr.txt", "instance/datasets/" + dir_name)
-            # # shutil.copytree("app/language_python/noworkflow","instance/datasets/"+dir_name+"/noworkflow/")
-            # # new_docker.write('COPY get_dataset_provenance.py /home/datasets/\n')
-            # new_docker.write('COPY get_dataset_provenance.py ' + docker_home + '\n')
-            # # new_docker.write('COPY cmd_line.py /home/datasets/\n')
-            # # new_docker.write('COPY Parser_py.py /home/datasets/\n')
-            # # new_docker.write('COPY ReportGenerator.py /home/datasets/\n')
-
-            # new_docker.write('COPY cmd_line.py ' + docker_home + '\n')
-            # new_docker.write('COPY Parser_py.py ' + docker_home + '\n')
-            # new_docker.write('COPY ReportGenerator.py ' + docker_home + '\n')
-            # new_docker.write('COPY run_instr.txt ' + docker_file_dir + '\n')
-
-            # # new_docker.write('RUN chmod a+rwx -R /home/datasets/' + dir_name + '\n')
-            # new_docker.write('RUN chmod a+rwx -R ' + docker_wrk_dir + '\n')
-            # new_docker.write('WORKDIR ' + docker_file_dir + '\n')
-
-            # for mod in ext_pkgs:
-            #     new_docker.write("RUN " + mod + "\n")
-            # if docker_pkgs:
-            #     for module in docker_pkgs:
-            #         new_docker.write(self.build_docker_package_install(module))
-            # if(python_ver==2):
-            #     new_docker.write('RUN pip install pathlib\n')
-
-            # # new_docker.write("RUN pip list > /home/datasets/" + dir_name + "/listOfPackages.txt \n")
-            # new_docker.write("RUN pip list > " + docker_file_dir + "listOfPackages.txt \n")
-
-            # # new_docker.write("RUN python3 " \
-            # #                     + "/home/datasets/get_dataset_provenance.py" + " /home/datasets/" +
-            # #                     dir_name + "/ " + allinstr +"\n")
-            # # if(allinstr==""):
-            # #    new_docker.write("RUN echo \"\" > run_instr.txt\n")
-            # # else:
-            # #    new_docker.write("RUN echo -e \"" + allinstr + "\" > run_instr.txt \n")
-
-            # new_docker.write("RUN python" + str(python_ver) + " " \
-            #                  + docker_home + "get_dataset_provenance.py" + " " + docker_file_dir + "\n")
 
         return os.path.join(app.instance_path, 'datasets', dir_name)
     

@@ -144,24 +144,25 @@ def containrize():
         print(str(user_pkgs_total))
         # TODO: The backend function will be called here
         print("Language: " + form.language.data)
+        '''
         if form.language.data == "R":
             task = build_image.apply_async(kwargs={'data_folder': folder_name,
                                                    'current_user_id': current_user.id,
                                                    'name': form.name.data,
                                                    'preprocess': form.fix_code.data})
         else:
-
-            task = start_raas.apply_async(kwargs={'language': form.language.data,
-                                                  'data_folder': folder_name,
-                                                  'current_user_id': current_user.id,
-                                                  'name': form.name.data,
-                                                  'preprocess': form.fix_code.data,
-                                                  'user_pkgs': user_pkgs_total,
-                                                  'run_instr': allinstr,
-                                                  'sample_output': '',
-                                                  'code_btw': ext_pkgs,
-                                                  'prov': ''
-                                                  })
+        '''
+        task = start_raas.apply_async(kwargs={'language': form.language.data,
+                                                'data_folder': folder_name,
+                                                'current_user_id': current_user.id,
+                                                'name': form.name.data,
+                                                'preprocess': form.fix_code.data,
+                                                'user_pkgs': user_pkgs_total,
+                                                'run_instr': allinstr,
+                                                'sample_output': '',
+                                                'code_btw': ext_pkgs,
+                                                'prov': ''
+                                                })
 
         session['task_id'] = task.id
         return redirect(url_for('build_status'))
