@@ -1,6 +1,9 @@
 {% extends "base.html" %}
-
+<style>
+.logo image{position: absolute }
+</style>
 {% block app_content %}
+    <img id="logo" src="../static/RAASNewLogo.png" alt="RAAS" width="7%" align="right" >
     <h1 class="text-primary">Hi, {{ current_user.username }}!</h1>
     <h3 class="text-muted">Your Docker Images</h3> 
     <table class="table table-striped table-hover">
