@@ -3,7 +3,7 @@ __pycache__/*.pyc
 app/__pycache__/*.pyc
 migrations/__pycache__/*.pyc
 migrations/versions/__pycache__/*.pyc
-.vscode
+.vscode/
 app.db
 instance
 .Rhistory
