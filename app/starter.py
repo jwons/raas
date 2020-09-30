@@ -38,7 +38,6 @@ def start_raas(self, language, current_user_id, name, preprocess, dataverse_key=
         docker_file_dir = language_obj.build_docker_file(dir_name, docker_pkgs, after_analysis, code_btw, run_instr)
         self.update_state(state='PROGRESS', meta={'current': 4, 'total': 10,
                                                   'status': 'Building Docker image... '})
-        rdb.set_trace()
         language_obj.build_docker_img(docker_file_dir, current_user_id, name)
         self.update_state(state='PROGRESS', meta={'current': 7, 'total': 10,
                                                   'status': 'Collecting container environment information... '})
