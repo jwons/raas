@@ -187,18 +187,20 @@ class py_lang(language_interface):
     def build_docker_file(self, dir_name, docker_pkgs, additional_info, code_btw, run_instr):
 
         ext_pkgs = code_btw
-
-        with open('app/language_python/run_instr.txt', 'w+') as out:
-            for instr in run_instr:
-                out.write(instr + '\n')
-
-        docker_wrk_dir = '/home/datasets/' + dir_name + '/'
-        docker_file_dir = '/home/datasets/' + dir_name + '/data_set_content/'
-        docker_home = '/home/datasets/' + dir_name + '/'
+        
         try:
             os.makedirs(os.path.join(app.instance_path, 'datasets', dir_name, 'data_set_content'))
         except:
             pass
+
+        docker_wrk_dir = '/home/datasets/' + dir_name + '/'
+        docker_file_dir = '/home/datasets/' + dir_name + '/data_set_content/'
+        docker_home = '/home/datasets/' + dir_name + '/'
+        
+        with open('instance/datasets/'+dir_name+'/run_instr.txt', 'w+') as out:
+            for instr in run_instr:
+                out.write(instr + '\n')
+        
         with open(os.path.join(app.instance_path, 'datasets', dir_name, 'Dockerfile'), 'w+') as new_docker:
 
             if additional_info["is_python_2"]:
@@ -222,7 +224,7 @@ class py_lang(language_interface):
             copy("app/language_python/Parser_py.py", "instance/datasets/" + dir_name)
             copy("app/language_python/ReportGenerator.py", "instance/datasets/" + dir_name)
             copy("app/language_python/cmd_line.py", "instance/datasets/" + dir_name)
-            copy("app/language_python/run_instr.txt", "instance/datasets/" + dir_name)
+            # copy("app/language_python/run_instr.txt", "instance/datasets/" + dir_name)
             # shutil.copytree("app/language_python/noworkflow","instance/datasets/"+dir_name+"/noworkflow/")
             # new_docker.write('COPY get_dataset_provenance.py /home/datasets/\n')
             new_docker.write('COPY get_dataset_provenance.py ' + docker_home + '\n')
