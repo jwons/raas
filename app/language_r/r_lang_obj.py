@@ -351,6 +351,7 @@ class r_lang(language_interface):
 
         # Each json file will represent one execution so we need to grab the information from each.
         # Begin populating the report with information from the analysis and scripts
+        #TODO is this the same thing twice?
         container_packages = []
         for json_file in json_files:
             if(json_file == ''):
