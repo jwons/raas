@@ -272,14 +272,25 @@ install_and_load <- function(x, ...){
 					outfile.write(line)
 				else:
 					# replace "library" calls
-					library_replace = re.sub("library\s*\(\"?([^\"]*)\"?\)",
-											 "install_and_load(\"\\1\")", line)
+					if(re.search("library\s*\(\"?([^\"]*)\"?\)",line) is not None):
+						library_replace = re.sub("library\s*\(\"?([^\"]*)\"?\)",
+											 "install_and_load(\"\\1\")", line).replace(" ", "")
+					else:
+						library_replace = line
+
 					# replace "require" calls
-					require_replace = re.sub("require\s*\(\"?([^\"]*)\"?\)",
-											 "install_and_load(\"\\1\")", library_replace)
+					if(re.search("require\s*\(\"?([^\"]*)\"?\)", library_replace) is not None):
+						require_replace = re.sub("require\s*\(\"?([^\"]*)\"?\)",
+											 "install_and_load(\"\\1\")", library_replace).replace(" ", "")
+					else:
+						require_replace = library_replace
+
 					# replace "install.packages" calls
-					install_replace = re.sub("install.packages\s*\(\"?([^\"]*)\"?\)",
-											 "install_and_load(\"\\1\")", require_replace)
+					if(re.search("install.packages\s*\(\"?([^\"]*)\"?\)", require_replace) is not None):
+						install_replace = re.sub("install.packages\s*\(\"?([^\"]*)\"?\)",
+											 "install_and_load(\"\\1\")", require_replace).replace(" ", "")
+					else:
+						install_replace = require_replace
 					# write the preprocessed result
 					outfile.write(install_replace)
 					# if the line clears the environment, re-declare "install_and_load" immediately after
@@ -320,7 +331,7 @@ def preprocess_file_paths(r_file, script_dir, from_preproc=False, report_missing
 	# path to temp file, named with suffix "_temp"
 	file_to_copy = script_dir + "/" + filename + "_temp" + ".R"
 	# path to write missing files to
-	report_path = script_dir + "/prov_data/missing_files.txt" 
+	report_path = script_dir + "/missing_files.txt" 
 	# if file has already been preprocessed, create _temp file to copy from
 	if from_preproc:
 		try:

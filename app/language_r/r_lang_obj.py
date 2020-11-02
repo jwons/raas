@@ -7,12 +7,16 @@ import subprocess
 import sys
 import json
 import docker
+import re
+
+from glob import glob
 
 from app import app, db
 
 from app.language_interface import language_interface
 from app.Parse import Parser as ProvParser
 from app.models import User
+from app.preproc_helpers import all_preproc
 from shutil import copy
 
 #Debugging
@@ -154,6 +158,7 @@ class r_lang(language_interface):
 
             # find name of unzipped directory
             dataset_dir = os.path.join(app.instance_path, 'datasets', dir_name)
+            unzip_name = os.path.join(dataset_dir, "data_set_content", os.listdir(os.path.join(dataset_dir, "data_set_content"))[0])
             doi = dir_name
 
         else:
@@ -197,12 +202,33 @@ class r_lang(language_interface):
         #                                                            'There was a problem downloading your data from ' +
         #                                                            'Dataverse. Please make sure the DOI is correct.']]]}
 
+        ########## Preprocessing ######################################################################
+        src_ignore = []
+        if(preprocess):
+            r_files = [y for x in os.walk(os.path.join(unzip_name)) for y in glob(os.path.join(x[0], '*.R'))]
+
+            if not os.path.exists(os.path.join(unzip_name, "__original_scripts__")):
+                os.makedirs(os.path.join(unzip_name, "__original_scripts__"))
+        
+            for r_file in r_files:
+                r_file = os.path.split(r_file)
+                all_preproc(r_file[1], r_file[0])
+                copy(os.path.join(r_file[0], r_file[1]), os.path.join(unzip_name, "__original_scripts__", r_file[1]))
+                src_ignore.append(os.path.join("/__original_scripts__", r_file[1]))
+                os.remove(os.path.join(r_file[0], r_file[1]))
+        
+            pre_files = [y for x in os.walk(os.path.join(unzip_name)) for y in glob(os.path.join(x[0], '*__preproc__.R'))]
+            
+            for pre_file in pre_files:
+                pre_file = os.path.split(pre_file)
+                filename = re.split('\__preproc__.[rR]$', pre_file[1])[0]
+                os.rename(os.path.join(pre_file[0], pre_file[1]), os.path.join(pre_file[0], filename + ".R"))
         ########## RUNNING STATIC ANALYSIS ######################################################################
         subprocess.run(['bash', 'app/language_r/static_analysis.sh',
                         dataset_dir, "app/language_r/static_analysis.R"])
 
-        ########## CHECKING FOR STATIC ANALYSIS ERRORS ##########################################################
 
+        ########## CHECKING FOR STATIC ANALYSIS ERRORS ##########################################################
         # get list of json files
         #TODO There should only be one of these....
         jsons = [my_file for my_file in os.listdir(os.path.join(dataset_dir, 'static_analysis'))
@@ -223,15 +249,16 @@ class r_lang(language_interface):
                 for p in data['packages']:
                     used_packages.append(p)
                 sys_reqs = data['sys_deps']
-
+        sys_reqs.append("libjpeg-dev")
         print(used_packages, file=sys.stderr)
 
-        return {"dir_name": dir_name, "docker_pkgs": used_packages, "sys_reqs": sys_reqs}
+        return {"dir_name": dir_name, "docker_pkgs": used_packages, "sys_reqs": sys_reqs, "src_ignore" : src_ignore}
 
 
     def build_docker_file(self, dir_name, docker_pkgs, additional_info, code_btw, run_instr):
         ext_pkgs = code_btw
         sys_reqs = additional_info["sys_reqs"]
+        src_ignore = additional_info["src_ignore"]
 
         # TODO: equivalent for install_instructions, is there a difference for R/Python?
         special_packages = None
@@ -241,6 +268,7 @@ class r_lang(language_interface):
             special_install = json.loads(install_instructions)
             special_packages = [special_install["packages"][key][0]
                             for key in special_install["packages"].keys()]
+
 
         # We need a different way of adding run instuctions that doesn't modify a folder
         # available to the whole program. 
@@ -264,10 +292,17 @@ class r_lang(language_interface):
             pass
 
         docker_file_dir = os.path.join(app.instance_path, 'datasets', dir_name)
+            
         try:
             os.makedirs(docker_file_dir)
         except:
             pass
+        
+        if(len(src_ignore) > 0):
+            with open(os.path.join(docker_file_dir, '.srcignore'), 'w') as src_ignore_file:
+                for line in src_ignore:
+                    src_ignore_file.write(line + "\n")
+                src_ignore_file.write('\n')
 
         with open(os.path.join(docker_file_dir, 'Dockerfile'), 'w') as new_docker:
       #  with open(os.path.join(app.instance_path, 'datasets', dir_name, 'Dockerfile'), 'w+') as new_docker:
@@ -309,18 +344,21 @@ class r_lang(language_interface):
             copy("app/language_r/get_dataset_provenance.R", "instance/datasets/" + dir_name)
             new_docker.write('COPY get_prov_for_doi.sh /home/rstudio/datasets/\n')
             new_docker.write('COPY get_dataset_provenance.R /home/rstudio/datasets/\n')
+            if(len(src_ignore) > 0):
+                new_docker.write('COPY .srcignore /home/rstudio/\n')
 
             # Add permissions or the scripts will fail 
             new_docker.write('RUN chmod a+rwx -R /home/rstudio/\n')
 
             # Execute analysis and collect provenance
             new_docker.write('RUN /home/rstudio/datasets/get_prov_for_doi.sh /home/rstudio/datasets/' + dir_name +\
-                 ' ' + '/home/rstudio/datasets/get_dataset_provenance.R' + '\n')   
+                '/' + os.listdir(os.path.join(app.instance_path, 'datasets', dir_name, "data_set_content"))[0] + \
+                    ' ' + '/home/rstudio/datasets/get_dataset_provenance.R' + '\n')   
 
             # Collect installed package information for the report              
             new_docker.write("RUN R -e 'write(paste(as.data.frame(installed.packages(),"
                             + "stringsAsFactors = F)$Package, collapse =\"\\n\"), \"./listOfPackages.txt\")'\n")
-
+        rdb.set_trace()
         return os.path.join(app.instance_path, 'datasets', dir_name)
     
     def create_report(self, current_user_id, name, dir_name):
