@@ -98,16 +98,18 @@ for (r_file in r_files) {
 }
 
 missing.lists = list.files(".", pattern="missing_files.txt", recursive=TRUE, full.names=FALSE)
+if(length(missing.lists) > 0){
+	missing.files <- data.frame()
 
-missing.files <- data.frame()
-
-for(missing.list in missing.lists){
-  missing.table <- read.csv(missing.list, header = F)
-  missing.table$V1 <- file.path(dirname(missing.list), missing.table$V1)
-  missing.files <- rbind(missing.files, missing.table)
+	for(missing.list in missing.lists){
+	  missing.table <- read.csv(missing.list, header = F)
+	  missing.table$V1 <- file.path(dirname(missing.list), missing.table$V1)
+	  missing.files <- rbind(missing.files, missing.table)
+	}
+	colnames(missing.files) <- c("Script Name", "Missing File")
+	write.csv(x = missing.files, file =  "../../../missing_files.csv", row.names = F)
 }
-colnames(missing.files) <- c("Script Name", "Missing File")
-write.csv(x = missing.files, file =  "../../../missing_files.csv", row.names = F)
+
 
 # We will also need the system requirements from these packages to install in 
 # in the container. This is accomplished by finding all packages (recursively)

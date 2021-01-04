@@ -176,7 +176,7 @@ def preprocess_setwd(r_file, script_dir, from_preproc=False):
 	# wipe the preprocessed file and open it for writing
 	with open(preproc_path, 'w') as outfile:
 		# write code from .R file, replacing function calls as necessary
-		with open(file_to_copy, 'r') as infile:
+		with open(file_to_copy, 'r', errors='replace') as infile:
 			for line in infile.readlines():
 				# ignore commented lines
 				if re.match("^#", line):
@@ -265,7 +265,7 @@ install_and_load <- function(x, ...){
 		# 	outfile.write("\n")
 		outfile.write(install_and_load)
 		# write code from .R file, replacing function calls as necessary
-		with open(file_to_copy, 'r') as infile:
+		with open(file_to_copy, 'r', errors='replace') as infile:
 			for line in infile.readlines():
 				# ignore commented lines
 				if re.match("^#", line):
@@ -346,7 +346,7 @@ def preprocess_file_paths(r_file, script_dir, from_preproc=False, report_missing
 	# wipe the preprocessed file and open it for writing
 	with open(preproc_path, 'w') as outfile:
 		# write code from .R file, replacing function calls as necessary
-		with open(file_to_copy, 'r') as infile:
+		with open(file_to_copy, 'r', errors='replace') as infile:
 			for line in infile.readlines():
 				# if not a commented line
 				if not re.match('^#', line):
@@ -410,7 +410,7 @@ def preprocess_source(r_file, script_dir, from_preproc=False):
 	# wipe the preprocessed file and open it for writing
 	with open(preproc_path, 'w') as outfile:
 		# write code from .R file, replacing function calls as necessary
-		with open(file_to_copy, 'r') as infile:
+		with open(file_to_copy, 'r', errors='replace') as infile:
 			for line in infile.readlines():
 				# if not a commented line
 				if not re.match('^#', line):

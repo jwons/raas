@@ -140,16 +140,35 @@ libs = character()
 warnings = character()
 errors = character()
 
+print("Starting script linting")
+
 # save packages and lints from each .R file
 for (r_file in r_files) {
-  libs <- unique(c(identify_packages(r_file), libs, 'rdtLite'))
-  lints <- lint_file(r_file)
-
-  new_warnings <- lints$warnings
-  new_errors <- lints$errors
-
-  warnings <- append(warnings, new_warnings)
-  errors <- c(errors, new_errors)
+  # Collect libraries
+  libs <- tryCatch(expr = {
+    unique(c(identify_packages(r_file), libs, 'rdtLite'))
+  }, error = function(cond){
+    print(c(r_file, "Failed on Library"))
+    libs
+  })
+  
+  # Lint Files
+  lints <- tryCatch(expr = {
+    lint_file(r_file) 
+  }, error = function(cond){
+    print(c(r_file, "Failed on Lint"))
+    NA
+  })
+  
+  # only collect lints if no errors
+  if(!is.na(lints[1])){
+    new_warnings <- lints$warnings
+    new_errors <- lints$errors
+    
+    warnings <- append(warnings, new_warnings)
+    errors <- c(errors, new_errors)
+  }
+  
 }
 
 # get package dependencies

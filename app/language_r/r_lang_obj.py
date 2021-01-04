@@ -73,8 +73,8 @@ class r_lang(language_interface):
         ----------
         package : string
         """
-        return 'RUN R -e \"require(\'devtools\');install.packages(\'' +\
-            package + '\', repos=\'http://cran.rstudio.com\')\"\n'
+        return 'install.packages(\'' + \
+            package + '\', repos=\'http://cran.rstudio.com\') \n'
 
     def download_dataset(self, doi, destination, dataverse_key,
                          api_url="https://dataverse.harvard.edu/api/"):
@@ -147,6 +147,9 @@ class r_lang(language_interface):
         return True
 
     def script_analysis(self, preprocess, dataverse_key='', doi='', data_folder='', run_instr='', user_pkg=''):
+        # This variable controls whether or not the container is built despite the existence
+        # of errors detected in the script
+        eval = True
         if data_folder:  
             # if a set of scripts have been uploaded then its converted to a normal zip file format (ie. zip a folder)
             # zip_path = os.path.join(app.instance_path, 'datasets',
@@ -244,8 +247,9 @@ class r_lang(language_interface):
             print(json_obj, file=sys.stderr)
             with open(os.path.join(dataset_dir, 'static_analysis', json_obj)) as json_file:
                 data = json.load(json_file)
-                if data['errors']:
-                    return {'current': 100, 'total': 100, 'status': ['Static analysis found errors in script.', data['errors']]}
+                if(not eval):
+                    if data['errors']:
+                        return {'current': 100, 'total': 100, 'status': ['Static analysis found errors in script.', data['errors']]}
                 for p in data['packages']:
                     used_packages.append(p)
                 sys_reqs = data['sys_deps']
@@ -303,6 +307,24 @@ class r_lang(language_interface):
                 for line in src_ignore:
                     src_ignore_file.write(line + "\n")
                 src_ignore_file.write('\n')
+        
+        with open(os.path.join(docker_file_dir, 'install__packages.R'), 'w') as install_packs:
+            install_packs.write('require(\'devtools\')\n')
+            # perform any pre-specified installs
+            if special_packages:
+                for key in special_install["packages"].keys():
+                    instruction = special_install["packages"][key][1] + '"\n'
+                    install_packs.write(instruction)
+
+            # install packages
+            docker_packages = list(set(docker_pkgs))
+            if docker_packages:
+                for package in docker_packages:
+                    if(special_packages and (package not in special_packages)):
+                        install_packs.write(self.build_docker_package_install_no_version(package))
+                    if(special_packages is None):
+                        install_packs.write(self.build_docker_package_install_no_version(package))
+
 
         with open(os.path.join(docker_file_dir, 'Dockerfile'), 'w') as new_docker:
       #  with open(os.path.join(app.instance_path, 'datasets', dir_name, 'Dockerfile'), 'w+') as new_docker:
@@ -317,6 +339,7 @@ class r_lang(language_interface):
             if(special_install):
                 if("sys-libs" in special_install.keys()):
                     new_docker.write(sysinstall + ' '.join(special_install["sys-libs"]) + '\n')
+            '''
             if special_packages:
                 for key in special_install["packages"].keys():
                     instruction = 'RUN R -e \"require(\'devtools\');' + \
@@ -331,10 +354,16 @@ class r_lang(language_interface):
                         new_docker.write(self.build_docker_package_install_no_version(package))
                     if(special_packages is None):
                         new_docker.write(self.build_docker_package_install_no_version(package))
+            '''
+            
 
             # copy the new directory and change permissions
             print(dir_name)
 
+            # Install libraries
+            new_docker.write('COPY install__packages.R /home/rstudio/\n')
+            new_docker.write('RUN Rscript /home/rstudio/install__packages.R\n')
+            
             #Add the dataset to the container
             new_docker.write('ADD data_set_content /home/rstudio/datasets/' + dir_name + '\n')
 
