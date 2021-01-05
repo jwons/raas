@@ -142,7 +142,7 @@ def containrize():
                 ext_pkgs.append(pkg['code'])
         user_pkgs_total = str({"pkg": user_pkgs_list}).replace('\'', '\"')
         print(str(user_pkgs_total))
-        # TODO: The backend function will be called here
+
         print("Language: " + form.language.data)
         '''
         if form.language.data == "R":
@@ -307,9 +307,12 @@ def api_build():
     user_id = 1
     name = ''
     preprocess = False
-    dataverse_key = ''
     doi = ''
     zip_file = ''
+    language = request.args['language']
+    runinstr =''
+    ext_pkgs = ''
+
 
     if 'userID' in request.args:
         user_id = int(request.args['userID'])
@@ -320,21 +323,18 @@ def api_build():
     if 'preprocess' in request.args:
         preprocess = bool(int(request.args['preprocess']))
 
-    if 'dataverse_key' in request.args:
-        dataverse_key = request.args['dataverse_key']
-
     if 'doi' in request.args:
         doi = request.args['doi']
 
     if 'zipFile' in request.args:
         zip_file = request.args['zipFile']
 
-    if doi != '':
-        task = build_image.apply_async(kwargs={'current_user_id': user_id,
-                                               'doi': doi,
-                                               'name': name,
-                                               'preprocess': preprocess,
-                                               'dataverse_key': os.environ.get('DATAVERSE_KEY')})
+    if 'runinstr' in request.args:
+        runinstr = request.args['runinstr']
+    
+    if 'ext_pkgs' in request.args:
+        ext_pkgs = request.args['ext_pkgs']
+
     else:
         # create directories if they don't exists yet
         if not os.path.exists(app.instance_path):
@@ -343,11 +343,18 @@ def api_build():
             os.makedirs(os.path.join(app.instance_path, 'datasets'))
         # save the .zip file to the correct location
         zip_base = os.path.basename(zip_file)
-        copyfile(os.path.join(app.instance_path, 'datasets', zip_base), zip_file)
+        with zipfile.ZipFile(zip_file, 'r') as zip_ref:
+            zip_ref.extractall(os.path.join(app.instance_path, 'datasets', name, "data_set_content", "datasets"))
+        #copyfile(zip_file, os.path.join(app.instance_path, 'datasets', zip_base))
 
-        task = build_image.apply_async(kwargs={'zip_file': zip_base,
-                                               'current_user_id': user_id,
-                                               'name': name,
-                                               'preprocess': preprocess})
+        task = start_raas.apply_async(kwargs={'language': language,
+                                                'data_folder': name,
+                                                'current_user_id': user_id,
+                                                'name': name,
+                                                'preprocess': preprocess,
+                                                'user_pkgs': [],
+                                                'run_instr': runinstr,
+                                                'prov': ''
+                                                })
 
     return ("True")

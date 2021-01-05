@@ -387,7 +387,6 @@ class r_lang(language_interface):
             # Collect installed package information for the report              
             new_docker.write("RUN R -e 'write(paste(as.data.frame(installed.packages(),"
                             + "stringsAsFactors = F)$Package, collapse =\"\\n\"), \"./listOfPackages.txt\")'\n")
-        rdb.set_trace()
         return os.path.join(app.instance_path, 'datasets', dir_name)
     
     def create_report(self, current_user_id, name, dir_name):

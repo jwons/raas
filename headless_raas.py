@@ -18,6 +18,9 @@ parser.add_argument('--doi', type=str, help=\
 parser.add_argument('--zip', type=str, help=\
     'A filepath to a zip file that contains scripts and data')
 
+parser.add_argument('--lang', type=str, help=\
+    'Which language the code is in, options are R and Python')
+
 parser.add_argument('--port', type=str, default="5000", help=\
     'The port number containR is running on, by default 5000')    
 
@@ -39,7 +42,7 @@ else:
     print("Provide at least a zip or doi")
     quit()
 
-request = request + "name=" + args.name
+request = request + "name=" + args.name + "&language=" + args.lang
 
 print(request)
 
