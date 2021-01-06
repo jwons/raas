@@ -73,8 +73,15 @@ class r_lang(language_interface):
         ----------
         package : string
         """
+        return 'if(!(\'' + package + '\'' \
+		'%in% rownames(installed.packages()))){install.packages(\'' + package + '\')}\n' + \
+        'if(!(\'' + package + '\'' \
+		'%in% rownames(installed.packages()))){BiocManager::install(\'' + package + '\', update = F)}\n'
+
+        '''
         return 'install.packages(\'' + \
             package + '\', repos=\'http://cran.rstudio.com\') \n'
+        '''
 
     def download_dataset(self, doi, destination, dataverse_key,
                          api_url="https://dataverse.harvard.edu/api/"):
@@ -310,6 +317,7 @@ class r_lang(language_interface):
         
         with open(os.path.join(docker_file_dir, 'install__packages.R'), 'w') as install_packs:
             install_packs.write('require(\'devtools\')\n')
+            install_packs.write('require(\'BiocManager\')\n')
             # perform any pre-specified installs
             if special_packages:
                 for key in special_install["packages"].keys():
@@ -371,8 +379,10 @@ class r_lang(language_interface):
             # Dockerfile directory first since files copied to the image cannot be outside of it
             copy("app/language_r/get_prov_for_doi.sh", "instance/datasets/" + dir_name)
             copy("app/language_r/get_dataset_provenance.R", "instance/datasets/" + dir_name)
+            copy("app/language_r/create_report.R", "instance/datasets/" + dir_name)
             new_docker.write('COPY get_prov_for_doi.sh /home/rstudio/datasets/\n')
             new_docker.write('COPY get_dataset_provenance.R /home/rstudio/datasets/\n')
+            new_docker.write('COPY create_report.R /home/rstudio/datasets/\n')
             if(len(src_ignore) > 0):
                 new_docker.write('COPY .srcignore /home/rstudio/\n')
 
@@ -385,8 +395,7 @@ class r_lang(language_interface):
                     ' ' + '/home/rstudio/datasets/get_dataset_provenance.R' + '\n')   
 
             # Collect installed package information for the report              
-            new_docker.write("RUN R -e 'write(paste(as.data.frame(installed.packages(),"
-                            + "stringsAsFactors = F)$Package, collapse =\"\\n\"), \"./listOfPackages.txt\")'\n")
+            new_docker.write("RUN Rscript /home/rstudio/datasets/create_report.R")
         return os.path.join(app.instance_path, 'datasets', dir_name)
     
     def create_report(self, current_user_id, name, dir_name):
@@ -394,80 +403,22 @@ class r_lang(language_interface):
         ########## Generate Report About Build Process ##########################################################
         # The report will have various information from the creation of the container
         # for the user
-        report = {}
-        report["Container Report"] = {}
-        report["Individual Scripts"] = {}
 
+        # Reconstruct image name from user info
         client = docker.from_env()
         current_user_obj = User.query.get(current_user_id)
-        # image_name = ''.join(random.choice(string.ascii_lowercase) for _ in range(5))
+
         image_name = current_user_obj.username + '-' + name
         repo_name = os.environ.get('DOCKER_REPO') + '/'
 
-        # There is provenance and other information from the analyses in the container.
-        # to get it we need to run the container
+        # to get report we need to run the container
         container = client.containers.run(image=repo_name + image_name,
                                         environment=["PASSWORD=" + repo_name + image_name], detach=True)
 
         # Grab the files from inside the container and the filter to just JSON files
-        json_files = container.exec_run("find /home/datasets/" + self.doi_to_directory(
-            dir_name) + "/prov_data -name prov.json")[1].decode().split("\n")
-
-        print(json_files)
-
-        # Each json file will represent one execution so we need to grab the information from each.
-        # Begin populating the report with information from the analysis and scripts
-        #TODO is this the same thing twice?
-        container_packages = []
-        for json_file in json_files:
-            if(json_file == ''):
-                continue
-            report["Individual Scripts"][json_file] = {}
-            prov_from_container = container.exec_run("cat " + json_file)[1].decode()
-            prov_from_container = ProvParser(prov_from_container, isFile=False)
-            container_packages += get_pkgs_from_prov_json(prov_from_container)
-            report["Individual Scripts"][json_file]["Input Files"] = list(
-                set(prov_from_container.getInputFiles()["name"].values.tolist()))
-            report["Individual Scripts"][json_file]["Output Files"] = list(
-                set(prov_from_container.getOutputFiles()["name"].values.tolist()))
-            dataNodes = prov_from_container.getDataNodes()
-            dataNodes = dataNodes.loc[dataNodes["type"] == "Exception"]
-            dataNodes = dataNodes.loc[dataNodes["name"] == "warning.msg"]
-            report["Individual Scripts"][json_file]["Warnings"] = dataNodes["value"].values.tolist()
-            for json_file in json_files:
-                if(json_file == ''):
-                    continue
-                report["Individual Scripts"][json_file] = {}
-            prov_from_container = container.exec_run(
-                "cat " + json_file)[1].decode()
-            prov_from_container = ProvParser(prov_from_container, isFile=False)
-            container_packages += get_pkgs_from_prov_json(prov_from_container)
-            report["Individual Scripts"][json_file]["Input Files"] = list(
-                set(prov_from_container.getInputFiles()["name"].values.tolist()))
-            report["Individual Scripts"][json_file]["Output Files"] = list(
-                set(prov_from_container.getOutputFiles()["name"].values.tolist()))
-            dataNodes = prov_from_container.getDataNodes()
-            dataNodes = dataNodes.loc[dataNodes["type"] == "Exception"]
-            dataNodes = dataNodes.loc[dataNodes["name"] == "warning.msg"]
-            report["Individual Scripts"][json_file]["Warnings"] = dataNodes["value"].values.tolist()
-
-        # There should be a file written to the container's system that
-        # lists the installed packages from when the analyses were run
-        installed_packages = container.exec_run("cat listOfPackages.txt")[
-        1].decode().split("\n")
-
-        # The run log will show us any errors in execution
-        # this will be used after report generation to check for errors when the script was
-        # run inside the container
-        run_log_path_in_container = "/home/datasets/" + \
-            doi_to_directory(doi) + "/prov_data/run_log.csv"
-        run_log_from_container = container.exec_run("cat " + run_log_path_in_container)
+        report = json.loads(container.exec_run("cat /home/rstudio/report.json")[1].decode())
 
         # information from the container is no longer needed
         container.kill()
 
-        # Finish out report generation
-        report["Container Report"]["Installed Packages"] = installed_packages
-        # [list(package_pair) for package_pair in container_packages]
-        report["Container Report"]["Packages Called In Analysis"] = container_packages
-        report["Container Report"]["System Dependencies Installed"] = sysreqs[0].split(" ")
+        return(report)

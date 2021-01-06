@@ -43,7 +43,7 @@ class language_interface(object):
         current_user_obj = User.query.get(current_user_id)
         image_name = current_user_obj.username + '-' + name
         repo_name = os.environ.get('DOCKER_REPO') + '/'
-        print(self.client.images.push(repository=repo_name + image_name), file=sys.stderr)
+        #print(self.client.images.push(repository=repo_name + image_name), file=sys.stderr)
 
         ########## UPDATING DB ######################################################################
 
