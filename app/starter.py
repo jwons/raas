@@ -9,7 +9,7 @@ from app import app
 from celery.contrib import rdb
 
 def write_log(log_message, name):
-    with open(os.path.join('logs', name +".log"), "w+") as log_file:
+    with open(os.path.join('logs', name +".log"), "a+") as log_file:
         log_file.write(log_message)
 
 @celery.task(bind=True)
@@ -65,5 +65,5 @@ def start_raas(self, language, current_user_id, name, preprocess, dataverse_key=
                 'status': 'RAAS has finished! Your new image is accessible from the home page.',
                 'result': 42, 'errors': 'No errors!'}
     except:
-        # language_obj.clean_up_datasets(data_folder)
+        language_obj.clean_up_datasets()
         raise

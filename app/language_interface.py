@@ -1,9 +1,12 @@
 import shutil
 import sys
 from abc import abstractmethod, ABCMeta
+from io import BytesIO
+from docker import APIClient
 import docker
 import os
 from app import db, app
+import json
 
 from app.models import User, Dataset
 
@@ -11,7 +14,6 @@ from app.models import User, Dataset
 
 
 class language_interface(object):
-    client = docker.from_env()
     __metaclass__ = ABCMeta
 
     @abstractmethod
@@ -29,14 +31,23 @@ class language_interface(object):
     def build_docker_img(self, docker_file_dir, current_user_id, name):
         # create docker client instance
 
+
         # build a docker image using docker file
-        self.client.login(os.environ.get('DOCKER_USERNAME'), os.environ.get('DOCKER_PASSWORD'))
+        #self.client.login(os.environ.get('DOCKER_USERNAME'), os.environ.get('DOCKER_PASSWORD'))
         # name for docker image
         current_user_obj = User.query.get(current_user_id)
-        # image_name = ''.join(random.choice(string.ascii_lowercase) for _ in range(5))
         image_name = current_user_obj.username + '-' + name
         repo_name = os.environ.get('DOCKER_REPO') + '/'
+        '''
         self.client.images.build(path=docker_file_dir, tag=repo_name + image_name)
+        '''
+        client = docker.APIClient(base_url='unix://var/run/docker.sock')
+        generator = client.build(path=docker_file_dir, tag=repo_name + image_name)
+
+        for chunk in generator:
+            if 'stream' in chunk.decode():
+                for line in json.loads(chunk.decode())["stream"].splitlines():
+                    print(line)
 
         ########## PUSHING IMG ######################################################################
     def push_docker_img(self, dir_name,current_user_id, name, report):

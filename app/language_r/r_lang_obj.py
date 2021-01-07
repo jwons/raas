@@ -417,6 +417,7 @@ class r_lang(language_interface):
 
         # Grab the files from inside the container and the filter to just JSON files
         report = json.loads(container.exec_run("cat /home/rstudio/report.json")[1].decode())
+        report["Container Name"] = repo_name + image_name
 
         # information from the container is no longer needed
         container.kill()

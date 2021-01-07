@@ -356,5 +356,6 @@ def api_build():
                                                 'run_instr': runinstr,
                                                 'prov': ''
                                                 })
-
-    return ("True")
+        session['task_id'] = task.id
+    taskinfo = {"task_id" : task.id}
+    return (jsonify(taskinfo))
