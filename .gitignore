@@ -13,4 +13,4 @@ migrations/__pycache__
 migrations/versions/__pycache__
 .idea/
 venv/
-logs/*.log
+logs/
