@@ -32,7 +32,7 @@ def headless_raas(name, lang, user = 1, preproc = "0", doi = "", zip_path = "", 
         if(task_status["current"] == 10):
             print("Build Complete")
             break
-        if(task_status["state"] != "PROGRESS"):
+        if(task_status["state"] == "FAILURE"):
             print("Build probably failed moving on")
             break
         time.sleep(5)
