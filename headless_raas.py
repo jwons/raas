@@ -2,7 +2,46 @@ import argparse
 import requests
 import time
 
-def headless_raas():
+
+
+def headless_raas(name, lang, user = 1, preproc = "0", doi = "", zip_path = "", port = "5000" ):
+    
+    if(doi == "" and zip_path == ""):
+        print("Must supply either zip or doi")
+        return(False)
+
+    request = "http://127.0.0.1:" + port + "/api/build_image?preprocess=" +\
+         preproc + "&userID=" + str(user) + "&name=" + name + "&language=" + lang
+
+    
+    if(zip_path is not ""):
+        request = request + "&zipFile=" + zip_path
+    else:
+        request = request + "&doi=" + doi
+
+    print(request)
+
+    result = requests.get(request)
+    task_id = result.json()["task_id"]
+
+    status_request = "http://127.0.0.1:" + port + "/status/" + task_id
+
+    while(True):
+        task_status = requests.get(status_request).json()
+        print(task_status)
+        if(task_status["current"] == 10):
+            print("Build Complete")
+            break
+        if(task_status["state"] != "PROGRESS"):
+            print("Build probably failed moving on")
+            break
+        time.sleep(5)
+
+    print(result.json())
+
+    return (True)
+
+if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='A command-line interface to containR\'s web API.')
 
     parser.add_argument('--name', type=str, required=True, help=\
@@ -27,46 +66,19 @@ def headless_raas():
         'The port number containR is running on, by default 5000')    
 
     args = parser.parse_args()
-    dataverse_key=''
+
     to_pre = "0"
-    if not args.name:
-        print("You must provide a name")
-        quit()
+    req_doi = None
+    req_zip = None
+
     if args.preprocess == True:
         to_pre = "1"
-    request = "http://127.0.0.1:" + args.port + "/api/build_image?preprocess=" +\
-         to_pre + "&userID=" + str(args.user) + "&"
+    
     if args.doi:
-        request = request + "doi=" + args.doi + "&"
+        headless_raas(name=args.name, lang = args.lang, preproc=to_pre, doi=args.doi)
     elif args.zip:
-        request = request + "zipFile=" + args.zip + "&"
+        headless_raas(name=args.name, lang = args.lang, preproc=to_pre, zip_path=args.zip)
+
     else:
         print("Provide at least a zip or doi")
         quit()
-
-    request = request + "name=" + args.name + "&language=" + args.lang
-
-    print(request)
-
-    result = requests.get(request)
-    task_id = result.json()["task_id"]
-
-    status_request = "http://127.0.0.1:" + args.port + "/status/" + task_id
-
-    while(True):
-        task_status = requests.get(status_request).json()
-        print(task_status)
-        if(task_status["current"] == 10):
-            print("Build Complete")
-            break
-        if(task_status["state"] != "PROGRESS"):
-            print("Build probably failed moving on")
-            break
-        time.sleep(5)
-
-    print(result.json())
-
-    return (True)
-
-if __name__ == "__main__":
-    headless_raas()
