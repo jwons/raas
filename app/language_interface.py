@@ -42,7 +42,7 @@ class language_interface(object):
         self.client.images.build(path=docker_file_dir, tag=repo_name + image_name)
         '''
         client = docker.APIClient(base_url='unix://var/run/docker.sock')
-        generator = client.build(path=docker_file_dir, tag=repo_name + image_name)
+        generator = client.build(path=docker_file_dir, tag=repo_name.lower() + image_name.lower())
 
         for chunk in generator:
             if 'stream' in chunk.decode():
