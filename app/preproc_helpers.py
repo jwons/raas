@@ -217,7 +217,7 @@ def preprocess_lib(r_file, path, from_preproc=False):
 	install_and_load = """
 ##### INJECTED TO FACILITATE REPRODUCIBILITY ##################################
 # helper function to load packages, installing them if necessary
-if (!require("stringr", character.only=TRUE)){
+if(!("stringr" %in% rownames(installed.packages()))){
       install.packages(pkgs="stringr", repos="http://cran.r-project.org")
       require("stringr", character.only=TRUE)
 }
@@ -231,7 +231,7 @@ install_and_load <- function(x, ...){
     }
   }
   for (package in x) {
-    if (!require(package, character.only=TRUE)){
+    if(!(package %in% rownames(installed.packages()))){
       install.packages(pkgs=package, repos="http://cran.r-project.org")
       require(package, character.only=TRUE)
     }
