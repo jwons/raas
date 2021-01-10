@@ -399,7 +399,7 @@ class r_lang(language_interface):
             new_docker.write("RUN Rscript /home/rstudio/datasets/create_report.R")
         return os.path.join(app.instance_path, 'datasets', dir_name)
     
-    def create_report(self, current_user_id, name, dir_name):
+    def create_report(self, current_user_id, name, dir_name, time):
 
         ########## Generate Report About Build Process ##########################################################
         # The report will have various information from the creation of the container
@@ -415,7 +415,8 @@ class r_lang(language_interface):
         # Grab the files from inside the container and the filter to just JSON files
         report = json.loads(container.exec_run("cat /home/rstudio/report.json")[1].decode())
         report["Container Name"] = self.get_container_tag(current_user_id, name)
-        
+        report["Build Time"] = time
+
         # information from the container is no longer needed
         container.kill()
 

@@ -2,6 +2,7 @@ import os
 from app import celery
 from app.language_python.python_lang_obj import py_lang
 from app.language_r.r_lang_obj import r_lang
+from timeit import default_timer as timer
 
 from app import app
 
@@ -30,6 +31,7 @@ def start_raas(self, language, current_user_id, name, preprocess, dataverse_key=
                                                             'collecting provenance data... ' + \
                                                             '(This may take several minutes or longer,' + \
                                                             ' depending on the complexity of your scripts)'})
+        start_time = timer()
         write_log("Starting static analysis", name)
         after_analysis = language_obj.script_analysis(preprocess, dataverse_key, doi, data_folder, user_pkgs)
         write_log("Finished static analysis", name)
@@ -52,7 +54,8 @@ def start_raas(self, language, current_user_id, name, preprocess, dataverse_key=
         self.update_state(state='PROGRESS', meta={'current': 7, 'total': 10,
                                                   'status': 'Collecting container environment information... '})
         report = None
-        if(make_report): report = language_obj.create_report(current_user_id, name, dir_name)
+        end_time = timer() - start_time
+        if(make_report): report = language_obj.create_report(current_user_id, name, dir_name, end_time)
         self.update_state(state='PROGRESS', meta={'current': 8, 'total': 10,
                                                 'status': 'Pushing Docker image to Dockerhub... '})
         write_log("Adding to database", name)

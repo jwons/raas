@@ -25,7 +25,7 @@ class language_interface(object):
         pass
 
     @abstractmethod
-    def create_report(self, current_user_id, name, dir_name):
+    def create_report(self, current_user_id, name, dir_name, time):
         pass
 
     # Since we modify the passed in name with .lower, and we use the container tag in multiple places, we 
