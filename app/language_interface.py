@@ -28,21 +28,21 @@ class language_interface(object):
     def create_report(self, current_user_id, name, dir_name):
         pass
 
-    def build_docker_img(self, docker_file_dir, current_user_id, name):
-        # create docker client instance
-
-
-        # build a docker image using docker file
-        #self.client.login(os.environ.get('DOCKER_USERNAME'), os.environ.get('DOCKER_PASSWORD'))
-        # name for docker image
+    # Since we modify the passed in name with .lower, and we use the container tag in multiple places, we 
+    # will abstract to this method so that anywhere we need the tag we can use this method and have a consistent tag
+    def get_container_tag(self, current_user_id, name):
         current_user_obj = User.query.get(current_user_id)
         image_name = current_user_obj.username + '-' + name
         repo_name = os.environ.get('DOCKER_REPO') + '/'
+        return(repo_name.lower() + image_name.lower())
+
+    def build_docker_img(self, docker_file_dir, current_user_id, name):
+
         '''
         self.client.images.build(path=docker_file_dir, tag=repo_name + image_name)
         '''
         client = docker.APIClient(base_url='unix://var/run/docker.sock')
-        generator = client.build(path=docker_file_dir, tag=repo_name.lower() + image_name.lower())
+        generator = client.build(path=docker_file_dir, tag=self.get_container_tag(current_user_id, name))
 
         for chunk in generator:
             if 'stream' in chunk.decode():

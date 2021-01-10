@@ -83,6 +83,7 @@ class r_lang(language_interface):
             package + '\', repos=\'http://cran.rstudio.com\') \n'
         '''
 
+
     def download_dataset(self, doi, destination, dataverse_key,
                          api_url="https://dataverse.harvard.edu/api/"):
         """Download doi to the destination directory
@@ -406,19 +407,15 @@ class r_lang(language_interface):
 
         # Reconstruct image name from user info
         client = docker.from_env()
-        current_user_obj = User.query.get(current_user_id)
-
-        image_name = current_user_obj.username + '-' + name
-        repo_name = os.environ.get('DOCKER_REPO') + '/'
 
         # to get report we need to run the container
-        container = client.containers.run(image=repo_name + image_name,
-                                        environment=["PASSWORD=" + repo_name + image_name], detach=True)
+        container = client.containers.run(image=self.get_container_tag(current_user_id, name),
+                                        environment=["PASSWORD=pass"], detach=True)
 
         # Grab the files from inside the container and the filter to just JSON files
         report = json.loads(container.exec_run("cat /home/rstudio/report.json")[1].decode())
-        report["Container Name"] = repo_name + image_name
-
+        report["Container Name"] = self.get_container_tag(current_user_id, name)
+        
         # information from the container is no longer needed
         container.kill()
 
