@@ -34,7 +34,7 @@ for (prov.json in prov.jsons){
   output.files <- provParseR::get.output.files(prov.obj)$name
   data.nodes <- provParseR::get.data.nodes(prov.obj)
   warnings <- data.nodes[data.nodes$name == 'warning.msg',]$value
-  
+  errors <- data.nodes[data.nodes$name == 'error.msg',]$value
   # Condense and add to the final list
   script.info <- list("Input Files"= input.files, "Output Files"=output.files, "Warnings"=warnings)
   ind.scripts[[filename]] <- script.info
