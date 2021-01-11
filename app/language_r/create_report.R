@@ -36,7 +36,7 @@ for (prov.json in prov.jsons){
   warnings <- data.nodes[data.nodes$name == 'warning.msg',]$value
   errors <- data.nodes[data.nodes$name == 'error.msg',]$value
   # Condense and add to the final list
-  script.info <- list("Input Files"= input.files, "Output Files"=output.files, "Warnings"=warnings)
+  script.info <- list("Input Files"= input.files, "Output Files"=output.files, "Warnings"=warnings, "Errors" = errors)
   ind.scripts[[filename]] <- script.info
 }
 
