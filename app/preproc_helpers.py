@@ -219,8 +219,8 @@ def preprocess_lib(r_file, path, from_preproc=False):
 # helper function to load packages, installing them if necessary
 if(!("stringr" %in% rownames(installed.packages()))){
       install.packages(pkgs="stringr", repos="http://cran.r-project.org")
-      require("stringr", character.only=TRUE)
 }
+require("stringr", character.only=TRUE)
 install_and_load <- function(x, ...){
   # if the input is a string
   if (is.character(x) & length(x) == 1) {
@@ -233,8 +233,8 @@ install_and_load <- function(x, ...){
   for (package in x) {
     if(!(package %in% rownames(installed.packages()))){
       install.packages(pkgs=package, repos="http://cran.r-project.org")
-      require(package, character.only=TRUE)
     }
+	library(package, character.only=TRUE)
   }
 }
 ###############################################################################
