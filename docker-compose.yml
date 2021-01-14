@@ -21,9 +21,6 @@ services:
     volumes:
       - instance_data:/app/instance
       - ./db:/app/db
-    environment: 
-      FLASK_APP: raas.py
-      DOCKER_REPO: jwonsil
 
   celery:
     build: .
