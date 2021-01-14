@@ -14,3 +14,4 @@ migrations/versions/__pycache__
 .idea/
 venv/
 logs/
+*.swp
