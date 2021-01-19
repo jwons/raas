@@ -10,9 +10,7 @@ import docker
 import re
 
 from glob import glob
-
 from app import app, db
-
 from app.language_interface import language_interface
 from app.Parse import Parser as ProvParser
 from app.models import User
@@ -20,22 +18,11 @@ from app.preproc_helpers import all_preproc
 from shutil import copy
 
 #Debugging
-from celery.contrib import rdb
+#from celery.contrib import rdb
 
 
 class r_lang(language_interface):
-    '''
-    def clean_up_datasets():
-        # delete any stored data
-        for dataset_directory in os.listdir(os.path.join(app.instance_path, 'datasets')):
-            try:
-                shutil.rmtree(os.path.join(app.instance_path, 'datasets', dataset_directory))
-            except:
-                try:
-                    os.remove(os.path.join(app.instance_path, 'datasets', dataset_directory))
-                except:
-                    pass
-'''
+
     def doi_to_directory(self, doi):
         """Converts a doi string to a more directory-friendly name
         Parameters
@@ -62,9 +49,7 @@ class r_lang(language_interface):
         """
         return 'RUN R -e \"require(\'devtools\');  {install_version(\'' + package + \
             '\', version=\'' + version + '\', repos=\'http://cran.rstudio.com\')}"\n'
-        # return 'RUN R -e \"require(\'devtools\');install_version(\'' +\
-        #		package + '\', version=\'' + version + '\', repos=\'http://cran.rstudio.com\')\"\n'
-
+       
 
     def build_docker_package_install_no_version(self, package):
         """Outputs formatted dockerfile command to install a specific version
@@ -159,13 +144,7 @@ class r_lang(language_interface):
         # of errors detected in the script
         eval = True
         if data_folder:  
-            # if a set of scripts have been uploaded then its converted to a normal zip file format (ie. zip a folder)
-            # zip_path = os.path.join(app.instance_path, 'datasets',
-            #                         zip_file)  # instance_path -> key path in the server
-            # unzip the zipped directory and keep the zip file
-            # with open(zip_path) as zip_ref:
             dir_name = data_folder
-            # zip_ref.extractall(os.path.join(app.instance_path, 'datasets', dir_name))
 
             # find name of unzipped directory
             dataset_dir = os.path.join(app.instance_path, 'datasets', dir_name)
@@ -185,33 +164,6 @@ class r_lang(language_interface):
                                                                  [['Download error',
                                                                    'There was a problem downloading your data from ' + \
                                                                    'Dataverse. Please make sure the DOI is correct.']]]}
-        # # if a set of scripts have been uploaded then its converted to a normal zip file format (ie. zip a folder)
-        # if zip_file:
-        #     zip_path = os.path.join(app.instance_path, 'py_datasets',
-        #                             zip_file)  # instance_path -> key path in the server
-        #     # unzip the zipped directory and keep the zip file
-        #     with zipfile.ZipFile(zip_path) as zip_ref:
-        #         dir_name = zip_ref.namelist()[0].strip('/').split('/')[0]
-        #         zip_ref.extractall(os.path.join(
-        #             app.instance_path, 'py_datasets', dir_name))
-
-        #     # find name of unzipped directory
-        #     dataset_dir = os.path.join(
-        #         app.instance_path, 'py_datasets', dir_name)
-        #     doi = dir_name
-        # else:
-        #     dataset_dir = os.path.join(app.instance_path, 'py_datasets', self.doi_to_directory(doi),
-        #                                self.doi_to_directory(doi))
-        #     success = self.download_dataset(doi=doi, dataverse_key=dataverse_key,
-        #                                     destination=os.path.join(app.instance_path, 'py_datasets',
-        #                                                              self.doi_to_directory(doi)))
-        #     dir_name = self.self.doi_to_directory(doi)
-        #     if not success:
-        #         self.clean_up_datasets(self.self.doi_to_directory(doi))
-        #         return {'current': 100, 'total': 100, 'status': ['Data download error.',
-        #                                                          [['Download error',
-        #                                                            'There was a problem downloading your data from ' +
-        #                                                            'Dataverse. Please make sure the DOI is correct.']]]}
 
         ########## Preprocessing ######################################################################
         src_ignore = []
@@ -234,6 +186,7 @@ class r_lang(language_interface):
                 pre_file = os.path.split(pre_file)
                 filename = re.split('\__preproc__.[rR]$', pre_file[1])[0]
                 os.rename(os.path.join(pre_file[0], pre_file[1]), os.path.join(pre_file[0], filename + ".R"))
+                
         ########## RUNNING STATIC ANALYSIS ######################################################################
         subprocess.run(['bash', 'app/language_r/static_analysis.sh',
                         dataset_dir, "app/language_r/static_analysis.R"])
@@ -290,14 +243,7 @@ class r_lang(language_interface):
                 out.write(instr + '\n')
         '''
 
-        docker_wrk_dir = '/home/datasets/' + dir_name + '/'
-        docker_file_dir = '/home/datasets/' + dir_name + '/data_set_content/'
-        docker_home = '/home/datasets/' + dir_name + '/'
-       # docker_file_dir is where Dockerfile will be written to
-       # docker_file_dir = os.path.join(app.instance_path, 'datasets', dir_name)
-
         try:
-            #os.makedirs(docker_file_dir)
             os.makedirs(os.path.join(app.instance_path, 'datasets', dir_name, 'data_set_content'))
         except:
             print('pass')
@@ -336,7 +282,6 @@ class r_lang(language_interface):
 
 
         with open(os.path.join(docker_file_dir, 'Dockerfile'), 'w') as new_docker:
-      #  with open(os.path.join(app.instance_path, 'datasets', dir_name, 'Dockerfile'), 'w+') as new_docker:
             new_docker.write('FROM rocker/tidyverse:3.6.3\n')
 
             # install system requirements
@@ -348,23 +293,6 @@ class r_lang(language_interface):
             if(special_install):
                 if("sys-libs" in special_install.keys()):
                     new_docker.write(sysinstall + ' '.join(special_install["sys-libs"]) + '\n')
-            '''
-            if special_packages:
-                for key in special_install["packages"].keys():
-                    instruction = 'RUN R -e \"require(\'devtools\');' + \
-                        special_install["packages"][key][1] + '"\n'
-                    new_docker.write(instruction)
-
-            # install packages
-            docker_packages = list(set(docker_pkgs))
-            if docker_packages:
-                for package in docker_packages:
-                    if(special_packages and (package not in special_packages)):
-                        new_docker.write(self.build_docker_package_install_no_version(package))
-                    if(special_packages is None):
-                        new_docker.write(self.build_docker_package_install_no_version(package))
-            '''
-            
 
             # copy the new directory and change permissions
             print(dir_name)

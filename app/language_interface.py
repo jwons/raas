@@ -1,16 +1,15 @@
 import shutil
 import sys
+import docker
+import os
+import json
+
 from abc import abstractmethod, ABCMeta
 from io import BytesIO
 from docker import APIClient
-import docker
-import os
+
 from app import db, app
-import json
-
 from app.models import User, Dataset
-
-
 
 
 class language_interface(object):
@@ -38,9 +37,7 @@ class language_interface(object):
 
     def build_docker_img(self, docker_file_dir, current_user_id, name):
 
-        '''
-        self.client.images.build(path=docker_file_dir, tag=repo_name + image_name)
-        '''
+        # Use low-level api client so we can print output from build process.
         client = docker.APIClient(base_url='unix://var/run/docker.sock')
         generator = client.build(path=docker_file_dir, tag=self.get_container_tag(current_user_id, name))
 
@@ -54,6 +51,7 @@ class language_interface(object):
         current_user_obj = User.query.get(current_user_id)
         image_name = current_user_obj.username + '-' + name
         repo_name = os.environ.get('DOCKER_REPO') + '/'
+        # Not pushing to Docke Hub at the moment.
         #print(self.client.images.push(repository=repo_name + image_name), file=sys.stderr)
 
         ########## UPDATING DB ######################################################################
