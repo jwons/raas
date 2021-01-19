@@ -15,3 +15,4 @@ migrations/versions/__pycache__
 venv/
 raas_env/
 migrations/
+eval/

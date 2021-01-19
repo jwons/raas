@@ -4,7 +4,7 @@
 # in the current version of the code and start the service. 
 FROM jwonsil/raas-env
 
-WORKDIR /app
+WORKDIR /raas
 
 # RUN Commands executed after this will be within the raas virtual env
 # This is needed since all our python packages used for raas are in that env

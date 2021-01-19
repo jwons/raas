@@ -19,15 +19,16 @@ services:
     depends_on:
       - redis
     volumes:
-      - instance_data:/app/instance
-      - ./db:/app/db
-
+      - instance_data:/raas/instance
+      - ./db:/raas/db
+      - ./eval/datasets:/raas/datasets
   celery:
     build: .
     volumes:
-      - instance_data:/app/instance
+      - instance_data:/raas/instance
       - /var/run/docker.sock:/var/run/docker.sock
-      - ./db:/app/db
+      - ./db:/raas/db
+      - ./eval/datasets:/raas/datasets
     container_name: cl01
     command: conda run --no-capture-output -n raas /bin/bash -c 'celery -A app.celery worker'
     links:
