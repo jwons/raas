@@ -48,8 +48,8 @@ if (preproc) {
 
 sourced.scripts <- NA
 
-if(file.exists("../.srcignore")){
-  sourced.scripts <- readLines(con = "../.srcignore")
+if(file.exists("/home/rstudio/.srcignore")){
+  sourced.scripts <- readLines(con = "/home/rstudio/.srcignore")
 }
 
 # for each R file
@@ -97,40 +97,16 @@ for (r_file in r_files) {
 				row.names=FALSE, col.names=FALSE)
 }
 
-# We will also need the system requirements from these packages to install in 
-# in the container. This is accomplished by finding all packages (recursively)
-# this analysis uses, and then queries a sysreqs database API to find system requirements
+missing.lists = list.files(".", pattern="missing_files.txt", recursive=TRUE, full.names=FALSE)
+if(length(missing.lists) > 0){
+	missing.files <- data.frame()
 
-# Libraries called in analysis
-prov.dirs <- list.dirs("prov_data", recursive = F)
-libs <- c()
-sourced.scripts <- c()
-for (prov.dir in prov.dirs){
-  parsed.prov <- provParseR::prov.parse(prov.input = paste0(prov.dir,"/prov.json"), isFile = T)
-  libs <- append(libs, provParseR::get.libs(parsed.prov)$name)
-  sourced <- as.vector(provParseR::get.scripts(parsed.prov)[-1,]$script)
-  sourced.scripts <- append(sourced.scripts, as.vector(sapply(X = sourced, FUN = function(script){sub(dir_path_doi, "", script)})))
+	for(missing.list in missing.lists){
+	  missing.table <- read.csv(missing.list, header = F)
+	  missing.table$V1 <- file.path(dirname(missing.list), missing.table$V1)
+	  missing.files <- rbind(missing.files, missing.table)
+	}
+	colnames(missing.files) <- c("Script Name", "Missing File")
+	write.csv(x = missing.files, file =  "../../../missing_files.csv", row.names = F)
 }
 
-#parsed.prov <- provParseR::prov.parse(prov.input = prov.json(), isFile = F)
-#libs <- provParseR::get.libs(parsed.prov)
-
-# All libraries including implicit
-all.libs <- unique(unlist(append(libs, sapply(libs, function(lib){
-  tools::package_dependencies(lib, recursive = T)
-}))))
-
-# Make API call
-libs.request <- paste(all.libs, collapse=",")
-api.resp <- httr::content(httr::GET(paste("https://sysreqs.r-hub.io/pkg/", libs.request,"/linux-x86_64-ubuntu-gcc", sep = "")), as="parsed")
-api.resp <- unique(api.resp[api.resp != "NULL"])
-sys.deps <- paste(api.resp, collapse = " ")
-
-# Save sysreqs info 
-write(sys.deps, paste0("prov_data/", "sysreqs.txt"))
-
-# don't repeat scripts
-sourced.scripts <- unique(sourced.scripts)
-
-# Save Sourced Scripts
-write(unlist(sourced.scripts), "prov_data/sourced.txt")

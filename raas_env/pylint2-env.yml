@@ -1,0 +1,6 @@
+name: pylint2
+channels:
+  - conda-forge
+dependencies:
+  - python=2.7
+  - pylint

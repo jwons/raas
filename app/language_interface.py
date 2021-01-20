@@ -1,18 +1,18 @@
 import shutil
 import sys
-from abc import abstractmethod, ABCMeta
 import docker
 import os
+import json
+
+from abc import abstractmethod, ABCMeta
+from io import BytesIO
+from docker import APIClient
 
 from app import db, app
-
 from app.models import User, Dataset
 
 
-
-
 class language_interface(object):
-    client = docker.from_env()
     __metaclass__ = ABCMeta
 
     @abstractmethod
@@ -24,27 +24,35 @@ class language_interface(object):
         pass
 
     @abstractmethod
-    def create_report(self, current_user_id, name, dir_name):
+    def create_report(self, current_user_id, name, dir_name, time):
         pass
 
-    def build_docker_img(self, docker_file_dir, current_user_id, name):
-        # create docker client instance
-
-        # build a docker image using docker file
-        self.client.login(os.environ.get('DOCKER_USERNAME'), os.environ.get('DOCKER_PASSWORD'))
-        # name for docker image
+    # Since we modify the passed in name with .lower, and we use the container tag in multiple places, we 
+    # will abstract to this method so that anywhere we need the tag we can use this method and have a consistent tag
+    def get_container_tag(self, current_user_id, name):
         current_user_obj = User.query.get(current_user_id)
-        # image_name = ''.join(random.choice(string.ascii_lowercase) for _ in range(5))
         image_name = current_user_obj.username + '-' + name
         repo_name = os.environ.get('DOCKER_REPO') + '/'
-        self.client.images.build(path=docker_file_dir, tag=repo_name + image_name)
+        return(repo_name.lower() + image_name.lower())
+
+    def build_docker_img(self, docker_file_dir, current_user_id, name):
+
+        # Use low-level api client so we can print output from build process.
+        client = docker.APIClient(base_url='unix://var/run/docker.sock')
+        generator = client.build(path=docker_file_dir, tag=self.get_container_tag(current_user_id, name))
+
+        for chunk in generator:
+            if 'stream' in chunk.decode():
+                for line in json.loads(chunk.decode())["stream"].splitlines():
+                    print(line)
 
         ########## PUSHING IMG ######################################################################
     def push_docker_img(self, dir_name,current_user_id, name, report):
         current_user_obj = User.query.get(current_user_id)
         image_name = current_user_obj.username + '-' + name
         repo_name = os.environ.get('DOCKER_REPO') + '/'
-        print(self.client.images.push(repository=repo_name + image_name), file=sys.stderr)
+        # Not pushing to Docke Hub at the moment.
+        #print(self.client.images.push(repository=repo_name + image_name), file=sys.stderr)
 
         ########## UPDATING DB ######################################################################
 

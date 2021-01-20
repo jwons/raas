@@ -1,0 +1,37 @@
+version: '3.1'
+volumes:
+  instance_data:
+  mysql-data:
+    driver: local
+services:
+
+  redis:
+    image: redis:latest
+    container_name: rd01
+
+  webapp:
+    build: .
+    container_name: wa01
+    ports:
+      - "5000:5000"
+    links:
+      - redis
+    depends_on:
+      - redis
+    volumes:
+      - instance_data:/raas/instance
+      - ./db:/raas/db
+      - ./eval/datasets:/raas/datasets
+  celery:
+    build: .
+    volumes:
+      - instance_data:/raas/instance
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./db:/raas/db
+      - ./eval/datasets:/raas/datasets
+    container_name: cl01
+    command: conda run --no-capture-output -n raas /bin/bash -c 'celery -A app.celery worker'
+    links:
+      - redis
+    depends_on: 
+      - webapp
