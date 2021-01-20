@@ -191,4 +191,4 @@ response = list( errors = if (length(errors) == 1) list(errors) else errors,
                  sys_deps = api.resp)
 json = toJSON(response)
 print(json)
-write(json, "static_analysis/static_analyis.json")
+write(json, "static_analysis/static_analysis.json")
