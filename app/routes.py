@@ -3,12 +3,14 @@ from app.email_support import send_password_reset_email
 import shutil
 import sys
 import os
-# For debugging with headless mode-----------
+import json
+import docker
+import gzip
 import zipfile
+
 from shutil import copyfile
-# -------------------------------------------
 from sqlalchemy import desc
-from flask import render_template, flash, redirect, url_for, request, jsonify, session
+from flask import render_template, flash, redirect, url_for, request, jsonify, session, send_from_directory
 from app import app, db
 from app.forms import LoginForm, RegistrationForm, ResetPasswordRequestForm, InputForm
 from flask_login import current_user, login_user, login_required, logout_user
@@ -37,22 +39,22 @@ def index():
         return render_template('index_new_user.html')
 
 
-@app.route('/containrize', methods=['GET', 'POST'])
+@app.route('/containerize', methods=['GET', 'POST'])
 @login_required
-def containrize():
+def containerize():
     form = InputForm()
     if form.add_pkg.data:
         form.pkg_asked.append_entry()
-        return render_template('containrize.html',
-                               title='Containrize', form=form, show_adv=True)
+        return render_template('containerize.html',
+                               title='Containerize', form=form, show_adv=True)
     if form.add_cmd.data:
         form.command_line.append_entry()
-        return render_template('containrize.html',
-                               title='Containrize', form=form, show_adv=True)
+        return render_template('containerize.html',
+                               title='Containerize', form=form, show_adv=True)
     if form.add_code.data:
         form.code_btw.append_entry()
-        return render_template('containrize.html',
-                               title='Containrize', form=form, show_adv=True)
+        return render_template('containerize.html',
+                               title='Containerize', form=form, show_adv=True)
     # elif form.pkg_asked:
     #     for item in form.pkg_asked:
     #         if item.form.delete.data:
@@ -166,8 +168,8 @@ def containrize():
 
         session['task_id'] = task.id
         return redirect(url_for('build_status'))
-    return render_template('containrize.html',
-                           title='Containrize', form=form, show_adv=False)
+    return render_template('containerize.html',
+                           title='Containerize', form=form, show_adv=False)
 
 
 @app.route('/build-status', methods=['GET', 'POST'])
@@ -359,3 +361,33 @@ def api_build():
         session['task_id'] = task.id
     taskinfo = {"task_id" : task.id}
     return (jsonify(taskinfo))
+
+@app.route('/download/<dataset_id>', methods=['GET', 'POST'])
+def download(dataset_id):
+    try:
+
+        if not current_user.is_authenticated:
+            return render_template("404.html")
+
+        dataset = Dataset.query.get(dataset_id)
+        if(dataset.user_id is not current_user.id):
+            return redirect(url_for('index'))
+        if not os.path.exists(os.path.join(app.instance_path, "downloads")):
+            os.makedirs(os.path.join(app.instance_path, "downloads"))
+        image_name = dataset.report["Additional Information"]["Container Name"]
+        client = client = docker.APIClient(base_url='unix://var/run/docker.sock')
+        image = client.get_image(image_name)
+        image_name = image_name.replace("/", "-")
+        with open(os.path.join(app.instance_path, "downloads", image_name + ".tar"), 'wb') as image_tar:
+            for chunk in image:
+                image_tar.write(chunk)
+        with open(os.path.join(app.instance_path, "downloads", image_name + ".tar"), 'rb') as f_in:
+            with gzip.open(os.path.join(app.instance_path, "downloads", image_name + ".tar.gz"), 'wb') as f_out:
+                shutil.copyfileobj(f_in, f_out)
+        os.remove(os.path.join(app.instance_path, "downloads", image_name + ".tar"))
+        return send_from_directory(directory=os.path.join(app.instance_path, "downloads"),filename = image_name + ".tar.gz", as_attachment=True)
+
+    except Exception as e:
+        print(e)
+        return redirect(url_for('index'))
+

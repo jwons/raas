@@ -21,6 +21,7 @@
 		      	<td class="text-muted">{{ dataset.timestamp.strftime('%m/%d/%y %I:%M%p UTC') }}</td>
 				<td><a href="{{ dataset.url }}" target="_blank">{{ dataset.url }}</a></td>
 				<td><a href="{{ url_for('report', reportNum=dataset.id) }}">View Report</a></td>
+				<td><a href="{{ url_for('download', dataset_id=dataset.id) }}" target="blank"><button class='btn btn-default'>Download</button></a></td>
 			</tr>
 		{% endfor %}	
 		</tbody>
