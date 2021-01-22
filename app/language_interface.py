@@ -34,6 +34,9 @@ class language_interface(object):
         image_name = current_user_obj.username + '-' + name
         repo_name = os.environ.get('DOCKER_REPO') + '/'
         return(repo_name.lower() + image_name.lower())
+    
+    def get_dockerfile_dir(self, name):
+        return(os.path.join(app.instance_path, 'datasets', name))
 
     def build_docker_img(self, docker_file_dir, current_user_id, name):
 
@@ -47,7 +50,7 @@ class language_interface(object):
                     print(line)
 
         ########## PUSHING IMG ######################################################################
-    def push_docker_img(self, dir_name,current_user_id, name, report):
+    def push_docker_img(self, dir_name, current_user_id, name, report):
         current_user_obj = User.query.get(current_user_id)
         image_name = current_user_obj.username + '-' + name
         repo_name = os.environ.get('DOCKER_REPO') + '/'
@@ -66,17 +69,12 @@ class language_interface(object):
 
         ########## CLEANING UP ######################################################################
 
-        self.clean_up_datasets()
+        self.clean_up_datasets(name)
         print("Returning")
-    def clean_up_datasets(self):
+
+    def clean_up_datasets(self, name):
         # delete any stored data
         try:
-            del_list = os.listdir(os.path.join(app.instance_path,"datasets"))
-            for f in del_list:
-                file_path = os.path.join(app.instance_path,"datasets", f)
-                if os.path.isfile(file_path):
-                    os.remove(file_path)
-                elif os.path.isdir(file_path):
-                    shutil.rmtree(file_path)
+            shutil.rmtree(self.get_dockerfile_dir(name))
         except:
             pass

@@ -18,7 +18,7 @@ from app.preproc_helpers import all_preproc
 from shutil import copy
 
 #Debugging
-#from celery.contrib import rdb
+from celery.contrib import rdb
 
 
 class r_lang(language_interface):
@@ -60,7 +60,6 @@ class r_lang(language_interface):
         eval = True
   
         dir_name = data_folder
-
         # find name of unzipped directory
         dataset_dir = os.path.join(app.instance_path, 'datasets', dir_name)
         unzip_name = os.path.join(dataset_dir, "data_set_content", os.listdir(os.path.join(dataset_dir, "data_set_content"))[0])
