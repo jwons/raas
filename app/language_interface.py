@@ -16,7 +16,7 @@ class language_interface(object):
     __metaclass__ = ABCMeta
 
     @abstractmethod
-    def script_analysis(self, preprocess, dataverse_key='', doi='', zip_file='', user_pkg=''):
+    def script_analysis(self, preprocess = False, data_folder='', run_instr='', user_pkg=''):
         pass
 
     @abstractmethod

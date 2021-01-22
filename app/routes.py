@@ -55,23 +55,10 @@ def containerize():
         form.code_btw.append_entry()
         return render_template('containerize.html',
                                title='Containerize', form=form, show_adv=True)
-    # elif form.pkg_asked:
-    #     for item in form.pkg_asked:
-    #         if item.form.delete.data:
-    #             form.pkg_asked.entries.remove(item)
-    #             break
-    print(form.validate_on_submit())
+
+    #print(form.validate_on_submit())
 
     if form.validate_on_submit():
-
-        # TODO: support for DOI or other libraries
-        # if form.doi.data:
-        #     task = build_image.apply_async(kwargs={'current_user_id': current_user.id,
-        #                                            'doi': form.doi.data,
-        #                                            'name': form.name.data,
-        #                                            'preprocess': form.fix_code.data,
-        #                                            'dataverse_key': os.environ.get('DATAVERSE_KEY')})
-        # else:
         # create directories if they don't exists yet
         if not os.path.exists(app.instance_path):
             os.makedirs(app.instance_path)
@@ -309,7 +296,6 @@ def api_build():
     user_id = 1
     name = ''
     preprocess = False
-    doi = ''
     zip_file = ''
     language = request.args['language']
     runinstr =''
@@ -324,9 +310,6 @@ def api_build():
 
     if 'preprocess' in request.args:
         preprocess = bool(int(request.args['preprocess']))
-
-    if 'doi' in request.args:
-        doi = request.args['doi']
 
     if 'zipFile' in request.args:
         zip_file = request.args['zipFile']

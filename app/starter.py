@@ -10,9 +10,9 @@ from app import app
 from celery.contrib import rdb
 
 @celery.task(bind=True)
-def start_raas(self, language, current_user_id, name, preprocess, dataverse_key='', doi='', data_folder='',
-               run_instr='',
-               user_pkgs='', sample_output=None, code_btw=None, prov=None, upload = True, make_report = True):
+def start_raas(self, language, current_user_id, name, preprocess, data_folder='',
+               run_instr='', user_pkgs='', sample_output=None, code_btw=None, 
+               prov=None, upload = True, make_report = True):
 
     if language == "Python":
         language_obj = py_lang()
@@ -28,7 +28,7 @@ def start_raas(self, language, current_user_id, name, preprocess, dataverse_key=
                                                             '(This may take several minutes or longer,' + \
                                                             ' depending on the complexity of your scripts)'})
         start_time = timer()
-        after_analysis = language_obj.script_analysis(preprocess, dataverse_key, doi, data_folder, user_pkgs)
+        after_analysis = language_obj.script_analysis(preprocess = preprocess, data_folder= data_folder, user_pkg= user_pkgs)
 
         # Some error found by analysis
         if(not ('dir_name' in after_analysis)):

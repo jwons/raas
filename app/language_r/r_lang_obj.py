@@ -23,20 +23,6 @@ from shutil import copy
 
 class r_lang(language_interface):
 
-    def doi_to_directory(self, doi):
-        """Converts a doi string to a more directory-friendly name
-        Parameters
-        ----------
-        doi : string
-          doi
-
-        Returns
-        -------
-        doi : string
-          doi with "/" and ":" replaced by "-" and "--" respectively
-        """
-        return doi.replace("/", "-").replace(":", "--")
-
     def build_docker_package_install(self, package, version):
         """Outputs formatted dockerfile command to install a specific version
         of an R package into a docker image
@@ -68,102 +54,16 @@ class r_lang(language_interface):
             package + '\', repos=\'http://cran.rstudio.com\') \n'
         '''
 
-
-    def download_dataset(self, doi, destination, dataverse_key,
-                         api_url="https://dataverse.harvard.edu/api/"):
-        """Download doi to the destination directory
-        Parameters
-         ----------
-        doi : string
-          doi of the dataset to be downloaded
-        destination : string
-                  path to the destination in which to store the downloaded directory
-        dataverse_key : string
-                    dataverse api key to use for completing the download
-        api_url : string
-              URL of the dataverse API to download the dataset from
-        Returns
-        -------
-        bool
-        whether the dataset was successfully downloaded to the destination
-        """
-        api_url = api_url.strip("/")
-        # make a new directory to store the dataset
-        # (if one doesn't exist)
-        if not os.path.exists(destination):
-            os.makedirs(destination)
-
-        try:
-            # query the dataverse API for all the files in a dataverse
-            files = requests.get(api_url + "/datasets/:persistentId",
-                                 params={"persistentId": doi}) \
-                .json()['data']['latestVersion']['files']
-
-        except:
-            return False
-
-        # convert DOI into a friendly directory name by replacing slashes and colons
-        doi_direct = destination + '/' + self.doi_to_directory(doi)
-
-        # make a new directory to store the dataset
-        if not os.path.exists(doi_direct):
-            os.makedirs(doi_direct)
-        # for each file result
-        for file in files:
-            try:
-                # parse the filename and fileid
-                # filename = file['dataFile']['filename']
-                fileid = file['dataFile']['id']
-                contentType = file['dataFile']['contentType']
-
-                if (contentType == 'type/x-r-syntax'):
-                    # query the API for the file contents
-                    response = requests.get(
-                        api_url + "/access/datafile/" + str(fileid))
-                else:
-                    # query the API for the file contents
-                    response = requests.get(api_url + "/access/datafile/" + str(fileid),
-                                            params={"format": "original", "key": dataverse_key})
-
-                value, params = cgi.parse_header(
-                    response.headers['Content-disposition'])
-                if 'filename*' in params:
-                    filename = params['filename*'].split("'")[-1]
-                else:
-                    filename = params['filename']
-
-                # write the response to correctly-named file in the dataset directory
-                with open(doi_direct + "/" + filename, 'wb') as handle:
-                    handle.write(response.content)
-            except:
-                return False
-        return True
-
-    def script_analysis(self, preprocess, dataverse_key='', doi='', data_folder='', run_instr='', user_pkg=''):
+    def script_analysis(self, preprocess, dataverse_key='', data_folder='', run_instr='', user_pkg=''):
         # This variable controls whether or not the container is built despite the existence
         # of errors detected in the script
         eval = True
-        if data_folder:  
-            dir_name = data_folder
+  
+        dir_name = data_folder
 
-            # find name of unzipped directory
-            dataset_dir = os.path.join(app.instance_path, 'datasets', dir_name)
-            unzip_name = os.path.join(dataset_dir, "data_set_content", os.listdir(os.path.join(dataset_dir, "data_set_content"))[0])
-            doi = dir_name
-
-        else:
-            dataset_dir = os.path.join(app.instance_path, 'datasets', self.doi_to_directory(doi),
-                                       self.doi_to_directory(doi))
-            success = self.download_dataset(doi=doi, dataverse_key=dataverse_key,
-                                            destination=os.path.join(app.instance_path, 'datasets',
-                                                                     self.doi_to_directory(doi)))
-            dir_name = self.doi_to_directory(doi)
-            if not success:
-                self.clean_up_datasets()
-                return {'current': 100, 'total': 100, 'status': ['Data download error.',
-                                                                 [['Download error',
-                                                                   'There was a problem downloading your data from ' + \
-                                                                   'Dataverse. Please make sure the DOI is correct.']]]}
+        # find name of unzipped directory
+        dataset_dir = os.path.join(app.instance_path, 'datasets', dir_name)
+        unzip_name = os.path.join(dataset_dir, "data_set_content", os.listdir(os.path.join(dataset_dir, "data_set_content"))[0])
 
         ########## Preprocessing ######################################################################
         src_ignore = []
