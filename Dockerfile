@@ -16,7 +16,7 @@ COPY . .
 # Information for flask and raas execution. They are declared here and not
 # in the docker-compose.yml because multiple containers use them, and this
 # way they can be declared only once. 
-ARG FLASK_ENV="production"
+ARG FLASK_ENV="development"
 ENV FLASK_ENV="${FLASK_ENV}" \
     PYTHONUNBUFFERED="true"
 ENV FLASK_APP="raas.py"\ 

@@ -190,32 +190,21 @@ class r_lang(language_interface):
         ########## RUNNING STATIC ANALYSIS ######################################################################
         subprocess.run(['bash', 'app/language_r/static_analysis.sh',
                         dataset_dir, "app/language_r/static_analysis.R"])
-
-
-        ########## CHECKING FOR STATIC ANALYSIS ERRORS ##########################################################
-        # get list of json files
-        #TODO There should only be one of these....
-        jsons = [my_file for my_file in os.listdir(os.path.join(dataset_dir, 'static_analysis'))
-                 if my_file.endswith('.json')]    
                 
         ########## PARSING STATIC ANALYSIS ######################################################################
 
         # assemble a set of packages used and get system requirements
         sys_reqs = []
         used_packages = []
-
-        for json_obj in jsons:
-            print(json_obj, file=sys.stderr)
-            with open(os.path.join(dataset_dir, 'static_analysis', json_obj)) as json_file:
-                data = json.load(json_file)
-                if(not eval):
-                    if data['errors']:
-                        return {'current': 100, 'total': 100, 'status': ['Static analysis found errors in script.', data['errors']]}
-                for p in data['packages']:
-                    used_packages.append(p)
-                sys_reqs = data['sys_deps']
+        with open(os.path.join(dataset_dir, 'static_analysis', "static_analysis.json")) as json_file:
+            data = json.load(json_file)
+            if(not eval):
+                if data['errors']:
+                    return {'current': 100, 'total': 100, 'status': ['Static analysis found errors in script.', data['errors']]}
+            used_packages = data['packages']
+            sys_reqs = data['sys_deps']
+            
         sys_reqs.append("libjpeg-dev")
-        print(used_packages, file=sys.stderr)
 
         return {"dir_name": dir_name, "docker_pkgs": used_packages, "sys_reqs": sys_reqs, "src_ignore" : src_ignore}
 
@@ -342,8 +331,9 @@ class r_lang(language_interface):
 
         # Grab the files from inside the container and the filter to just JSON files
         report = json.loads(container.exec_run("cat /home/rstudio/report.json")[1].decode())
-        report["Container Name"] = self.get_container_tag(current_user_id, name)
-        report["Build Time"] = time
+        report["Additional Information"] = {}
+        report["Additional Information"]["Container Name"] = self.get_container_tag(current_user_id, name)
+        report["Additional Information"]["Build Time"] = time
 
         # information from the container is no longer needed
         container.kill()
