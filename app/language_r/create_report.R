@@ -1,19 +1,43 @@
 library(provParseR)
+library(stringr)
 
 setwd("/home/rstudio/datasets")
 
+# This function is used to create a list of rows from a dataframe to make it easier to jsonify
+# It is used for system libraries and language packages
+create.json.list <- function(lib.frame){
+  libs <- list()
+  for (row in 1:nrow(lib.frame)){
+    libs[[row]] <- c(lib.frame[row,]$Package, lib.frame[row,]$Version)
+  }
+  return(libs)
+}
+
+# Go to system and query apt for installed packages, but will still need to parse output
+system.libs <- system("apt list --installed", intern = T)
+system.libs <- system.libs[2:length(system.libs)]
+
+# Grab just the pacakge name [1] and then the version [2]
+system.libs.max <- t(sapply(X = system.libs, FUN = function(x){
+  str_split(string = x, pattern = " ")[[1]][1:2]
+}))
+
+# Clear out names, most aesthetic 
+rownames(system.libs.max) <- NULL
+colnames(system.libs.max) <- c("Package", "Version")
+
+# Create the list that will be placed into the report 
+system.libs.list <- create.json.list(as.data.frame(system.libs.max, stringsAsFactors = F))
+
 # Collects packages used in this environment
 packages.df <- as.data.frame(installed.packages(), stringsAsFactors = F)[, c("Package", "Version")]
-packages <- list()
-for (row in 1:nrow(packages.df)){
-  packages[[row]] <- c(packages.df[row,]$Package, packages.df[row,]$Version)
-}
+packages <- create.json.list(packages.df)
 
 # Records version of R used 
 lang.version <- paste(c(R.Version()$major, R.Version()$minor), collapse = ".")
 
 # Collect container wide-info into one object
-container.information <- list("Language Packages"=as.list(packages), "Language Version"=lang.version, "Language" = "R")
+container.information <- list("Language Packages"=as.list(packages), "System Libraries" = system.libs.list, "Language Version"=lang.version, "Language" = "R")
 
 # Begin collecting script-level information. Need to identify all prov.json files
 prov.jsons <- list.files(".", pattern="prov.json", recursive=T, full.names=FALSE)
@@ -30,8 +54,8 @@ for (prov.json in prov.jsons){
   filename <- provParseR::get.environment(prov.obj)[provParseR::get.environment(prov.obj)$label == "script",]$value
   
   # Gather data 
-  input.files <- provParseR::get.input.files(prov.obj)$name
-  output.files <- provParseR::get.output.files(prov.obj)$name
+  input.files <- unique(provParseR::get.input.files(prov.obj)$name)
+  output.files <- unique(provParseR::get.output.files(prov.obj)$name)
   data.nodes <- provParseR::get.data.nodes(prov.obj)
   warnings <- data.nodes[data.nodes$name == 'warning.msg',]$value
   errors <- data.nodes[data.nodes$name == 'error.msg',]$value
