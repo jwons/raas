@@ -133,14 +133,7 @@ def containerize():
         print(str(user_pkgs_total))
 
         print("Language: " + form.language.data)
-        '''
-        if form.language.data == "R":
-            task = build_image.apply_async(kwargs={'data_folder': folder_name,
-                                                   'current_user_id': current_user.id,
-                                                   'name': form.name.data,
-                                                   'preprocess': form.fix_code.data})
-        else:
-        '''
+
         task = start_raas.apply_async(kwargs={'language': form.language.data,
                                                 'data_folder': folder_name,
                                                 'current_user_id': current_user.id,
