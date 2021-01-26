@@ -10,6 +10,7 @@ from docker import APIClient
 
 from app import db, app
 from app.models import User, Dataset
+from celery.contrib import rdb
 
 
 class language_interface(object):
@@ -39,7 +40,6 @@ class language_interface(object):
         return(os.path.join(app.instance_path, 'datasets', name))
 
     def build_docker_img(self, docker_file_dir, current_user_id, name):
-
         # Use low-level api client so we can print output from build process.
         client = docker.APIClient(base_url='unix://var/run/docker.sock')
         generator = client.build(path=docker_file_dir, tag=self.get_container_tag(current_user_id, name))

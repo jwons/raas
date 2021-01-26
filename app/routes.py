@@ -43,6 +43,7 @@ def index():
 @login_required
 def containerize():
     form = InputForm()
+
     if form.add_pkg.data:
         form.pkg_asked.append_entry()
         return render_template('containerize.html',

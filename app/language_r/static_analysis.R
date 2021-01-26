@@ -186,7 +186,7 @@ api.resp <- unique(api.resp[api.resp != "NULL"])
 
 response = list( errors = if (length(errors) == 1) list(errors) else errors, 
                  warnings = if (length(warnings) == 1) list(warnings) else warnings, 
-                 packages = libs, 
+                 packages = unique(c(libs,all.libs)), 
                  package_deps = all.libs, 
                  sys_deps = api.resp)
 json = toJSON(response)

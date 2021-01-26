@@ -68,15 +68,15 @@ class r_lang(language_interface):
         src_ignore = []
         if(preprocess):
             r_files = [y for x in os.walk(os.path.join(unzip_name)) for y in glob(os.path.join(x[0], '*.R'))]
-
+            sourced_files = []
             if not os.path.exists(os.path.join(unzip_name, "__original_scripts__")):
                 os.makedirs(os.path.join(unzip_name, "__original_scripts__"))
-        
             for r_file in r_files:
                 r_file = os.path.split(r_file)
-                all_preproc(r_file[1], r_file[0])
+                sourced_files = all_preproc(r_file[1], r_file[0])
                 copy(os.path.join(r_file[0], r_file[1]), os.path.join(unzip_name, "__original_scripts__", r_file[1]))
                 src_ignore.append(os.path.join("/__original_scripts__", r_file[1]))
+                src_ignore = src_ignore + sourced_files
                 os.remove(os.path.join(r_file[0], r_file[1]))
         
             pre_files = [y for x in os.walk(os.path.join(unzip_name)) for y in glob(os.path.join(x[0], '*__preproc__.R'))]
@@ -105,7 +105,7 @@ class r_lang(language_interface):
             
         sys_reqs.append("libjpeg-dev")
 
-        return {"dir_name": dir_name, "docker_pkgs": used_packages, "sys_reqs": sys_reqs, "src_ignore" : src_ignore}
+        return {"dir_name": dir_name, "docker_pkgs": used_packages, "sys_reqs": sys_reqs, "src_ignore" : list(set(src_ignore))}
 
 
     def build_docker_file(self, dir_name, docker_pkgs, additional_info, code_btw, run_instr):
