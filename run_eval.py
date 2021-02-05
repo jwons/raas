@@ -10,7 +10,7 @@ zip_dirs = False
 # as the first element 
 dataset_dirs = [direc[0] for direc in os.walk("./eval/datasets")][1:]
 
-for data_dir in dataset_dirs[3:4]:
+for data_dir in dataset_dirs[0:9]:
 	# This code only needs to be run once
 	if(zip_dirs):
 		if(debug): print("Zipping: " + data_dir)

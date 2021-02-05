@@ -25,10 +25,12 @@ def headless_raas(name, lang, user = 1, preproc = "0", doi = "", zip_path = "", 
     task_id = result.json()["task_id"]
 
     status_request = "http://127.0.0.1:" + port + "/status/" + task_id
-
+    last_status = ""
     while(True):
         task_status = requests.get(status_request).json()
-        print(task_status)
+        if(task_status["status"] != last_status):
+            print(task_status)
+            last_status = task_status["status"]
         if(task_status["current"] == 10):
             print("Build Complete")
             break

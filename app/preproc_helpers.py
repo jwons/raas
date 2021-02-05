@@ -512,7 +512,7 @@ def all_preproc(r_file, path, error_string="error"):
 	# try all 3 preprocessing methods if there is an error
 	if error_string != "success":
 		sourced_files = preprocess_source(r_file, path, from_preproc=True)
-		preprocess_lib(r_file, path, from_preproc=True)
+		#preprocess_lib(r_file, path, from_preproc=True)
 		preprocess_file_paths(r_file, path, from_preproc=True, report_missing=True)
 	# else just copy and rename the file
 	else:

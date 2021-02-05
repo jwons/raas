@@ -2,11 +2,11 @@ import sqlite3
 import json
 import docker
 
-conn = sqlite3.connect('../app.db')
+conn = sqlite3.connect('../db/app.db')
 
 c = conn.cursor()
 
-c.execute("SELECT dataset.report FROM dataset;")
+#c.execute("SELECT dataset.report FROM dataset;")
 
 libraries = {}
 
@@ -31,23 +31,26 @@ def check_libraries(report):
 			libraries[library[0]] = 1	
 
 error_results ={"Errors" : 0, "No Errors": 0, "Clean Containers": 0}
+container_count = 0
 for row in c.execute("SELECT dataset.report FROM dataset;"):
+	container_count += 1
 	report = json.loads(row[0])
-	print(report["Build Time"])
-	print(report["Container Name"])
+	print(report["Additional Information"]["Build Time"])
+	print(report["Additional Information"]["Container Name"])
 	set_results = check_errors(report)
 	error_results["Errors"] += set_results["Errors"]
 	error_results["No Errors"] += set_results["No Errors"]
 	if(set_results["Container-Wide"]):
 		error_results["Clean Containers"] += 1
 	check_libraries(report)
-	print(libraries)
+	#print(libraries)
 	with open("results.csv", "w") as results:
 		for key in libraries.keys():
 			results.write(key + "," + str(libraries[key]) + "\n")
 	#print(report)
-#print("Out of " + str(error_results["Errors"] + error_results["No Errors"]) + " total scripts")
-#print("Scripts without errors: " + str(error_results['No Errors']))
-#print("Scripts with errors: " + str(error_results['Errors']))
-#print("Number of clean containers " + str(error_results["Clean Containers"]))
+	print("######")
+print("Out of " + str(error_results["Errors"] + error_results["No Errors"]) + " total scripts")
+print("Scripts without errors: " + str(error_results['No Errors']))
+print("Scripts with errors: " + str(error_results['Errors']))
+print("Number of clean containers " + str(error_results["Clean Containers"]) + " out of " + str(container_count))
 
