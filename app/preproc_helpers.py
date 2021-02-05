@@ -13,6 +13,8 @@ import pdb
 import pandas as pd
 import numpy as np
 
+from celery.contrib import rdb
+
 def find_file(pattern, path):
 	"""Recursively search the directory pointed to by path for a file matching pattern.
 	   Inspired by https://stackoverflow.com/questions/120656/directory-listing-in-python
@@ -30,6 +32,8 @@ def find_file(pattern, path):
 	"""
 	len_root_path = len(path.split('/'))
 	for root, dirs, files in os.walk(path):
+		if(root.split("/")[-1] == "__original_scripts__"):
+			continue
 		for name in files:
 			if fnmatch.fnmatch(name, pattern):
 				return '/'.join((os.path.join(root, name)).split('/')[len_root_path:])
@@ -239,6 +243,8 @@ install_and_load <- function(x, ...){
 }
 ###############################################################################
 """
+	# TODO decide if we need to keep the injected lib processing
+	install_and_load = '##########Preprocessed by RaaS###########\n'
 	# parse out filename and construct file path
 	filename = get_r_filename(r_file)
 	file_path = path + "/" + r_file
@@ -364,7 +370,10 @@ def preprocess_file_paths(r_file, script_dir, from_preproc=False, report_missing
 								rel_path = find_rel_path(potential_path, curr_wd)
 								if not rel_path:
 									# try to find the path to the working directory (if any)
-									rel_path = find_file(extract_filename(potential_path), curr_wd)
+									new_path = find_file(extract_filename(potential_path), get_root_dir(curr_wd))
+									if new_path:
+										new_path = os.path.join( get_root_dir(curr_wd), new_path)
+										rel_path = os.path.relpath(new_path, start = curr_wd)
 								# if a path was found, change the file part of the line
 								if rel_path:
 									line = re.sub(potential_path, rel_path, line)
@@ -392,6 +401,7 @@ def preprocess_source(r_file, script_dir, from_preproc=False):
 	from_preproc : boolean
 				   whether the r_file has already been preprocessed (default False)
 	"""
+	sourced_files = []
 	# parse out filename and construct file path
 	preprocess_setwd(r_file, script_dir)
 	filename = get_r_filename(r_file)
@@ -424,22 +434,46 @@ def preprocess_source(r_file, script_dir, from_preproc=False):
 						# replace windows pathing with POSIX style
 						line = re.sub(re.escape('\\\\'), '/', line)
 						# try to fine the relative path
-						rel_path = find_rel_path(sourced_file, curr_wd)
-						if not rel_path:
-							rel_path = find_file(extract_filename(sourced_file), curr_wd)
-						# if relative path found, recursively call function on the sourced file
-						if rel_path:
+						#rel_path = find_rel_path(sourced_file, curr_wd)
+						rel_path = ''
+						# Try and find the file, otherwise may need to look for the preprocessed version!
+						new_path = find_file(extract_filename(sourced_file), get_root_dir(curr_wd))
+						if new_path:
+							rel_path = os.path.join( get_root_dir(curr_wd), new_path)
+							rel_path = os.path.relpath(rel_path, start = curr_wd)
+
 							sourced_filename = os.path.basename(rel_path)
 							sourced_path = '/'.join((curr_wd + '/' + rel_path).split('/')[:-1])
-							preprocess_source(sourced_filename, sourced_path, from_preproc)
-							with open(sourced_path + '/' + re.sub('.R\$', '__preproc__.R\$', sourced_filename), 
-								      'r') as infile:
-								map(outfile.write, infile.readlines())
-							outfile.write(line)
+							recurred_files = preprocess_source(sourced_filename, sourced_path, from_preproc)
+							sourced_files = recurred_files + sourced_files
+							sourced_files.append("/" + new_path)
+							with open(sourced_path + '/' + re.sub('.R$', '__preproc__.R', sourced_filename),
+								      'r') as sourced_file:
+								for source_line in sourced_file.readlines():
+									outfile.write(source_line)
+								
+						# check for preprocessed version
+						else:
+							new_path = find_file(re.sub('.R$', '__preproc__.R', os.path.basename(sourced_file)), get_root_dir(curr_wd))
+							if new_path:
+								rel_path = os.path.join( get_root_dir(curr_wd), new_path)
+								rel_path = os.path.relpath(rel_path, start = curr_wd)
+
+								sourced_filename = os.path.basename(rel_path)
+								sourced_path = '/'.join((curr_wd + '/' + rel_path).split('/')[:-1])
+								sourced_files.append("/" + re.sub('__preproc__.R$', '.R', new_path))
+								with open(sourced_path + '/' + sourced_filename,
+								      'r') as sourced_file:
+									#map(outfile.write, infile.readlines())
+									for source_line in sourced_file.readlines():
+										outfile.write(source_line)
+								
+							#outfile.write(line)
 					else:
 						outfile.write(line)
 				else:
 					outfile.write(line)
+			outfile.write("\n")
 	
 	# remove the file with _temp suffix if file was previously preprocessed
 	if from_preproc:
@@ -447,6 +481,15 @@ def preprocess_source(r_file, script_dir, from_preproc=False):
 			os.remove(file_to_copy)
 		except:
 			pass
+	return(sourced_files)
+
+# This function grabs the root directory of a dataset from a filepath to a script's dir
+# It also returns the root unchanged if the script is in the root
+def get_root_dir(filepath):
+	path_pieces = filepath.split("/")
+	root_parent = path_pieces.index("data_set_content")
+	root_dir = '/'.join(path_pieces[0:root_parent+2])
+	return (root_dir)
 
 def all_preproc(r_file, path, error_string="error"):
 	"""Attempt to correct setwd, file path, and library errors
@@ -460,6 +503,7 @@ def all_preproc(r_file, path, error_string="error"):
 				   original error obtained by running the R script, defaults to
 				   "error", which will perform the preprocessing
 	"""
+	sourced_files =[]
 	# parse out filename and construct file path
 	filename = get_r_filename(r_file)
 	file_path = path + "/" + r_file
@@ -467,9 +511,10 @@ def all_preproc(r_file, path, error_string="error"):
 	preproc_path = path + "/" + filename + "__preproc__" + ".R"
 	# try all 3 preprocessing methods if there is an error
 	if error_string != "success":
-		preprocess_source(r_file, path, from_preproc=True)
-		preprocess_lib(r_file, path, from_preproc=True)
+		sourced_files = preprocess_source(r_file, path, from_preproc=True)
+		#preprocess_lib(r_file, path, from_preproc=True)
 		preprocess_file_paths(r_file, path, from_preproc=True, report_missing=True)
 	# else just copy and rename the file
 	else:
 		shutil.copyfile(file_path, preproc_path)
+	return(sourced_files)

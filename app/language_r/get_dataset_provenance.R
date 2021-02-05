@@ -13,7 +13,6 @@ args = commandArgs(trailingOnly=TRUE)
 dir_path_doi = args[1] # example: "doi--10.7910-DVN-26905"
 preproc = args[2] == "y" # preprocessing
 
-
 print(dir_path_doi)
 
 # set the working directory to the dataset directory
@@ -71,6 +70,21 @@ for (r_file in r_files) {
 	                     "), silent = TRUE); if(class(error) == 'try-error'){save(error,file ='", paste0(dir_path_doi, "/prov_data/error.RData") ,"')}", "\"")
 	system(run.script)
 
+	# Determine provenance directory so it can be changed to a unique name
+	script.noext <- basename(filename)
+	old.prov.dir <- paste0(dir_path_doi, "/prov_data/", paste0("prov_", script.noext))
+	script.noext <- basename(old.prov.dir)
+	
+	# Switch all periods and forward slashes to dashes and then remove first occurences
+	# Will turn "./Scripts/anotherTest" into first "--Scripts-anotherTest" and then "Scripts-anotherTest"
+	# Then append to the prov directory
+	new.prov.dir <- str_replace_all(filename, "[\\/.]", "-")
+	new.prov.dir <- str_replace_all(new.prov.dir, "^-*", "")
+	new.prov.dir <- paste0(dirname(old.prov.dir), "/", new.prov.dir)
+	
+	# Execute renaming
+	system(paste0("mv ", old.prov.dir, " ", new.prov.dir))
+	
 	# restore local variables
 	load("prov_data/get_prov.RData")
 	# if there was an error
