@@ -55,38 +55,40 @@ def download_dataset(doi, destination,
     # make a new directory to store the dataset
     if not os.path.exists(doi_direct):
         os.makedirs(doi_direct)
-    # for each file result
-    for file in files:
-        try:
-            # parse the filename and fileid
-            # filename = file['dataFile']['filename']
-            fileid = file['dataFile']['id']
-            contentType = file['dataFile']['contentType']
+        # for each file result
+        for file in files:
+            try:
+                # parse the filename and fileid
+                # filename = file['dataFile']['filename']
+                fileid = file['dataFile']['id']
+                contentType = file['dataFile']['contentType']
 
-            if (contentType == 'type/x-r-syntax'):
-                # query the API for the file contents
-                response = requests.get(
-                    api_url + "/access/datafile/" + str(fileid))
-            else:
-                # query the API for the file contents
-                if("originalFileFormat" in file["dataFile"].keys()):
-                    response = requests.get(api_url + "/access/datafile/" + str(fileid),
-                                        params={"format": "original"})
+                if (contentType == 'type/x-r-syntax'):
+                    # query the API for the file contents
+                    response = requests.get(
+                        api_url + "/access/datafile/" + str(fileid))
                 else:
-                    response = requests.get(api_url + "/access/datafile/" + str(fileid))
+                    # query the API for the file contents
+                    if("originalFileFormat" in file["dataFile"].keys()):
+                        response = requests.get(api_url + "/access/datafile/" + str(fileid),
+                                            params={"format": "original"})
+                    else:
+                        response = requests.get(api_url + "/access/datafile/" + str(fileid))
 
-            value, params = cgi.parse_header(
-                response.headers['Content-disposition'])
-            if 'filename*' in params:
-                filename = params['filename*'].split("'")[-1]
-            else:
-                filename = params['filename']
+                value, params = cgi.parse_header(
+                    response.headers['Content-disposition'])
+                if 'filename*' in params:
+                    filename = params['filename*'].split("'")[-1]
+                else:
+                    filename = params['filename']
 
-            # write the response to correctly-named file in the dataset directory
-            with open(doi_direct + "/" + filename, 'wb') as handle:
-                handle.write(response.content)
-        except:
-            return False
+                # write the response to correctly-named file in the dataset directory
+                with open(doi_direct + "/" + filename, 'wb') as handle:
+                    handle.write(response.content)
+            except:
+                return False
+    else:
+        print("Repeat Dataset")
     return True
 
 if __name__ == "__main__":
