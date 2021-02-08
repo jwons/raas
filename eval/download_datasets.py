@@ -12,9 +12,9 @@ def doi_to_directory(doi):
     Returns
     -------
     doi : string
-          doi with "/" and ":" replaced by "-" and "--" respectively
+          doi with "/" and ":" replaced by "-" and "-" respectively
     """
-    return doi.replace("/", "-").replace(":", "--")
+    return doi.replace("/", "-").replace(":", "-")
 
 def download_dataset(doi, destination,
                      api_url="https://dataverse.harvard.edu/api/"):
