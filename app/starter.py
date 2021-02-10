@@ -2,6 +2,7 @@ import os
 from app import celery
 from app.language_python.python_lang_obj import py_lang
 from app.language_r.r_lang_obj import r_lang
+from app.language_julia.julia_lang_object import julia_lang
 from timeit import default_timer as timer
 
 from app import app
@@ -18,6 +19,8 @@ def start_raas(self, language, current_user_id, name, preprocess, data_folder=''
         language_obj = py_lang()
     elif language == "R":
         language_obj = r_lang()
+    elif language == "Julia":
+        language_obj = julia_lang()
     else:
         return {'current': 100, 'total': 100, 'status': ['Error in language.',
                                                          [[language + " is not supported"]]]}
@@ -42,6 +45,7 @@ def start_raas(self, language, current_user_id, name, preprocess, data_folder=''
 
         self.update_state(state='PROGRESS', meta={'current': 4, 'total': 10,
                                                   'status': 'Building Docker image... '})
+
         language_obj.build_docker_img(docker_file_dir, current_user_id, name)
         self.update_state(state='PROGRESS', meta={'current': 7, 'total': 10,
                                                   'status': 'Collecting container environment information... '})

@@ -29,7 +29,7 @@ class InputForm(FlaskForm):
     fix_code = BooleanField('Attempt to automatically fix code', default=True)
 
     language = SelectField('What language is included in your upload', validators=[Required()],
-                           choices=[('R', 'R'), ('Python', 'Python')])
+                           choices=[('R', 'R'), ('Python', 'Python'), ('Julia', 'Julia')])
     #TODO: support using provanence files provided by user directly
     #provenance = FileField('Provenance File')
     command_line = FieldList(FormField(Cmd_Form), min_entries=1)
