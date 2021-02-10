@@ -158,7 +158,7 @@ class py_lang(language_interface):
                                                                      err_mesg]]]}
         return {"dir_name": dir_name, "docker_pkgs": docker_pkgs, "is_python_2": py2}
 
-    def create_report(self, current_user_id, name, dir_name):
+    def create_report(self, current_user_id, name, dir_name, time):
         client = docker.from_env()
         current_user_obj = User.query.get(current_user_id)
         # image_name = ''.join(random.choice(string.ascii_lowercase) for _ in range(5))
