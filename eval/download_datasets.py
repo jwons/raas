@@ -1,6 +1,10 @@
 import os
 import requests
 import cgi
+import shutil
+
+from run_eval import batch_raas
+from headless_raas import headless_raas
 
 def doi_to_directory(doi):
     """Converts a doi string to a more directory-friendly name
@@ -51,11 +55,11 @@ def download_dataset(doi, destination,
 
     # convert DOI into a friendly directory name by replacing slashes and colons
     doi_direct = destination + '/' + doi_to_directory(doi)
-
     # make a new directory to store the dataset
     if not os.path.exists(doi_direct):
         os.makedirs(doi_direct)
-        # for each file result
+
+    # for each file result
         for file in files:
             try:
                 # parse the filename and fileid
@@ -87,9 +91,13 @@ def download_dataset(doi, destination,
                     handle.write(response.content)
             except:
                 return False
+        #shutil.make_archive(doi_direct, 'zip', doi_direct)
+        #shutil.rmtree(doi_direct)
     else:
         print("Repeat Dataset")
-    return True
+        doi_direct = False
+    
+    return doi_direct
 
 if __name__ == "__main__":
 
@@ -97,9 +105,20 @@ if __name__ == "__main__":
 
         dois = doi_file.readlines()
     
-    for i in [26]:
-        print("Downloading dataset " + str(i) + ": " + dois[i])
-        download_dataset(dois[i].strip("\n"), "datasets")
-
-    #26 - FJJNDN
-
+    dois = dois[0:1]
+    start = 0
+    end = 10
+    while(True):
+        data_dirs_chunk = []
+        for data_index in range(start, end):
+            print("Downloading dataset " + str(data_index) + ": " + dois[data_index])
+            datadir = download_dataset(dois[data_index].strip("\n"), "datasets")
+            data_dirs_chunk.append(datadir)
+        data_dirs_chunk = list(set(data_dirs_chunk))
+        print(data_dirs_chunk)
+        start += 10
+        end += 10
+        if(end == len(dois)):
+            break
+        elif (end > len(dois)):
+            end = len(dois)
