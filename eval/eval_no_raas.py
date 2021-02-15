@@ -6,9 +6,9 @@ import docker
 import json
 import threading
 import sqlite3
-
 import pandas as pd
 
+from urllib3.exceptions import ReadTimeoutError
 from sqlalchemy import create_engine
 from io import StringIO
 from docker import APIClient
@@ -72,19 +72,43 @@ def download_dataset(doi, destination,
                 # filename = file['dataFile']['filename']
                 fileid = file['dataFile']['id']
                 contentType = file['dataFile']['contentType']
-
+                timeout_duration = 5
+                timeout_limit = 3
+                attempts = 0
                 if (contentType == 'type/x-r-syntax'):
-                    # query the API for the file contents
-                    response = requests.get(
-                        api_url + "/access/datafile/" + str(fileid))
+                    while (attempts < timeout_limit):
+                        try:
+                            # query the API for the file contents
+                            response = requests.get(
+                                api_url + "/access/datafile/" + str(fileid), timeout = timeout_duration)
+                        except Exception:
+                            attempts += 1
+                            if(attempts == timeout_limit):
+                                print("Timed-out too many times. Check internet connection?")
+                                exit(1)
+                            else:    
+                                print("Timeout hit trying again")
+                            continue
+                        break
                 else:
-                    # query the API for the file contents
-                    if("originalFileFormat" in file["dataFile"].keys()):
-                        response = requests.get(api_url + "/access/datafile/" + str(fileid),
-                                            params={"format": "original"})
-                    else:
-                        response = requests.get(api_url + "/access/datafile/" + str(fileid))
-
+                    
+                    while (attempts < timeout_limit):
+                        try:
+                            # query the API for the file contents
+                            if("originalFileFormat" in file["dataFile"].keys()):
+                                response = requests.get(api_url + "/access/datafile/" + str(fileid),
+                                                    params={"format": "original"}, timeout = timeout_duration)
+                            else:
+                                response = requests.get(api_url + "/access/datafile/" + str(fileid), timeout = timeout_duration)
+                        except Exception:
+                            attempts += 1
+                            if(attempts == timeout_limit):
+                                print("Timed-out too many times. Check internet connection?")
+                                exit(1)
+                            else:    
+                                print("Timeout hit trying again")
+                            continue
+                        break
                 value, params = cgi.parse_header(
                     response.headers['Content-disposition'])
                 if 'filename*' in params:
@@ -111,6 +135,7 @@ def download_dataset(doi, destination,
 # is executed asynchronously 
 def batch_run(datadirs):
     run_logs = []
+    skipped = []
     for datadir in datadirs:
         # A dockerfile is written for each directory specifying how to build the image
         # Running the R scripts is part of the build process
@@ -125,14 +150,19 @@ def batch_run(datadirs):
 
         # Tags cannot have uppercase characters, and it is better to not have double special characters either
         tag = os.path.basename(datadir).replace(".", "-").lower()
-        generator = client.build(path="datasets", tag=tag)
 
-        # This will build the image, uncomment the print statement to get output from build 
-        for chunk in generator:
-            if 'stream' in chunk.decode():
-                for line in json.loads(chunk.decode())["stream"].splitlines():
-                    #print(line)
-                    pass
+        try:
+            generator = client.build(path="datasets", tag=tag, timeout=3600)
+
+            # This will build the image, uncomment the print statement to get output from build 
+            for chunk in generator:
+                if 'stream' in chunk.decode():
+                    for line in json.loads(chunk.decode())["stream"].splitlines():
+                        #print(line)
+                        pass
+        except ReadTimeoutError:
+            print(datadir + " timed-out and was skipped")
+            skipped.append(datadir)
 
         # To collect the results from the container we need to run the container just to get the run_log.csv
         # which is where the results are kept
@@ -159,6 +189,11 @@ def batch_run(datadirs):
     run_logs = pd.concat(run_logs)
     engine = create_engine('sqlite:///results.db', echo=False)
     run_logs.to_sql('results', con=engine, if_exists='append', index=False)
+
+    if(len(skipped) is not 0):
+        with open("timed_out.txt", "a+") as timed_out:
+            for datadir in skipped:
+                timed_out.write(datadir)
     
 if __name__ == "__main__":
 
@@ -166,7 +201,7 @@ if __name__ == "__main__":
     with open('r_dois.txt') as doi_file:
         dois = doi_file.readlines()
     
-    dois = dois[0:4]
+    dois = dois[0:8]
     start = 0
     end = 2
     increment_by = 2
@@ -174,6 +209,7 @@ if __name__ == "__main__":
         os.makedirs("datasets")
     shutil.copy("get_dataset_results.R", "datasets/get_dataset_results.R")
     batch_thread = None
+    batch_counter = 0
     while(True):
         data_dirs_chunk = []
         for data_index in range(start, end):
@@ -187,6 +223,8 @@ if __name__ == "__main__":
         
         if batch_thread is not None:
             batch_thread.join()
+            print("Batch " + str(batch_counter) + " completed.")
+            batch_counter += 1
         batch_thread = threading.Thread(target=batch_run, args=(data_dirs_chunk,), daemon=True)
         batch_thread.start()
 
