@@ -12,6 +12,7 @@ from urllib3.exceptions import ReadTimeoutError
 from sqlalchemy import create_engine
 from io import StringIO
 from docker import APIClient
+from func_timeout import func_timeout, FunctionTimedOut
 
 def doi_to_directory(doi):
     """Converts a doi string to a more directory-friendly name
@@ -26,6 +27,16 @@ def doi_to_directory(doi):
           doi with "/" and ":" replaced by "-" and "-" respectively
     """
     return doi.replace("/", "-").replace(":", "-")
+
+def build_dataset_image(tag, client):
+    generator = client.build(path="datasets", tag=tag)
+
+    # This will build the image, uncomment the print statement to get output from build 
+    for chunk in generator:
+        if 'stream' in chunk.decode():
+            for line in json.loads(chunk.decode())["stream"].splitlines():
+                #print(line)
+                pass
 
 def download_dataset(doi, destination,
                      api_url="https://dataverse.harvard.edu/api/"):
@@ -150,50 +161,44 @@ def batch_run(datadirs):
 
         # Tags cannot have uppercase characters, and it is better to not have double special characters either
         tag = os.path.basename(datadir).replace(".", "-").lower()
-
+        build_success = True
         try:
-            generator = client.build(path="datasets", tag=tag, timeout=3600)
-
-            # This will build the image, uncomment the print statement to get output from build 
-            for chunk in generator:
-                if 'stream' in chunk.decode():
-                    for line in json.loads(chunk.decode())["stream"].splitlines():
-                        #print(line)
-                        pass
-        except ReadTimeoutError:
+            func_timeout(3600, build_dataset_image, args=(tag, client))
+        except FunctionTimedOut:
             print(datadir + " timed-out and was skipped")
+            build_success = False
             skipped.append(datadir)
 
-        # To collect the results from the container we need to run the container just to get the run_log.csv
-        # which is where the results are kept
-        client = docker.from_env() 
+        if (build_success):
+            # To collect the results from the container we need to run the container just to get the run_log.csv
+            # which is where the results are kept
+            client = docker.from_env() 
 
-        # Collect log, specify sep, engine, and escapechar to prevent pandas parsing errors
-        run_log = client.containers.run(tag, "cat /home/docker/prov_data/run_log.csv").decode()
-        log_df = pd.read_csv(StringIO(run_log), sep=",", engine='python', escapechar="\\")
+            # Collect log, specify sep, engine, and escapechar to prevent pandas parsing errors
+            run_log = client.containers.run(tag, "cat /home/docker/prov_data/run_log.csv").decode()
+            log_df = pd.read_csv(StringIO(run_log), sep=",", engine='python', escapechar="\\")
 
-        # remove containers, images, and dir to keep storage costs down
-        client.containers.prune()
-        client.images.remove(tag)
+            # remove containers, images, and dir to keep storage costs down
+            client.containers.prune()
+            client.images.remove(tag)
+            # record results
+            run_logs.append(log_df)
         shutil.rmtree(datadir)
-
-        # record results
-        run_logs.append(log_df)
-        
 
     # Clear up dataset dir
     if os.path.exists("datasets/Dockerfile"):
         os.remove("datasets/Dockerfile")
 
     # create one big dataframe so it can be inserted into database
-    run_logs = pd.concat(run_logs)
-    engine = create_engine('sqlite:///results.db', echo=False)
-    run_logs.to_sql('results', con=engine, if_exists='append', index=False)
+    if(len(run_logs) > 0):
+        run_logs = pd.concat(run_logs)
+        engine = create_engine('sqlite:///results.db', echo=False)
+        run_logs.to_sql('results', con=engine, if_exists='append', index=False)
 
     if(len(skipped) is not 0):
         with open("timed_out.txt", "a+") as timed_out:
             for datadir in skipped:
-                timed_out.write(datadir)
+                timed_out.write(datadir + "\n")
     
 if __name__ == "__main__":
 
