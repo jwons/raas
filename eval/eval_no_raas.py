@@ -206,10 +206,10 @@ if __name__ == "__main__":
     with open('r_dois.txt') as doi_file:
         dois = doi_file.readlines()
     
-    dois = dois[0:8]
+    #dois = dois[0:8]
     start = 0
-    end = 2
-    increment_by = 2
+    end = 5
+    increment_by = 5
     if not os.path.exists("datasets"):
         os.makedirs("datasets")
     shutil.copy("get_dataset_results.R", "datasets/get_dataset_results.R")
