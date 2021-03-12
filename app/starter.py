@@ -2,8 +2,8 @@ import os
 from app import celery
 from app.language_python.python_lang_obj import py_lang
 from app.language_r.r_lang_obj import r_lang
-from app.language_julia.julia_lang_object import julia_lang
-from app.language_matlab.matlab_lang_object import matlab_lang
+from app.language_julia.julia_lang_obj import julia_lang
+from app.language_matlab.matlab_lang_obj import matlab_lang
 from timeit import default_timer as timer
 
 from app import app
@@ -23,7 +23,7 @@ def start_raas(self, language, current_user_id, name, preprocess, data_folder=''
     elif language == "Julia":
         language_obj = julia_lang()
     elif language == "Matlab":
-    language_obj = matlab_lang()
+        language_obj = matlab_lang()
     else:
         return {'current': 100, 'total': 100, 'status': ['Error in language.',
                                                          [[language + " is not supported"]]]}

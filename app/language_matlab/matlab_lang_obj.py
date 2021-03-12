@@ -36,7 +36,7 @@ class matlab_lang(language_interface):
     #     temp_path = os.path.join(par, temp_filename)
     #     return temp_path
     #
-    def preprocessing(self, preprocess, dataverse_key='', doi='', data_folder='', user_pkg=''):
+    def script_analysis(self, preprocess, dataverse_key='', doi='', data_folder='', user_pkg=''):
 
         return {"dir_name": data_folder, "docker_pkgs": {}}
 
