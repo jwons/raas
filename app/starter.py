@@ -3,6 +3,7 @@ from app import celery
 from app.language_python.python_lang_obj import py_lang
 from app.language_r.r_lang_obj import r_lang
 from timeit import default_timer as timer
+from func_timeout import func_timeout, FunctionTimedOut
 
 from app import app
 
@@ -42,7 +43,11 @@ def start_raas(self, language, current_user_id, name, preprocess, data_folder=''
 
         self.update_state(state='PROGRESS', meta={'current': 4, 'total': 10,
                                                   'status': 'Building Docker image... '})
-        language_obj.build_docker_img(docker_file_dir, current_user_id, name)
+        eval = True
+        if(eval):
+            func_timeout(3600, language_obj.build_docker_img, args=(docker_file_dir, current_user_id, name))
+        else:                                            
+            language_obj.build_docker_img(docker_file_dir, current_user_id, name)
         self.update_state(state='PROGRESS', meta={'current': 7, 'total': 10,
                                                   'status': 'Collecting container environment information... '})
         report = None

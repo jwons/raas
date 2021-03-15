@@ -26,6 +26,7 @@ def headless_raas(name, lang, user = 1, preproc = "0", doi = "", zip_path = "", 
 
     status_request = "http://127.0.0.1:" + port + "/status/" + task_id
     last_status = ""
+    retVal = True
     while(True):
         task_status = requests.get(status_request).json()
         if(task_status["status"] != last_status):
@@ -36,12 +37,13 @@ def headless_raas(name, lang, user = 1, preproc = "0", doi = "", zip_path = "", 
             break
         if(task_status["state"] == "FAILURE"):
             print("Build probably failed moving on")
+            retVal = False
             break
         time.sleep(5)
 
-    print(result.json())
+    #print(result.json())
 
-    return (True)
+    return (retVal)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='A command-line interface to containR\'s web API.')

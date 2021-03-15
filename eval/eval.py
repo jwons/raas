@@ -6,13 +6,19 @@ import docker
 import json
 import threading
 import sqlite3
+import time
 import pandas as pd
+import argparse
+import subprocess
 
 from urllib3.exceptions import ReadTimeoutError
 from sqlalchemy import create_engine
 from io import StringIO
 from docker import APIClient
 from func_timeout import func_timeout, FunctionTimedOut
+
+from headless_raas import headless_raas
+
 
 def doi_to_directory(doi):
     """Converts a doi string to a more directory-friendly name
@@ -184,7 +190,7 @@ def batch_run(datadirs):
             # record results
             run_logs.append(log_df)
         shutil.rmtree(datadir)
-
+        
     # Clear up dataset dir
     if os.path.exists("datasets/Dockerfile"):
         os.remove("datasets/Dockerfile")
@@ -199,23 +205,96 @@ def batch_run(datadirs):
         with open("timed_out.txt", "a+") as timed_out:
             for datadir in skipped:
                 timed_out.write(datadir + "\n")
-    
+
+def tag_from_datadir(datadir):
+    return("jwonsil/jwons-" + os.path.basename(datadir.lower()))
+
+# Get all dataset dirs, remove first element because walk will return the datasets directory itself
+# as the first element 
+#dataset_dirs = [direc[0] for direc in os.walk("./eval/datasets")][1:]
+def batch_raas(dataset_dirs, zip_dirs = False, debug = True):
+    print(dataset_dirs)
+    failed_sets = []
+    for data_dir in dataset_dirs:
+        # This code only needs to be run once
+        if(zip_dirs):
+            if(debug): print("Zipping: " + data_dir)
+            shutil.make_archive("datasets/" + os.path.basename(data_dir), 'zip', data_dir)
+        if(debug): print("Beginning containerization for: " + os.path.basename(data_dir))
+        try:
+            result = headless_raas(name = os.path.basename(data_dir), lang = "R", preproc = "1", zip_path = "datasets/" + os.path.basename(data_dir) + ".zip")
+            if(result is False):
+                print("raas function returned false")
+                raise Exception("raas function returned false")
+        except Exception as e:
+            print("Containerization failed on: " + data_dir)
+            print(e)
+            failed_sets.append(data_dir)
+        shutil.rmtree(data_dir)
+        os.remove("datasets/" + os.path.basename(data_dir) + ".zip")
+    print("Reached end of list")
+
+    client = docker.from_env() 
+    client.containers.prune()
+            
+    for data_dir in dataset_dirs:
+        try:
+            client.images.remove(tag_from_datadir(data_dir))
+        except docker.errors.ImageNotFound:
+            pass
+
+    if(len(failed_sets) is not 0):
+        with open("failed_sets.txt", "a+") as failed:
+            for datadir in failed_sets:
+                failed.write(datadir + "\n")
+    #return((0, failed_sets))	
+
+def start_raas():
+    os.chdir("../")
+    subprocess.run(["docker-compose", "up"])
+
 if __name__ == "__main__":
 
     # this file is created by the get_r_dois.py script
     with open('r_dois.txt') as doi_file:
         dois = doi_file.readlines()
-    
-    #dois = dois[0:8]
+
+    parser = argparse.ArgumentParser()
+   
+    parser.add_argument('--noraas', action='store_true')
+    parser.add_argument('--start', default=0, type = int)
+    parser.add_argument('--end', default = len(dois), type = int)
+
+    args = parser.parse_args()
+
+    if(args.noraas == False):
+        print("Running with RaaS")
+        raas_thread = threading.Thread(target=start_raas, daemon=True)
+        raas_thread.start()
+
+    time.sleep(5)
+
+    os.chdir("eval/")
+
+    # which increment of r dois to evaluate 
+    dois = dois[args.start:args.end]
+
+    # Define chunk size
     start = 0
     end = 5
     increment_by = 5
+
+    # Create folder for storing datasets if necessary
     if not os.path.exists("datasets"):
         os.makedirs("datasets")
     shutil.copy("get_dataset_results.R", "datasets/get_dataset_results.R")
     batch_thread = None
     batch_counter = 0
+
+    # Download datasets while executing eval in batches
     while(True):
+
+        # download a chunk of datasets as defined outside the loop
         data_dirs_chunk = []
         for data_index in range(start, end):
             print("Downloading dataset " + str(data_index) + ": " + dois[data_index])
@@ -230,7 +309,10 @@ if __name__ == "__main__":
             batch_thread.join()
             print("Batch " + str(batch_counter) + " completed.")
             batch_counter += 1
-        batch_thread = threading.Thread(target=batch_run, args=(data_dirs_chunk,), daemon=True)
+        if(args.noraas):
+            batch_thread = threading.Thread(target=batch_run, args=(data_dirs_chunk,), daemon=True)
+        else:
+            batch_thread = threading.Thread(target=batch_raas, args=(data_dirs_chunk,True, True), daemon=True)
         batch_thread.start()
 
         if(end == len(dois)):
@@ -242,3 +324,4 @@ if __name__ == "__main__":
             end = len(dois)
 
     batch_thread.join()
+    subprocess.run(["docker-compose", "down"])
