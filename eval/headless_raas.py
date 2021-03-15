@@ -14,7 +14,7 @@ def headless_raas(name, lang, user = 1, preproc = "0", doi = "", zip_path = "", 
          preproc + "&userID=" + str(user) + "&name=" + name + "&language=" + lang
 
     
-    if(zip_path is not ""):
+    if(zip_path != ""):
         request = request + "&zipFile=" + zip_path
     else:
         request = request + "&doi=" + doi

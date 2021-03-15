@@ -201,7 +201,7 @@ def batch_run(datadirs):
         engine = create_engine('sqlite:///results.db', echo=False)
         run_logs.to_sql('results', con=engine, if_exists='append', index=False)
 
-    if(len(skipped) is not 0):
+    if(len(skipped) != 0):
         with open("timed_out.txt", "a+") as timed_out:
             for datadir in skipped:
                 timed_out.write(datadir + "\n")
@@ -243,7 +243,7 @@ def batch_raas(dataset_dirs, zip_dirs = False, debug = True):
         except docker.errors.ImageNotFound:
             pass
 
-    if(len(failed_sets) is not 0):
+    if(len(failed_sets) != 0):
         with open("failed_sets.txt", "a+") as failed:
             for datadir in failed_sets:
                 failed.write(datadir + "\n")
