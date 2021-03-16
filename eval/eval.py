@@ -271,10 +271,8 @@ if __name__ == "__main__":
         print("RaaS must be running or this will fail")
         #raas_thread = threading.Thread(target=start_raas, daemon=True)
         #raas_thread.start()
-
     #time.sleep(5)
-
-    os.chdir("eval/")
+    #os.chdir("eval/")
 
     # which increment of r dois to evaluate 
     dois = dois[args.start:args.end]
