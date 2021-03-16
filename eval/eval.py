@@ -268,11 +268,11 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     if(args.noraas == False):
-        print("Running with RaaS")
-        raas_thread = threading.Thread(target=start_raas, daemon=True)
-        raas_thread.start()
+        print("RaaS must be running or this will fail")
+        #raas_thread = threading.Thread(target=start_raas, daemon=True)
+        #raas_thread.start()
 
-    time.sleep(5)
+    #time.sleep(5)
 
     os.chdir("eval/")
 
@@ -287,6 +287,7 @@ if __name__ == "__main__":
     # Create folder for storing datasets if necessary
     if not os.path.exists("datasets"):
         os.makedirs("datasets")
+
     shutil.copy("get_dataset_results.R", "datasets/get_dataset_results.R")
     batch_thread = None
     batch_counter = 0
