@@ -1,7 +1,7 @@
 import argparse
 import requests
 import time
-
+import json
 
 
 def headless_raas(name, lang, user = 1, preproc = "0", doi = "", zip_path = "", port = "5000" ):
@@ -28,17 +28,23 @@ def headless_raas(name, lang, user = 1, preproc = "0", doi = "", zip_path = "", 
     last_status = ""
     retVal = True
     while(True):
-        task_status = requests.get(status_request).json()
-        if(task_status["status"] != last_status):
-            print(task_status)
-            last_status = task_status["status"]
-        if(task_status["current"] == 10):
-            print("Build Complete")
-            break
-        if(task_status["state"] == "FAILURE"):
-            print("Build probably failed moving on")
+        try:
+            task_status = requests.get(status_request).json()
+            if(task_status["status"] != last_status):
+                print(task_status)
+                last_status = task_status["status"]
+            if(task_status["current"] == 10):
+                print("Build Complete")
+                break
+            if(task_status["state"] == "FAILURE"):
+                print("Build probably failed moving on")
+                retVal = False
+                break
+        except json.decoder.JSONDecodeError:
+            print("Build probably timed out")
             retVal = False
             break
+        
         time.sleep(5)
 
     #print(result.json())

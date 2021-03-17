@@ -145,7 +145,7 @@ def containerize():
                                                 'sample_output': '',
                                                 'code_btw': ext_pkgs,
                                                 'prov': ''
-                                                })
+                                                }, time_limit = 3660, soft_time_limit = 3600)
 
         session['task_id'] = task.id
         return redirect(url_for('build_status'))

@@ -74,6 +74,7 @@ def download_dataset(doi, destination,
             .json()['data']['latestVersion']['files']
 
     except:
+        print("Could not get dataset info from dataverse")
         return False
 
     # convert DOI into a friendly directory name by replacing slashes and colons
@@ -279,8 +280,8 @@ if __name__ == "__main__":
 
     # Define chunk size
     start = 0
-    end = 5
-    increment_by = 5
+    end = 2
+    increment_by = 2
 
     # Create folder for storing datasets if necessary
     if not os.path.exists("datasets"):
