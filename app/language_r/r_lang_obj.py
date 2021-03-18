@@ -133,7 +133,7 @@ class r_lang(language_interface):
 
         try:
             os.makedirs(os.path.join(app.instance_path, 'datasets', dir_name, 'data_set_content'))
-        except:
+        except Exception as e:
             print('pass')
             pass
 
@@ -141,7 +141,7 @@ class r_lang(language_interface):
             
         try:
             os.makedirs(docker_file_dir)
-        except:
+        except Exception as e:
             pass
         
         if(len(src_ignore) > 0):

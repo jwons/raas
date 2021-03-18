@@ -73,8 +73,9 @@ def download_dataset(doi, destination,
                              params={"persistentId": doi}) \
             .json()['data']['latestVersion']['files']
 
-    except:
+    except Exception as e:
         print("Could not get dataset info from dataverse")
+        print(e)
         return False
 
     # convert DOI into a friendly directory name by replacing slashes and colons
@@ -231,18 +232,21 @@ def batch_raas(dataset_dirs, zip_dirs = False, debug = True):
             print("Containerization failed on: " + data_dir)
             print(e)
             failed_sets.append(data_dir)
+
+        # Clean up
         shutil.rmtree(data_dir)
         os.remove("datasets/" + os.path.basename(data_dir) + ".zip")
-    print("Reached end of list")
-
-    client = docker.from_env() 
-    client.containers.prune()
-            
-    for data_dir in dataset_dirs:
+        client = docker.from_env() 
+        client.containers.prune()
         try:
             client.images.remove(tag_from_datadir(data_dir))
-        except docker.errors.ImageNotFound:
+        except Exception as e:
+            print("Delete image failed")
+            print(e)
             pass
+        client.images.prune()
+        
+    print("Reached end of list")
 
     if(len(failed_sets) != 0):
         with open("failed_sets.txt", "a+") as failed:

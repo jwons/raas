@@ -76,5 +76,7 @@ class language_interface(object):
         # delete any stored data
         try:
             shutil.rmtree(self.get_dockerfile_dir(name))
-        except:
+        except Exception as e:
+            print("Can't delete dataset")
+            print(e)
             pass
