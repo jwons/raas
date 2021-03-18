@@ -14,7 +14,7 @@ from celery.contrib import rdb
 @celery.task(bind=True, time_limit=3660, soft_time_limit = 3600)
 def start_raas(self, language, current_user_id, name, preprocess, data_folder='',
                run_instr='', user_pkgs='', sample_output=None, code_btw=None, 
-               prov=None, upload = True, make_report = True, clean_folder = False):
+               prov=None, upload = True, make_report = True):
 
     if language == "Python":
         language_obj = py_lang()
@@ -23,16 +23,7 @@ def start_raas(self, language, current_user_id, name, preprocess, data_folder=''
     else:
         return {'current': 100, 'total': 100, 'status': ['Error in language.',
                                                          [[language + " is not supported"]]]}
-    clean_folder = True
-    # In case a previoud run errored out and failed to clean up, do it now
-    if(clean_folder):
-        datasets_dir = os.path.join(app.instance_path, "datasets")
-        for files in os.listdir(datasets_dir):
-            path = os.path.join(datasets_dir, files)
-            try:
-                shutil.rmtree(path)
-            except OSError:
-                os.remove(path)
+    
     try:
         self.update_state(state='PROGRESS', meta={'current': 1, 'total': 10,
                                                   'status': 'Preprocessing files for errors and ' + \
