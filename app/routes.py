@@ -65,17 +65,7 @@ def containerize():
             os.makedirs(app.instance_path)
         if not os.path.exists(os.path.join(app.instance_path, 'datasets')):
             os.makedirs(os.path.join(app.instance_path, 'datasets'))
-        else:
-            clean_folder = True
-            # In case a previoud run errored out and failed to clean up, do it now
-            if(clean_folder):
-                datasets_dir = os.path.join(app.instance_path, "datasets")
-                for files in os.listdir(datasets_dir):
-                    path = os.path.join(datasets_dir, files)
-                    try:
-                        shutil.rmtree(path)
-                    except OSError:
-                        os.remove(path)
+        
 
         if form.zip_file.data:
             zip_file = form.zip_file.data
@@ -331,6 +321,17 @@ def api_build():
             os.makedirs(app.instance_path)
         if not os.path.exists(os.path.join(app.instance_path, 'datasets')):
             os.makedirs(os.path.join(app.instance_path, 'datasets'))
+        else:
+            clean_folder = True
+            # In case a previoud run errored out and failed to clean up, do it now
+            if(clean_folder):
+                datasets_dir = os.path.join(app.instance_path, "datasets")
+                for files in os.listdir(datasets_dir):
+                    path = os.path.join(datasets_dir, files)
+                    try:
+                        shutil.rmtree(path)
+                    except OSError:
+                        os.remove(path)
         # save the .zip file to the correct location
         zip_base = os.path.basename(zip_file)
         with zipfile.ZipFile(zip_file, 'r') as zip_ref:
