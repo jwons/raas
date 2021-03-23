@@ -1,10 +1,14 @@
 # How to perform the evaluation
 
 This readme describes the steps necessary to perform the RaaS evaluation. 
+Note that running the eval script will likely take a LONG TIME. 
+Most likely days if running the full thing. 
+Even a batch of 320 could take a few days. 
 A python environment capable of running RaaS is necessary to execute these scripts. 
 However, it is likely simpler to install all of the packages imported at the top of the eval.py script. 
 Note that 'headless_raas' is not a package, but another script in the directory. 
 
+## Collect dataset DOIs first
 Collect datasets first using the get_r_dois.py script. 
 This script will collect all of the datasets with R scripts that exist on Harvard's Dataverse at the time you run the script. 
 It will identify each dataset that the scripts belong to, find the unique doi for each one, and then write those dois to a file r_dois.txt.
