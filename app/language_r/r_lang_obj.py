@@ -204,7 +204,7 @@ class r_lang(language_interface):
                 new_docker.write('COPY .srcignore /home/rstudio/\n')
 
             # Add permissions or the scripts will fail 
-            new_docker.write('RUN chmod a+rwx -R /home/rstudio/\n')
+            new_docker.write('RUN chown -R  rstudio:rstudio /home/rstudio/\n')
 
             # Execute analysis and collect provenance
             new_docker.write('RUN /home/rstudio/datasets/get_prov_for_doi.sh /home/rstudio/datasets/' + dir_name +\

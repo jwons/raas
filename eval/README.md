@@ -45,7 +45,7 @@ Before running this evaluation, you must make sure of two things:
 First, RaaS must be running. 
 The eval will not start RaaS on its own. 
 The easiest way to start RaaS is calling docker-compose up --build from the root RaaS directory. 
-Note, docker-compose and Docker will need to be installed seperately. 
+Note, docker-compose and Docker will need to be installed separately. 
 Check the RaaS wiki on GitHub for more information on installation.
 Second, there needs to be an initial user for RaaS.
 If there is no user recorded in the database, RaaS will fail. 
@@ -53,6 +53,6 @@ A user can easily be created by running RaaS and navigating to the service in a 
 If you cannot do that, you can also simply use sqlite3 to add a user by command line. 
 Whoever is user at index 1 will have all of the eval datasets associated to their account. 
 
-Like with the noraas option, the r_dois.txt fill will be read to determine what to process and a range of dois can be specified using --start and --end.  
+Like with the noraas option, the r_dois.txt file will be read to determine what to process and a range of dois can be specified using --start and --end.  
 
 Once these prereqs are met, running the eval is as simple as running `python eval.py`. 

@@ -26,8 +26,8 @@ def start_raas(self, language, current_user_id, name, preprocess, data_folder=''
     
     try:
         self.update_state(state='PROGRESS', meta={'current': 1, 'total': 10,
-                                                  'status': 'Preprocessing files for errors and ' + \
-                                                            'collecting provenance data... ' + \
+                                                  'status': 'Preprocessing files and ' + \
+                                                            'collecting dependency information... ' + \
                                                             '(This may take several minutes or longer,' + \
                                                             ' depending on the complexity of your scripts)'})
         start_time = timer()
