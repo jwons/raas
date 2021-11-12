@@ -284,8 +284,8 @@ if __name__ == "__main__":
 
     # Define chunk size
     start = 0
-    end = 2
-    increment_by = 2
+    end = 1
+    increment_by = 1
 
     # Create folder for storing datasets if necessary
     if not os.path.exists("datasets"):

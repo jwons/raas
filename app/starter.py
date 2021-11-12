@@ -6,6 +6,7 @@ from timeit import default_timer as timer
 # Debugging
 from celery.contrib import rdb
 
+
 # Used for eval
 # @celery.task(bind=True, time_limit=3660, soft_time_limit = 3600)
 
