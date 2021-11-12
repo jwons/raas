@@ -487,8 +487,8 @@ def preprocess_source(r_file, script_dir, from_preproc=False):
 # It also returns the root unchanged if the script is in the root
 def get_root_dir(filepath):
 	path_pieces = filepath.split("/")
-	root_parent = path_pieces.index("data_set_content")
-	root_dir = '/'.join(path_pieces[0:root_parent+2])
+	root_parent = path_pieces.index("datasets")
+	root_dir = '/'.join(path_pieces[0:root_parent+3])
 	return (root_dir)
 
 def all_preproc(r_file, path, error_string="error"):

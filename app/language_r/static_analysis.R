@@ -8,36 +8,33 @@
 # 
 ##################################################
 
+library(CodeDepends)
+library(lintr)
+library(rjson)
+
 # get commandline arguments
 args = commandArgs(trailingOnly=TRUE)
 # parse command line args for path to the directory
 dir_path_doi = args[1] # example: "doi--10.7910-DVN-26905"  
-preproc = args[2] == "y" # preprocessing  
+static.analysis.dir = args[2] # Location of static analysis directory
 
 print(dir_path_doi)
 
 # set the working directory to the dataset directory
 setwd(dir_path_doi)
 
-library(CodeDepends)
-library(lintr)
-library(rjson)
-
 print("Creating directory!\n")
 # create directory to store provenance data
-dir.create("static_analysis", showWarnings = FALSE)
+dir.create(static.analysis.dir, showWarnings = FALSE)
 
-# get correct list of r files to run the script on depending on commandline args
-if (preproc) {
-	r_files = list.files(".", pattern="__preproc__\\.[Rr]\\>", recursive=FALSE, full.names=FALSE)
-} else {
-  r_files <-  list.files(".", pattern="\\.[Rr]\\>", recursive=T, full.names=T)
-	# parse out preprocessed files
-	preproc_files = grep("__preproc__", r_files)
-	if (length(preproc_files) > 0) {
-		r_files = r_files[-preproc_files]
-	}
+
+r_files <-  list.files(".", pattern="\\.[Rr]\\>", recursive=T, full.names=T)
+# parse out preprocessed files
+preproc_files = grep("__preproc__", r_files)
+if (length(preproc_files) > 0) {
+	r_files = r_files[-preproc_files]
 }
+
 
 lint_file <- function(file) {
   
@@ -181,6 +178,8 @@ all.libs <- unique(c(libs, all.libs))
 libs.request <- paste(all.libs, collapse=",")
 
 # get system dependencies
+print("Getting system reqs:")
+print(paste("https://sysreqs.r-hub.io/pkg/", libs.request,"/linux-x86_64-ubuntu-gcc", sep = ""))
 api.resp <- httr::content(httr::GET(paste("https://sysreqs.r-hub.io/pkg/", libs.request,"/linux-x86_64-ubuntu-gcc", sep = "")), as="parsed")
 api.resp <- unique(api.resp[api.resp != "NULL"])
 
@@ -189,6 +188,6 @@ response = list( errors = if (length(errors) == 1) list(errors) else errors,
                  packages = unique(c(libs,all.libs)), 
                  package_deps = all.libs, 
                  sys_deps = api.resp)
-json = toJSON(response)
+json = rjson::toJSON(response)
 print(json)
-write(json, "static_analysis/static_analysis.json")
+write(json, paste(static.analysis.dir, "/static_analysis.json", sep=""))
