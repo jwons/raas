@@ -1,26 +1,12 @@
-##################################################
-# Attempts to collect provenance data for each file, logging errors if necessary
-# Command line arguments:
-# dir_path_doi : string 
-#				 path to the directory for which to run this script
-# preproc : string
-# 			either "y" or "n"
-##################################################
-
-# get commandline arguments
 args = commandArgs(trailingOnly=TRUE)
-# parse command line args for path to the directory and preprocessing
-dir_path_doi = args[1] # example: "doi--10.7910-DVN-26905"
-preproc = args[2] == "y" # preprocessing
 
+dir_path_doi = args[1] # example: "doi--10.7910-DVN-26905"
+preproc <- F
 
 print(dir_path_doi)
 
 # set the working directory to the dataset directory
 setwd(dir_path_doi)
-library(stringr)
-library(rdtLite)
-library(provParseR)
 
 print("Creating directory!\n")
 # create directory to store provenance data
@@ -48,8 +34,8 @@ if (preproc) {
 
 sourced.scripts <- NA
 
-if(file.exists("../.srcignore")){
-  sourced.scripts <- readLines(con = "../.srcignore")
+if(file.exists("/home/rstudio/.srcignore")){
+  sourced.scripts <- readLines(con = "/home/rstudio/.srcignore")
 }
 
 # for each R file
@@ -67,10 +53,10 @@ for (r_file in r_files) {
 	save(dir_path_doi, r_files, r_file, filename,
 		 file="prov_data/get_prov.RData")
 	#setwd(script_dir)
-	run.script <- paste0("R -e \"library(rdtLite); setwd('", paste0(dir_path_doi, substr(dirname(filename), 2, nchar(filename))), "'); error <-  try(prov.run('", basename(r_file), "', prov.dir =  '", paste0(dir_path_doi, "/prov_data'") , 
+	run.script <- paste0("R -e \"setwd('", paste0(dir_path_doi, substr(dirname(filename), 2, nchar(filename))), "'); error <-  try(source('", basename(r_file), "'", 
 	                     "), silent = TRUE); if(class(error) == 'try-error'){save(error,file ='", paste0(dir_path_doi, "/prov_data/error.RData") ,"')}", "\"")
 	system(run.script)
-
+	
 	# restore local variables
 	load("prov_data/get_prov.RData")
 	# if there was an error
@@ -78,11 +64,11 @@ for (r_file in r_files) {
 	  load("prov_data/error.RData")
 	  file.remove("prov_data/error.RData")
 		# trim whitespace from beginning and end of string
-	  error = str_trim(error[1])
+	  #error = str_trim(error[1])
 	  # parse all the quotes from the error string
-	  error = str_replace_all(error, "\"", "")
+	  #error = str_replace_all(error, "\"", "")
 	  # replace all newline characters in middle of string with special string
-	  error = str_replace_all(error, "[\n]", "[newline]")
+	  #error = str_replace_all(error, "[\n]", "[newline]")
 	}
 	else {
 		error = "success"
@@ -97,40 +83,3 @@ for (r_file in r_files) {
 				row.names=FALSE, col.names=FALSE)
 }
 
-# We will also need the system requirements from these packages to install in 
-# in the container. This is accomplished by finding all packages (recursively)
-# this analysis uses, and then queries a sysreqs database API to find system requirements
-
-# Libraries called in analysis
-prov.dirs <- list.dirs("prov_data", recursive = F)
-libs <- c()
-sourced.scripts <- c()
-for (prov.dir in prov.dirs){
-  parsed.prov <- provParseR::prov.parse(prov.input = paste0(prov.dir,"/prov.json"), isFile = T)
-  libs <- append(libs, provParseR::get.libs(parsed.prov)$name)
-  sourced <- as.vector(provParseR::get.scripts(parsed.prov)[-1,]$script)
-  sourced.scripts <- append(sourced.scripts, as.vector(sapply(X = sourced, FUN = function(script){sub(dir_path_doi, "", script)})))
-}
-
-#parsed.prov <- provParseR::prov.parse(prov.input = prov.json(), isFile = F)
-#libs <- provParseR::get.libs(parsed.prov)
-
-# All libraries including implicit
-all.libs <- unique(unlist(append(libs, sapply(libs, function(lib){
-  tools::package_dependencies(lib, recursive = T)
-}))))
-
-# Make API call
-libs.request <- paste(all.libs, collapse=",")
-api.resp <- httr::content(httr::GET(paste("https://sysreqs.r-hub.io/pkg/", libs.request,"/linux-x86_64-ubuntu-gcc", sep = "")), as="parsed")
-api.resp <- unique(api.resp[api.resp != "NULL"])
-sys.deps <- paste(api.resp, collapse = " ")
-
-# Save sysreqs info 
-write(sys.deps, paste0("prov_data/", "sysreqs.txt"))
-
-# don't repeat scripts
-sourced.scripts <- unique(sourced.scripts)
-
-# Save Sourced Scripts
-write(unlist(sourced.scripts), "prov_data/sourced.txt")

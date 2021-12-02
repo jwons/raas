@@ -1,8 +1,6 @@
 
 import re
-import os
 
-import app.files_list as files_list
 import app.exceptions as exceptions
 
 # Given a list of abs. address of files with same name, and user given address of file, this module finds the accurate abs. address of the file

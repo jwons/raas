@@ -1,7 +1,12 @@
 library(provParseR)
 library(stringr)
 
-setwd("/home/rstudio/datasets")
+# get commandline arguments
+args = commandArgs(trailingOnly=TRUE)
+# parse command line args for path to the directory and preprocessing
+prov.data.dir = args[1]
+
+setwd("/home/rstudio")
 
 # This function is used to create a list of rows from a dataframe to make it easier to jsonify
 # It is used for system libraries and language packages
@@ -22,38 +27,38 @@ system.libs.max <- t(sapply(X = system.libs, FUN = function(x){
   str_split(string = x, pattern = " ")[[1]][1:2]
 }))
 
-# Clear out names, most aesthetic 
+# Clear out names, most aesthetic
 rownames(system.libs.max) <- NULL
 colnames(system.libs.max) <- c("Package", "Version")
 
-# Create the list that will be placed into the report 
+# Create the list that will be placed into the report
 system.libs.list <- create.json.list(as.data.frame(system.libs.max, stringsAsFactors = F))
 
 # Collects packages used in this environment
 packages.df <- as.data.frame(installed.packages(), stringsAsFactors = F)[, c("Package", "Version")]
 packages <- create.json.list(packages.df)
 
-# Records version of R used 
+# Records version of R used
 lang.version <- paste(c(R.Version()$major, R.Version()$minor), collapse = ".")
 
 # Collect container wide-info into one object
 container.information <- list("Language Packages"=as.list(packages), "System Libraries" = system.libs.list, "Language Version"=lang.version, "Language" = "R")
 
 # Begin collecting script-level information. Need to identify all prov.json files
-prov.jsons <- list.files(".", pattern="prov.json", recursive=T, full.names=FALSE)
+prov.jsons <- list.files(prov.data.dir, pattern="prov.json", recursive=T, full.names=FALSE)
 
-# This code gathers the information from each individual script, collecting input files, output files, and warnings 
+# This code gathers the information from each individual script, collecting input files, output files, and warnings
 # for each script that has provenance. ind.scripts becomes a named list where the key is a full script path
-# and the value is the data collected. 
+# and the value is the data collected.
 ind.scripts <- list()
 for (prov.json in prov.jsons){
   # The parser is initialized by creating a prov object that is passed to the various parsing functions
-  prov.obj <- provParseR::prov.parse(prov.json)
-  
+  prov.obj <- provParseR::prov.parse(file.path(prov.data.dir, prov.json))
+
   # Filename is used as key to the list
   filename <- provParseR::get.environment(prov.obj)[provParseR::get.environment(prov.obj)$label == "script",]$value
-  
-  # Gather data 
+
+  # Gather data
   input.files <- unique(provParseR::get.input.files(prov.obj)$name)
   output.files <- unique(provParseR::get.output.files(prov.obj)$name)
   data.nodes <- provParseR::get.data.nodes(prov.obj)

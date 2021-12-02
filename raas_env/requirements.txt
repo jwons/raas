@@ -24,6 +24,7 @@ Flask-Migrate==2.1.1
 Flask-SQLAlchemy==2.3.2
 Flask-Uploads==0.2.1
 Flask-WTF==0.14.2
+func_timeout==4.3.5
 html5lib==1.0.1
 idna==2.6
 itsdangerous==0.24

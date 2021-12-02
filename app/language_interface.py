@@ -54,7 +54,7 @@ class language_interface(object):
         current_user_obj = User.query.get(current_user_id)
         image_name = current_user_obj.username + '-' + name
         repo_name = os.environ.get('DOCKER_REPO') + '/'
-        # Not pushing to Docke Hub at the moment.
+        # Not pushing to Docker Hub at the moment.
         #print(self.client.images.push(repository=repo_name + image_name), file=sys.stderr)
 
         ########## UPDATING DB ######################################################################
@@ -67,14 +67,13 @@ class language_interface(object):
         db.session.add(new_dataset)
         db.session.commit()
 
-        ########## CLEANING UP ######################################################################
-
-        self.clean_up_datasets(name)
         print("Returning")
 
     def clean_up_datasets(self, name):
         # delete any stored data
         try:
             shutil.rmtree(self.get_dockerfile_dir(name))
-        except:
+        except Exception as e:
+            print("Can't delete dataset")
+            print(e)
             pass

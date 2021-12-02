@@ -2,13 +2,7 @@
 
 from typed_ast import ast3
 from typed_ast import ast27
-import sys
-import os
-import re
-import shutil
-import subprocess
 
-import app.files_list as files_list
 import app.exceptions as exceptions
 
 from pypi_name import pypiName

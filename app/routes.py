@@ -3,12 +3,10 @@ from app.email_support import send_password_reset_email
 import shutil
 import sys
 import os
-import json
 import docker
 import gzip
 import zipfile
 
-from shutil import copyfile
 from sqlalchemy import desc
 from flask import render_template, flash, redirect, url_for, request, jsonify, session, send_from_directory
 from app import app, db
@@ -16,7 +14,6 @@ from app.forms import LoginForm, RegistrationForm, ResetPasswordRequestForm, Inp
 from flask_login import current_user, login_user, login_required, logout_user
 from app.models import User, Dataset
 from werkzeug.utils import secure_filename
-from app.helpers import build_image
 from app.starter import start_raas
 
 
@@ -57,8 +54,6 @@ def containerize():
         return render_template('containerize.html',
                                title='Containerize', form=form, show_adv=True)
 
-    #print(form.validate_on_submit())
-
     if form.validate_on_submit():
         # create directories if they don't exists yet
         if not os.path.exists(app.instance_path):
@@ -69,41 +64,8 @@ def containerize():
         if form.zip_file.data:
             zip_file = form.zip_file.data
             folder_name = secure_filename(form.name.data)
-            
-#             multi = 0
-#             bool_dir = False
-#             with zipfile.ZipFile(zip_file, "r") as myzip:
-#                 namelist = myzip.infolist()
-#                 for i in namelist:
-#                     arr = i.filename.split('/')
-#                     arr = list(filter(lambda x: x != '', arr))
-#                     if (len(arr) == 1):
-#                         multi = multi + 1
-#                         if (i.is_dir()):
-#                             bool_dir = True
+            extract_zip(zip_file, folder_name)
 
-#                 file_name = form.zip_file.data.filename
-#                 if multi != 1 or not bool_dir:
-#                     f_name = file_name[:(file_name.index('.'))]
-#                     os.makedirs(os.path.join(app.instance_path, 'datasets', f_name))
-#                     myzip.extractall(os.path.join(app.instance_path, 'datasets', f_name))
-#                     z = zipfile.ZipFile(os.path.join(app.instance_path, 'datasets', file_name), 'w')
-#                     p = os.path.join(app.instance_path, 'datasets', f_name)
-#                     for root, dirs, files in os.walk(p):
-#                         for file in files:
-#                             z.write(os.path.join(root, file),
-#                                     os.path.relpath(os.path.join(file), os.path.join(p, '..')))
-#                     z.extractall(os.path.join(app.instance_path, 'datasets', folder_name, "data_set_content"))
-#                     z.close()
-
-#                     shutil.rmtree(os.path.join(app.instance_path, 'datasets', f_name), ignore_errors=True)
-#                 else:
-#                     z = zipfile.ZipFile(zip_file)
-#                     z.extractall(os.path.join(app.instance_path, 'datasets', folder_name, "data_set_content"))
-#                     z.close()
-            z = zipfile.ZipFile(zip_file)
-            z.extractall(os.path.join(app.instance_path, 'datasets', folder_name, "data_set_content"))
-            z.close()        
         else:
             folder_name = secure_filename(form.name.data)
             zipfile_path = os.path.join(app.instance_path, 'datasets', folder_name)
@@ -123,7 +85,7 @@ def containerize():
         ext_pkgs = []
         for instr in form.command_line.data:
             cur = instr['command']
-            if(cur != ""):
+            if cur != "":
                 allinstr.append(cur)
 
         for pkg in form.code_btw.data:
@@ -136,16 +98,16 @@ def containerize():
         print("Language: " + form.language.data)
 
         task = start_raas.apply_async(kwargs={'language': form.language.data,
-                                                'data_folder': folder_name,
-                                                'current_user_id': current_user.id,
-                                                'name': form.name.data,
-                                                'preprocess': form.fix_code.data,
-                                                'user_pkgs': user_pkgs_total,
-                                                'run_instr': allinstr,
-                                                'sample_output': '',
-                                                'code_btw': ext_pkgs,
-                                                'prov': ''
-                                                })
+                                              'data_folder': folder_name,
+                                              'current_user_id': current_user.id,
+                                              'name': form.name.data,
+                                              'preprocess': form.fix_code.data,
+                                              'user_pkgs': user_pkgs_total,
+                                              'run_instr': allinstr,
+                                              'sample_output': '',
+                                              'code_btw': ext_pkgs,
+                                              'prov': ''
+                                              })
 
         session['task_id'] = task.id
         return redirect(url_for('build_status'))
@@ -167,7 +129,7 @@ def build_status():
 # provide status information to the front end
 @app.route('/status/<task_id>')
 def taskstatus(task_id):
-    task = build_image.AsyncResult(task_id)
+    task = start_raas.AsyncResult(task_id)
     print(task, file=sys.stderr)
     if task.state == 'PENDING':
         response = {
@@ -278,7 +240,7 @@ def instructions():
 def report():
     reportNum = request.args.get('reportNum', None)
     dataset = Dataset.query.get(reportNum)
-    if (current_user.id != dataset.user_id):
+    if current_user.id != dataset.user_id:
         return redirect(url_for('index'))
     report = dataset.report
     return render_template('report.html', title='Instructions', report=report)
@@ -292,9 +254,8 @@ def api_build():
     preprocess = False
     zip_file = ''
     language = request.args['language']
-    runinstr =''
+    runinstr = ''
     ext_pkgs = ''
-
 
     if 'userID' in request.args:
         user_id = int(request.args['userID'])
@@ -310,7 +271,7 @@ def api_build():
 
     if 'runinstr' in request.args:
         runinstr = request.args['runinstr']
-    
+
     if 'ext_pkgs' in request.args:
         ext_pkgs = request.args['ext_pkgs']
 
@@ -320,24 +281,34 @@ def api_build():
             os.makedirs(app.instance_path)
         if not os.path.exists(os.path.join(app.instance_path, 'datasets')):
             os.makedirs(os.path.join(app.instance_path, 'datasets'))
+        else:
+            clean_folder = True
+            # In case a previous run errored out and failed to clean up, do it now
+            if clean_folder:
+                datasets_dir = os.path.join(app.instance_path, "datasets")
+                for files in os.listdir(datasets_dir):
+                    path = os.path.join(datasets_dir, files)
+                    try:
+                        shutil.rmtree(path)
+                    except OSError:
+                        os.remove(path)
         # save the .zip file to the correct location
-        zip_base = os.path.basename(zip_file)
-        with zipfile.ZipFile(zip_file, 'r') as zip_ref:
-            zip_ref.extractall(os.path.join(app.instance_path, 'datasets', name, "data_set_content", "datasets"))
-        #copyfile(zip_file, os.path.join(app.instance_path, 'datasets', zip_base))
+        extract_zip(zip_file, name)
+        # copyfile(zip_file, os.path.join(app.instance_path, 'datasets', zip_base))
 
         task = start_raas.apply_async(kwargs={'language': language,
-                                                'data_folder': name,
-                                                'current_user_id': user_id,
-                                                'name': name,
-                                                'preprocess': preprocess,
-                                                'user_pkgs': [],
-                                                'run_instr': runinstr,
-                                                'prov': ''
-                                                })
+                                              'data_folder': name,
+                                              'current_user_id': user_id,
+                                              'name': name,
+                                              'preprocess': preprocess,
+                                              'user_pkgs': [],
+                                              'run_instr': runinstr,
+                                              'prov': ''
+                                              })
         session['task_id'] = task.id
-    taskinfo = {"task_id" : task.id}
-    return (jsonify(taskinfo))
+    taskinfo = {"task_id": task.id}
+    return jsonify(taskinfo)
+
 
 @app.route('/download/<dataset_id>', methods=['GET', 'POST'])
 def download(dataset_id):
@@ -347,7 +318,7 @@ def download(dataset_id):
             return render_template("404.html")
 
         dataset = Dataset.query.get(dataset_id)
-        if(dataset.user_id is not current_user.id):
+        if dataset.user_id is not current_user.id:
             return redirect(url_for('index'))
         if not os.path.exists(os.path.join(app.instance_path, "downloads")):
             os.makedirs(os.path.join(app.instance_path, "downloads"))
@@ -362,9 +333,33 @@ def download(dataset_id):
             with gzip.open(os.path.join(app.instance_path, "downloads", image_name + ".tar.gz"), 'wb') as f_out:
                 shutil.copyfileobj(f_in, f_out)
         os.remove(os.path.join(app.instance_path, "downloads", image_name + ".tar"))
-        return send_from_directory(directory=os.path.join(app.instance_path, "downloads"),filename = image_name + ".tar.gz", as_attachment=True)
+        return send_from_directory(directory=os.path.join(app.instance_path, "downloads"),
+                                   filename=image_name + ".tar.gz", as_attachment=True)
 
     except Exception as e:
         print(e)
         return redirect(url_for('index'))
 
+
+def extract_zip(zip_file, name):
+    with zipfile.ZipFile(zip_file, 'r') as zip_ref:
+        print(zip_ref.namelist())
+        if dir_as_root(zip_ref):
+            zip_ref.extractall(os.path.join(app.instance_path, 'datasets', name))
+        else:
+            zip_ref.extractall(os.path.join(app.instance_path, 'datasets', name, "dataset"))
+
+
+def has_dir(zip_file):
+    return any(zip_content[-1] == "/" for zip_content in zip_file.namelist())
+
+
+def dir_as_root(zip_ref):
+    if any(len(zip_content.split("/")) == 1 for zip_content in zip_ref.namelist()):
+        return False
+    root_dirs = [zip_content for zip_content in zip_ref.namelist() if
+                 len(zip_content.split("/")) == 2 and zip_content.split("/")[1] == '']
+    if len(root_dirs) == 1:
+        return True
+    else:
+        return False

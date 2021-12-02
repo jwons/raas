@@ -1,7 +1,7 @@
 import argparse
 import requests
 import time
-
+import json
 
 
 def headless_raas(name, lang, user = 1, preproc = "0", doi = "", zip_path = "", port = "5000" ):
@@ -14,7 +14,7 @@ def headless_raas(name, lang, user = 1, preproc = "0", doi = "", zip_path = "", 
          preproc + "&userID=" + str(user) + "&name=" + name + "&language=" + lang
 
     
-    if(zip_path is not ""):
+    if(zip_path != ""):
         request = request + "&zipFile=" + zip_path
     else:
         request = request + "&doi=" + doi
@@ -26,22 +26,30 @@ def headless_raas(name, lang, user = 1, preproc = "0", doi = "", zip_path = "", 
 
     status_request = "http://127.0.0.1:" + port + "/status/" + task_id
     last_status = ""
+    retVal = True
     while(True):
-        task_status = requests.get(status_request).json()
-        if(task_status["status"] != last_status):
-            print(task_status)
-            last_status = task_status["status"]
-        if(task_status["current"] == 10):
-            print("Build Complete")
+        try:
+            task_status = requests.get(status_request).json()
+            if(task_status["status"] != last_status):
+                print(task_status)
+                last_status = task_status["status"]
+            if(task_status["current"] == 10):
+                print("Build Complete")
+                break
+            if(task_status["state"] == "FAILURE"):
+                print("Build probably failed moving on")
+                retVal = False
+                break
+        except json.decoder.JSONDecodeError:
+            print("Build probably timed out")
+            retVal = False
             break
-        if(task_status["state"] == "FAILURE"):
-            print("Build probably failed moving on")
-            break
+        
         time.sleep(5)
 
-    print(result.json())
+    #print(result.json())
 
-    return (True)
+    return (retVal)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='A command-line interface to containR\'s web API.')
