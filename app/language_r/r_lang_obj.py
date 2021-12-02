@@ -1,24 +1,15 @@
-import requests
 import os
-import shutil
-import cgi
-import zipfile
 import subprocess
-import sys
 import json
 import docker
 import re
 
 from glob import glob
-from app import app, db
 from app.language_interface import language_interface
-from app.Parse import Parser as ProvParser
-from app.models import User
-from app.preproc_helpers import all_preproc
+from app.language_r.preproc_helpers import all_preproc
 from shutil import copy
 
 # Debugging
-from celery.contrib import rdb
 
 
 class r_lang(language_interface):

@@ -1,23 +1,16 @@
-from pathlib import Path
-
-from app.files_list import generate_multimap, generate_modules, generate_set, generate_multimap2
+from app.language_python.files_list import generate_modules, generate_set, generate_multimap2
 from app.language_python.py2or3 import python2or3
 from app.language_python.decommenter import remove_comments_and_docstrings
-from app.pathpreprocess import path_preprocess
-from app.ast_test import get_imports
+from app.language_python.pathpreprocess import path_preprocess
+from app.language_python.ast_test import get_imports
 from app.language_python.pylint_parse import pylint_parser
 
-import requests
-import subprocess
 import json
 from pathlib import Path
 
 import os
-import shutil
 
-import zipfile
 import docker
-import cgi
 from app.models import User
 from app import app
 

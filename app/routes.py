@@ -14,7 +14,6 @@ from app.forms import LoginForm, RegistrationForm, ResetPasswordRequestForm, Inp
 from flask_login import current_user, login_user, login_required, logout_user
 from app.models import User, Dataset
 from werkzeug.utils import secure_filename
-from app.helpers import build_image
 from app.starter import start_raas
 
 
@@ -130,7 +129,7 @@ def build_status():
 # provide status information to the front end
 @app.route('/status/<task_id>')
 def taskstatus(task_id):
-    task = build_image.AsyncResult(task_id)
+    task = start_raas.AsyncResult(task_id)
     print(task, file=sys.stderr)
     if task.state == 'PENDING':
         response = {
