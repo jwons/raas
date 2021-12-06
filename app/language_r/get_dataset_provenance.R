@@ -110,13 +110,12 @@ for (r_file in r_files) {
 				row.names=FALSE, col.names=FALSE)
 }
 
-missing.lists = list.files("../", pattern="missing_files.txt", recursive=TRUE, full.names=FALSE)
+missing.lists = list.files("./", pattern="missing_files.txt", recursive=TRUE, full.names=FALSE)
 if(length(missing.lists) > 0){
 	missing.files <- data.frame()
 
 	for(missing.list in missing.lists){
-	  missing.table <- read.csv(missing.list, header = F)
-	  missing.table$V1 <- file.path(dirname(missing.list), missing.table$V1)
+	  missing.table <- read.csv(file.path(dir_path_doi, missing.list), header = F)
 	  missing.files <- rbind(missing.files, missing.table)
 	}
 	colnames(missing.files) <- c("Script Name", "Missing File")

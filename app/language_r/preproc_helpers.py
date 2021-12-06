@@ -329,6 +329,7 @@ def preprocess_file_paths(r_file, script_dir, from_preproc=False, report_missing
 	report_missing : bool
 					 report when a file can't be found
 	"""
+
 	# parse out filename and construct file path
 	filename = get_r_filename(r_file)
 	file_path = script_dir + "/" + r_file
@@ -379,8 +380,9 @@ def preprocess_file_paths(r_file, script_dir, from_preproc=False, report_missing
 									line = re.sub(potential_path, rel_path, line)
 								# if the path wasn't found, report file as missing
 								elif report_missing:
-									with open(report_path, 'a+') as missing_out:
-										missing_out.write(r_file + ',' + potential_path + '\n')
+									with open(script_dir + "/missing_files.txt", 'a+') as missing_out:
+										missing_out.write(find_rel_path(script_dir, get_root_dir(curr_wd)) + "/" \
+														  + r_file + ',' + potential_path + '\n')
 				outfile.write(line)
 	
 	# remove the file with _temp suffix if file was previously preprocessed
@@ -438,6 +440,11 @@ def preprocess_source(r_file, script_dir, from_preproc=False):
 						rel_path = ''
 						# Try and find the file, otherwise may need to look for the preprocessed version!
 						new_path = find_file(extract_filename(sourced_file), get_root_dir(curr_wd))
+
+						# Check for preprocessed version if original is not found
+						if not new_path:
+							new_path = find_file(re.sub('.R$', '__preproc__.R', os.path.basename(sourced_file)),
+												 get_root_dir(curr_wd))
 						if new_path:
 							rel_path = os.path.join( get_root_dir(curr_wd), new_path)
 							rel_path = os.path.relpath(rel_path, start = curr_wd)
@@ -452,23 +459,11 @@ def preprocess_source(r_file, script_dir, from_preproc=False):
 								for source_line in sourced_file.readlines():
 									outfile.write(source_line)
 								
-						# check for preprocessed version
+						# The file cannot be found
 						else:
-							new_path = find_file(re.sub('.R$', '__preproc__.R', os.path.basename(sourced_file)), get_root_dir(curr_wd))
-							if new_path:
-								rel_path = os.path.join( get_root_dir(curr_wd), new_path)
-								rel_path = os.path.relpath(rel_path, start = curr_wd)
-
-								sourced_filename = os.path.basename(rel_path)
-								sourced_path = '/'.join((curr_wd + '/' + rel_path).split('/')[:-1])
-								sourced_files.append("/" + re.sub('__preproc__.R$', '.R', new_path))
-								with open(sourced_path + '/' + sourced_filename,
-								      'r') as sourced_file:
-									#map(outfile.write, infile.readlines())
-									for source_line in sourced_file.readlines():
-										outfile.write(source_line)
-								
-							#outfile.write(line)
+							with open(script_dir + "/missing_files.txt", 'a+') as missing_out:
+								missing_out.write(find_rel_path(script_dir, get_root_dir(curr_wd)) + "/" + r_file + \
+												  ',' + sourced_file + '\n')
 					else:
 						outfile.write(line)
 				else:
@@ -503,7 +498,7 @@ def all_preproc(r_file, path, error_string="error"):
 				   original error obtained by running the R script, defaults to
 				   "error", which will perform the preprocessing
 	"""
-	sourced_files =[]
+	sourced_files = []
 	# parse out filename and construct file path
 	filename = get_r_filename(r_file)
 	file_path = path + "/" + r_file

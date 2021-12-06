@@ -10,6 +10,7 @@ from app.language_r.preproc_helpers import all_preproc
 from shutil import copy
 
 # Debugging
+from celery.contrib import rdb
 
 
 class r_lang(language_interface):
@@ -47,6 +48,7 @@ class r_lang(language_interface):
         # This variable controls whether or not the container is built despite the existence
         # of errors detected in the script
         build_with_errors = False
+
 
         dockerfile_dir = self.get_dockerfile_dir(data_folder)
         self.dataset_dir = os.path.join(dockerfile_dir, os.listdir(dockerfile_dir)[0])
