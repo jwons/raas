@@ -23,8 +23,12 @@ class Cmd_Form(FlaskForm):
 
 class InputForm(FlaskForm):
     zip_file = FileField('Zip File Containing Dataset')
-    set_file = FileField('or---A set of Data file and scripts',
-                         render_kw={'multiple': True})
+
+    # To put this back in, paste this in containerize.html
+    # {{ wtf.form_field(form.set_file) }}
+    #set_file = FileField('or---A set of Data file and scripts',
+    #                     render_kw={'multiple': True})
+
     name = StringField('Name of the Dataset')
     fix_code = BooleanField('Attempt to automatically fix code', default=True)
 
@@ -45,10 +49,10 @@ class InputForm(FlaskForm):
     def validate_zip_file(self, zip_file):
         # make sure there's either a set of scripts or a .zip file upload
         # if (not self.doi.data) and (self.zip_file.data is None) and (self.set_file.data is None):
-        if (not self.zip_file.data) and (not self.set_file.data):
+        if not self.zip_file.data:
             raise ValidationError('Either the 1)a .zip or 2)a set of files '
                                   'containing the dataset is required.')
-        if (not self.set_file.data) and (not zipfile.is_zipfile(self.zip_file.data)):
+        if not zipfile.is_zipfile(self.zip_file.data):
             raise ValidationError('File is not a valid a zip file')
 
     def validate_name(self, name):

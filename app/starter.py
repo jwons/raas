@@ -1,7 +1,11 @@
+import os
+
 from app import celery
+from app import app
 from app.language_python.python_lang_obj import py_lang
 from app.language_r.r_lang_obj import r_lang
 from timeit import default_timer as timer
+from zipfile import ZipFile
 
 # Debugging
 from celery.contrib import rdb
@@ -11,7 +15,7 @@ from celery.contrib import rdb
 # @celery.task(bind=True, time_limit=3660, soft_time_limit = 3600)
 
 @celery.task(bind=True)
-def start_raas(self, language, current_user_id, name, preprocess, data_folder='',
+def start_raas(self, language, current_user_id, name, preprocess, data_folder, zip_filename,
                run_instr='', user_pkgs='', sample_output=None, code_btw=None,
                prov=None, upload=True, make_report=True):
     if language == "Python":
@@ -23,6 +27,11 @@ def start_raas(self, language, current_user_id, name, preprocess, data_folder=''
                                                          [[language + " is not supported"]]]}
 
     self.update_state(state='PROGRESS', meta={'current': 1, 'total': 10,
+                                              'status': 'Unzipping data'})
+
+    extract_zip(zip_filename, data_folder)
+
+    self.update_state(state='PROGRESS', meta={'current': 2, 'total': 10,
                                               'status': 'Preprocessing files and ' + \
                                                         'collecting dependency information... ' + \
                                                         '(This may take several minutes or longer,' + \
@@ -62,3 +71,23 @@ def start_raas(self, language, current_user_id, name, preprocess, data_folder=''
     return {'current': 10, 'total': 10,
             'status': 'RAAS has finished! Your new image is accessible from the home page.',
             'result': 42, 'errors': 'No errors!'}
+
+
+def extract_zip(zip_file, name):
+    with ZipFile(os.path.join(app.instance_path, 'datasets', zip_file), 'r') as zip_ref:
+        if dir_as_root(zip_ref):
+            zip_ref.extractall(os.path.join(app.instance_path, 'datasets', name))
+        else:
+            zip_ref.extractall(os.path.join(app.instance_path, 'datasets', name, "dataset"))
+    os.remove(os.path.join(app.instance_path, 'datasets', zip_file))
+
+
+def dir_as_root(zip_ref):
+    if any(len(zip_content.split("/")) == 1 for zip_content in zip_ref.namelist()):
+        return False
+    root_dirs = [zip_content for zip_content in zip_ref.namelist() if
+                 len(zip_content.split("/")) == 2 and zip_content.split("/")[1] == '']
+    if len(root_dirs) == 1:
+        return True
+    else:
+        return False

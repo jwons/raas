@@ -61,11 +61,15 @@ def containerize():
         if not os.path.exists(os.path.join(app.instance_path, 'datasets')):
             os.makedirs(os.path.join(app.instance_path, 'datasets'))
 
-        if form.zip_file.data:
-            zip_file = form.zip_file.data
-            folder_name = secure_filename(form.name.data)
-            extract_zip(zip_file, folder_name)
+        folder_name = secure_filename(form.name.data)
+        zip_file = form.zip_file.data
+        zip_filename = secure_filename(zip_file.filename)
+        # for some reason, if I don't put this seek in here, the pointer will be at the
+        # end of the file, and it will write an empty zip. :(
+        zip_file.stream.seek(0)
+        zip_file.save(os.path.join(app.instance_path, 'datasets', zip_filename))
 
+        '''
         else:
             folder_name = secure_filename(form.name.data)
             zipfile_path = os.path.join(app.instance_path, 'datasets', folder_name)
@@ -74,6 +78,7 @@ def containerize():
             os.makedirs(os.path.join(zipfile_path, "data_set_content"))
             for f in file_list:
                 f.save(os.path.join(zipfile_path, "data_set_content", f.filename))
+        '''
 
         user_pkgs_list = []
         if form.pkg_asked.data:
@@ -99,6 +104,7 @@ def containerize():
 
         task = start_raas.apply_async(kwargs={'language': form.language.data,
                                               'data_folder': folder_name,
+                                              'zip_filename': zip_filename,
                                               'current_user_id': current_user.id,
                                               'name': form.name.data,
                                               'preprocess': form.fix_code.data,
@@ -293,11 +299,12 @@ def api_build():
                     except OSError:
                         os.remove(path)
         # save the .zip file to the correct location
-        extract_zip(zip_file, name)
+        # extract_zip(zip_file, name)
         # copyfile(zip_file, os.path.join(app.instance_path, 'datasets', zip_base))
 
         task = start_raas.apply_async(kwargs={'language': language,
                                               'data_folder': name,
+                                              'zip_file': zip_file,
                                               'current_user_id': user_id,
                                               'name': name,
                                               'preprocess': preprocess,
@@ -340,26 +347,8 @@ def download(dataset_id):
         print(e)
         return redirect(url_for('index'))
 
-
-def extract_zip(zip_file, name):
-    with zipfile.ZipFile(zip_file, 'r') as zip_ref:
-        print(zip_ref.namelist())
-        if dir_as_root(zip_ref):
-            zip_ref.extractall(os.path.join(app.instance_path, 'datasets', name))
-        else:
-            zip_ref.extractall(os.path.join(app.instance_path, 'datasets', name, "dataset"))
-
-
 def has_dir(zip_file):
     return any(zip_content[-1] == "/" for zip_content in zip_file.namelist())
 
 
-def dir_as_root(zip_ref):
-    if any(len(zip_content.split("/")) == 1 for zip_content in zip_ref.namelist()):
-        return False
-    root_dirs = [zip_content for zip_content in zip_ref.namelist() if
-                 len(zip_content.split("/")) == 2 and zip_content.split("/")[1] == '']
-    if len(root_dirs) == 1:
-        return True
-    else:
-        return False
+
