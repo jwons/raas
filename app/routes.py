@@ -300,11 +300,11 @@ def api_build():
                         os.remove(path)
         # save the .zip file to the correct location
         # extract_zip(zip_file, name)
-        # copyfile(zip_file, os.path.join(app.instance_path, 'datasets', zip_base))
+        shutil.copyfile("datasets/" + zip_file, os.path.join(app.instance_path, 'datasets', os.path.basename(zip_file)))
 
         task = start_raas.apply_async(kwargs={'language': language,
                                               'data_folder': name,
-                                              'zip_file': zip_file,
+                                              'zip_filename': zip_file,
                                               'current_user_id': user_id,
                                               'name': name,
                                               'preprocess': preprocess,
