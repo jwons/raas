@@ -15,6 +15,10 @@ class TestFailure(Exception):
     pass
 
 
+# ============================
+# ===== Tests Functions =====
+# ============================
+
 # This test checks if R preprocessing can correctly identify potentially missing files, when the check for failed
 # scripts method is executed, there should be one script that failed.
 def test_missing_files():
@@ -52,7 +56,7 @@ def test_recursive_source_call():
     container_tag = TEST_USER + os.path.splitext(script_name)[0]
     result = invoke_raas(script_name)
     failed_scripts = check_for_failed_scripts(container_tag)
-    if len(failed_scripts > 0):
+    if len(failed_scripts) > 0:
         result = False
     client.containers.prune()
     client.images.remove(container_tag)
@@ -60,6 +64,26 @@ def test_recursive_source_call():
     if result is False:
         raise TestFailure("Test source call inlining failed")
 
+
+def test_fixing_filepath():
+    print("======== R: Testing Fixing Filepaths  ========")
+    script_name = "test-fix-filepath.zip"
+    copy(script_name, "../datasets/")
+    container_tag = TEST_USER + os.path.splitext(script_name)[0]
+    result = invoke_raas(script_name)
+    failed_scripts = check_for_failed_scripts(container_tag)
+    if len(failed_scripts) > 0:
+        result = False
+    client.containers.prune()
+    client.images.remove(container_tag)
+    os.remove("../datasets/" + script_name)
+    if result is False:
+        raise TestFailure("Test fixing filepath failed")
+
+
+# ============================
+# ===== Helper functions =====
+# ============================
 
 def verify_file_contents(container_tag, filepath, expected_contents):
     container = client.containers.run(image=container_tag, environment=["PASSWORD=pass"], detach=True)
@@ -97,13 +121,14 @@ def execute_test(test_function):
     except ConnectionError as conn_error:
         print("RaaS is likely not running")
         print(conn_error)
+        exit(1)
     except TestFailure as e:
         print(e)
         result = False
     except Exception as e:
         print("UNEXPECTED ERROR IN TESTS")
-        print("Potential manual cleanup necessary")
         print(e)
+        print("Potential manual cleanup of test data necessary")
         exit(1)
     print("")
     return result
@@ -113,7 +138,8 @@ if __name__ == "__main__":
     failed_tests = 0
     total_tests = 0
     tests = [test_missing_files,
-             test_recursive_source_call]
+             test_recursive_source_call,
+             test_fixing_filepath]
 
     for test in tests:
         if not execute_test(test):
