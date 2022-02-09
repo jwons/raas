@@ -2,8 +2,9 @@ import os
 
 from app import celery
 from app import app
-from app.language_python.python_lang_obj import py_lang
-from app.language_r.r_lang_obj import r_lang
+from app.languageinterface import StaticAnalysisResults
+from app.language_python.python_lang_obj import PyLang
+from app.language_r.r_lang_obj import RLang
 from timeit import default_timer as timer
 from zipfile import ZipFile
 
@@ -16,12 +17,12 @@ from celery.contrib import rdb
 
 @celery.task(bind=True)
 def start_raas(self, language, current_user_id, name, preprocess, data_folder, zip_filename,
-               run_instr='', user_pkgs='', sample_output=None, code_btw=None,
+               run_instr='', user_pkgs='', sample_output=None, code_btw=[],
                prov=None, upload=True, make_report=True):
     if language == "Python":
-        language_obj = py_lang()
+        language_obj = PyLang()
     elif language == "R":
-        language_obj = r_lang()
+        language_obj = RLang()
     else:
         return {'current': 100, 'total': 100, 'status': ['Error in language.',
                                                          [[language + " is not supported"]]]}
@@ -37,17 +38,18 @@ def start_raas(self, language, current_user_id, name, preprocess, data_folder, z
                                                         '(This may take several minutes or longer,' + \
                                                         ' depending on the complexity of your scripts)'})
     start_time = timer()
-    after_analysis = language_obj.script_analysis(preprocess=preprocess, data_folder=data_folder, user_pkg=user_pkgs)
+    static_results = language_obj.script_analysis(preprocess=preprocess, data_folder=data_folder, user_pkg=user_pkgs)
 
-    # Some error found by analysis
-    if not ('docker_pkgs' in after_analysis):
-        return after_analysis
+    if not isinstance(static_results, StaticAnalysisResults):
+        return {'current': 100, 'total': 100, 'status': ['Error, static analysis feature is malformed.',
+                                                         [["Returned " +
+                                                           type(static_results) +
+                                                           " instead of StaticAnalysisResults"]]]}
 
-    docker_pkgs = after_analysis["docker_pkgs"]
     self.update_state(state='PROGRESS', meta={'current': 3, 'total': 10,
                                               'status': 'Generating Dockerfile... '})
 
-    language_obj.build_docker_file(data_folder, docker_pkgs, after_analysis, code_btw, run_instr)
+    language_obj.build_docker_file(data_folder, static_results, code_btw, run_instr)
     self.update_state(state='PROGRESS', meta={'current': 4, 'total': 10,
                                               'status': 'Building Docker image... '})
 

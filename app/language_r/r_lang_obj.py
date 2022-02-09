@@ -5,7 +5,8 @@ import docker
 import re
 
 from glob import glob
-from app.language_interface import language_interface
+from app.languageinterface import LanguageInterface
+from app.languageinterface import StaticAnalysisResults
 from app.language_r.preproc_helpers import all_preproc
 from shutil import copy
 
@@ -13,7 +14,7 @@ from shutil import copy
 from celery.contrib import rdb
 
 
-class r_lang(language_interface):
+class RLang(LanguageInterface):
 
     def __init__(self):
         self.dataset_dir = None
@@ -41,14 +42,13 @@ class r_lang(language_interface):
         return 'if(!(\'' + package + '\'' \
                                      '%in% rownames(installed.packages()))){install.packages(\'' + package + '\')}\n' + \
                'if(!(\'' + package + '\'' \
-                                     '%in% rownames(installed.packages()))){BiocManager::install(\'' + package +\
+                                     '%in% rownames(installed.packages()))){BiocManager::install(\'' + package + \
                '\', update = F)}\n'
 
     def script_analysis(self, preprocess, dataverse_key='', data_folder='', run_instr='', user_pkg=''):
         # This variable controls whether or not the container is built despite the existence
         # of errors detected in the script
         build_with_errors = False
-
 
         dockerfile_dir = self.get_dockerfile_dir(data_folder)
         self.dataset_dir = os.path.join(dockerfile_dir, os.listdir(dockerfile_dir)[0])
@@ -98,12 +98,11 @@ class r_lang(language_interface):
 
         sys_reqs.append("libjpeg-dev")
 
-        return {"docker_pkgs": used_packages, "sys_reqs": sys_reqs, "src_ignore": list(set(src_ignore))}
+        return StaticAnalysisResults(lang_packages=used_packages, sys_libs=sys_reqs, lang_specific={"src_ignore":
+                                                                                                    src_ignore})
 
-    def build_docker_file(self, dir_name, docker_pkgs, additional_info, code_btw, run_instr):
+    def build_docker_file(self, dir_name, static_results, code_btw, run_instr):
         ext_pkgs = code_btw
-        sys_reqs = additional_info["sys_reqs"]
-        src_ignore = additional_info["src_ignore"]
 
         # TODO: equivalent for install_instructions, is there a difference for R/Python?
         special_packages = None
@@ -119,9 +118,9 @@ class r_lang(language_interface):
         if not os.path.exists(docker_file_dir):
             return {'current': 100, 'total': 100, 'status': 'Directory missing.'}
 
-        if len(src_ignore) > 0:
+        if len(static_results.lang_specific["src_ignore"]) > 0:
             with open(os.path.join(docker_file_dir, '.srcignore'), 'w') as src_ignore_file:
-                for line in src_ignore:
+                for line in static_results.lang_specific["src_ignore"]:
                     src_ignore_file.write(line + "\n")
                 src_ignore_file.write('\n')
 
@@ -135,7 +134,7 @@ class r_lang(language_interface):
                     install_packs.write(instruction)
 
             # install packages
-            docker_packages = list(set(docker_pkgs))
+            docker_packages = list(set(static_results.lang_packages))
             if docker_packages:
                 for package in docker_packages:
                     if special_packages and (package not in special_packages):
@@ -148,8 +147,8 @@ class r_lang(language_interface):
 
             # install system requirements
             sysinstall = "RUN export DEBIAN_FRONTEND=noninteractive; apt-get -y update && apt-get install -y "
-            if len(sys_reqs) != 0:
-                new_docker.write(sysinstall + ' '.join(sys_reqs) + '\n')
+            if len(static_results.sys_libs) != 0:
+                new_docker.write(sysinstall + ' '.join(static_results.sys_libs) + '\n')
 
             # perform any pre-specified installs
             if special_install:
@@ -168,15 +167,6 @@ class r_lang(language_interface):
 
             # Add the dataset to the container
             new_docker.write('COPY . /home/rstudio/' + dir_name + '\n')
-
-            '''
-            new_docker.write('COPY get_prov_for_doi.sh /home/rstudio/datasets/\n')
-            new_docker.write('COPY get_dataset_provenance.R /home/rstudio/datasets/\n')
-            new_docker.write('COPY create_report.R /home/rstudio/datasets/\n')
-                
-            if(len(src_ignore) > 0):
-                new_docker.write('COPY .srcignore /home/rstudio/\n')
-            '''
 
             # Add permissions or the scripts will fail
             new_docker.write('RUN chown -R  rstudio:rstudio /home/rstudio/\n')

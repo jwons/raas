@@ -9,6 +9,8 @@ from app.headless_raas import headless_raas
 
 client = docker.from_env()
 TEST_USER = "jwonsil/jwons-"
+r_datadir = "R/"
+py_datadir = "Python/"
 
 
 class TestFailure(Exception):
@@ -16,18 +18,18 @@ class TestFailure(Exception):
 
 
 # ============================
-# ===== Tests Functions =====
+# ===== R Tests Functions ====
 # ============================
 
 # This test checks if R preprocessing can correctly identify potentially missing files, when the check for failed
 # scripts method is executed, there should be one script that failed.
 def test_missing_files():
-    print("======== R: Testing Missing File Detection ========")
+    print_r_testname("Missing File Detection")
     script_name = "test-missing-files.zip"
-    copy(script_name, "../datasets/")
+    copy(r_datadir + script_name, "../datasets/")
     container_tag = TEST_USER + os.path.splitext(script_name)[0]
-    result = invoke_raas(script_name)
-    failed_scripts = check_for_failed_scripts(container_tag)
+    result = invoke_raas(script_name, 'R')
+    failed_scripts = check_for_failed_r_scripts(container_tag)
     if len(failed_scripts) != 1:
         result = False
         print("There should be one failed script")
@@ -50,12 +52,12 @@ def test_missing_files():
 # This test checks if the preprocessing feature for the R language can correctly inline sourced scripts,
 # even recursively. There should be no failed scripts.
 def test_recursive_source_call():
-    print("======== R: Testing Source Call Inlining  ========")
+    print_r_testname("Source Call Inlining")
     script_name = "test-recursive-source-call.zip"
-    copy(script_name, "../datasets/")
+    copy(r_datadir + script_name, "../datasets/")
     container_tag = TEST_USER + os.path.splitext(script_name)[0]
-    result = invoke_raas(script_name)
-    failed_scripts = check_for_failed_scripts(container_tag)
+    result = invoke_raas(script_name, "R")
+    failed_scripts = check_for_failed_r_scripts(container_tag)
     if len(failed_scripts) > 0:
         result = False
     client.containers.prune()
@@ -66,12 +68,12 @@ def test_recursive_source_call():
 
 
 def test_fixing_filepath():
-    print("======== R: Testing Fixing Filepaths  ========")
+    print_r_testname("Fixing Filepaths")
     script_name = "test-fix-filepath.zip"
-    copy(script_name, "../datasets/")
+    copy(r_datadir + script_name, "../datasets/")
     container_tag = TEST_USER + os.path.splitext(script_name)[0]
-    result = invoke_raas(script_name)
-    failed_scripts = check_for_failed_scripts(container_tag)
+    result = invoke_raas(script_name, "R")
+    failed_scripts = check_for_failed_r_scripts(container_tag)
     if len(failed_scripts) > 0:
         result = False
     client.containers.prune()
@@ -82,8 +84,42 @@ def test_fixing_filepath():
 
 
 # ============================
+# == Python Tests Functions ==
+# ============================
+
+def test_normal():
+    print_py_testname("Fixing Filepaths")
+    script_name = "test-normal.zip"
+    copy(py_datadir + script_name, "../datasets/")
+    container_tag = TEST_USER + os.path.splitext(script_name)[0]
+    result = invoke_raas(script_name, "Python")
+    '''
+    failed_scripts = check_for_failed_scripts(container_tag)
+    if len(failed_scripts) > 0:
+        result = False
+    '''
+    client.containers.prune()
+    client.images.remove(container_tag)
+    os.remove("../datasets/" + script_name)
+    if result is False:
+        raise TestFailure("Test python normal execution failed")
+
+
+# ============================
 # ===== Helper functions =====
 # ============================
+
+def print_r_testname(testname):
+    print_lang_testname(testname, "R")
+
+
+def print_py_testname(testname):
+    print_lang_testname(testname, "Python")
+
+
+def print_lang_testname(testname, lang):
+    print("======== " + lang + ": " + testname + "  ========")
+
 
 def verify_file_contents(container_tag, filepath, expected_contents):
     container = client.containers.run(image=container_tag, environment=["PASSWORD=pass"], detach=True)
@@ -95,7 +131,7 @@ def verify_file_contents(container_tag, filepath, expected_contents):
     return ret_val
 
 
-def check_for_failed_scripts(name):
+def check_for_failed_r_scripts(name):
     failed_scripts = {}
     container = client.containers.run(image=name, environment=["PASSWORD=pass"], detach=True)
     report = json.loads(container.exec_run("cat /home/rstudio/report.json")[1].decode())
@@ -108,8 +144,8 @@ def check_for_failed_scripts(name):
     return failed_scripts
 
 
-def invoke_raas(zip_name):
-    result = headless_raas(name=os.path.splitext(zip_name)[0], lang="R", preproc="1",
+def invoke_raas(zip_name, language):
+    result = headless_raas(name=os.path.splitext(zip_name)[0], lang=language, preproc="1",
                            zip_path=zip_name)
     return result
 
@@ -137,11 +173,27 @@ def execute_test(test_function):
 if __name__ == "__main__":
     failed_tests = 0
     total_tests = 0
-    tests = [test_missing_files,
-             test_recursive_source_call,
-             test_fixing_filepath]
 
-    for test in tests:
+    r_tests = [
+        test_missing_files,
+        test_recursive_source_call,
+        test_fixing_filepath
+    ]
+
+    py_tests = [
+        test_normal
+    ]
+
+    r_tests = []
+
+    # Run R tests
+    for test in r_tests:
+        if not execute_test(test):
+            failed_tests += 1
+        total_tests += 1
+
+    # Run Python tests
+    for test in py_tests:
         if not execute_test(test):
             failed_tests += 1
         total_tests += 1

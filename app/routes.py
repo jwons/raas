@@ -308,9 +308,7 @@ def api_build():
                                               'current_user_id': user_id,
                                               'name': name,
                                               'preprocess': preprocess,
-                                              'user_pkgs': [],
                                               'run_instr': runinstr,
-                                              'prov': ''
                                               })
         session['task_id'] = task.id
     taskinfo = {"task_id": task.id}
