@@ -11,6 +11,8 @@ from cmd_line import get_parent
 
 def get_dataset_provenance(dataset_dir, dockerfile_dir):
     orig_dir = os.getcwd()
+
+    # Gather user-provided arguments for running scripts, if provided
     ins = []
     with open(dockerfile_dir + 'run_instr.txt') as infile:
         for lines in infile.readlines():
@@ -20,12 +22,18 @@ def get_dataset_provenance(dataset_dir, dockerfile_dir):
 
     parser_list = []
 
+    # If the user provided no instructions for how to run the scripts, search for Python files
+    # and execute them using no workflow without arguments
     if (len(ins) == 0):
+
+        # Browse through all directories in the dataset and search for Python files
         for dirpath, dirs, files in os.walk(dataset_dir):
             for filename in files:
-                f = os.path.join(dirpath, filename)
-                os.chdir(dirpath)
-                if (".py" in f):
+                if (".py" in filename):
+                    f = os.path.join(dirpath, filename)
+
+                    # Attempt to execute with no workflow,
+                    # if it fails execute normally
                     os.chdir(dirpath)
                     try:
                         os.system("now run " + f)
@@ -39,6 +47,9 @@ def get_dataset_provenance(dataset_dir, dockerfile_dir):
                 #     os.system("now run "+f)
                 #     p = Parser_py(direct,f)
                 #     parser_list.append(p)
+
+        # Once all scripts have completed executing, return to Dockerfile directory
+        # and begin to write the report, the rest of which is completed back in RaaS
         os.chdir(orig_dir)
         r = ReportGenerator()
         r.generate_report(parser_list, dockerfile_dir)

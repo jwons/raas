@@ -1,5 +1,6 @@
 import json
 import os
+import pdb
 import sqlite3
 
 
@@ -17,7 +18,7 @@ class Parser_py:
 
     def get_file_info(self):
         self.cursor.execute(
-            'SELECT DISTINCT t.script, f.name, f.mode '
+            'SELECT DISTINCT t.script, f.name, f.mode, f.content_hash_before, f.content_hash_after '
             'FROM trial t, file_access f '
             'WHERE t.id = ? AND t.id= f.trial_id '
             'ORDER by t.script ', (self.trial_id,))
@@ -26,10 +27,28 @@ class Parser_py:
             script_current = Script(file_info[0][0])
             for i in range(0, len(file_info)):
                 f = file_info[i]
-                if f[2] == "rU" or f[2] == "rb":
-                    script_current.add_input_file(f[1])
-                if f[2] == "wU" or f[2] == "wb":
+
+                # When the f[3] is None this means there is no content hash from before file access
+                # Therefore it has to be a write
+                if f[3] is None:
                     script_current.add_output_file(f[1])
+                    continue
+                if f[3] == f[4]:
+                    script_current.add_input_file(f[1])
+                    continue
+                else:
+                    script_current.add_output_file(f[1])
+
+                '''
+                if "r" in f[2]:
+                    script_current.add_input_file(f[1])
+                if "w" in f[2]:
+                    script_current.add_output_file(f[1])
+                if "a" in f[2]:
+                    script_current.add_output_file(f[1])
+                if "+" in f[2] and f[3] != f[4]:
+                    script_current.add_output_file(f[1])
+                '''
             return script_current.get_script_report()
         else:
             self.cursor.execute(

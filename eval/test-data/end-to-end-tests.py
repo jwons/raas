@@ -88,7 +88,7 @@ def test_fixing_filepath():
 # ============================
 
 def test_normal():
-    print_py_testname("Fixing Filepaths")
+    print_py_testname("Normal Operation")
     script_name = "test-normal.zip"
     copy(py_datadir + script_name, "../datasets/")
     container_tag = TEST_USER + os.path.splitext(script_name)[0]

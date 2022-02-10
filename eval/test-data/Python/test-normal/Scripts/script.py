@@ -17,4 +17,4 @@ dc_const = {'UMa': dc_const['UMa'],
             'Cas': dc_const['Cas']}
 
 fig, ax, df_show = sch.draw_chart(df, df_show, dc_const, alpha=0.3)
-plt.show()
+plt.savefig("../Figures/const.png")
