@@ -1,12 +1,21 @@
 import os
 import re
 import sys
+import json
 
-from Parser_py import Parser_py
-from ReportGenerator import ReportGenerator
+from ParserPy import ParserPy
 
 from cmd_line import cmd_line_preprocessor
 from cmd_line import get_parent
+
+
+def generate_report(parser_list, target_path):
+    scripts = {}
+    for parser in parser_list:
+        key_value = parser.get_file_info()
+        scripts[list(key_value.keys())[0]] = list(key_value.values())[0]
+    with open(os.path.join(target_path, "script_info.json"), 'w+') as output_file:
+        json.dump(scripts, output_file)
 
 
 def get_dataset_provenance(dataset_dir, dockerfile_dir):
@@ -17,45 +26,41 @@ def get_dataset_provenance(dataset_dir, dockerfile_dir):
     with open(dockerfile_dir + 'run_instr.txt') as infile:
         for lines in infile.readlines():
             lines = lines.rstrip("\n")
-            if (lines != ""):
+            if lines != "":
                 ins.append(lines)
 
     parser_list = []
 
     # If the user provided no instructions for how to run the scripts, search for Python files
     # and execute them using no workflow without arguments
-    if (len(ins) == 0):
+    if len(ins) == 0:
 
         # Browse through all directories in the dataset and search for Python files
-        for dirpath, dirs, files in os.walk(dataset_dir):
+        for dir_path, dirs, files in os.walk(dataset_dir):
             for filename in files:
-                if (".py" in filename):
-                    f = os.path.join(dirpath, filename)
+                if ".py" in filename:
+                    f = os.path.join(dir_path, filename)
 
                     # Attempt to execute with no workflow,
                     # if it fails execute normally
-                    os.chdir(dirpath)
+                    os.chdir(dir_path)
                     try:
                         os.system("now run " + f)
-                    except:
+                    except Exception as e:
+                        print(e)
+                        print("NoWorkflow could not execute correctly, running code without it")
                         os.system("python " + f)
                         continue
 
-                    p = Parser_py(dirpath, f)
+                    p = ParserPy(dir_path, f)
                     parser_list.append(p)
-                # if(".py" in f):
-                #     os.system("now run "+f)
-                #     p = Parser_py(direct,f)
-                #     parser_list.append(p)
 
         # Once all scripts have completed executing, return to Dockerfile directory
         # and begin to write the report, the rest of which is completed back in RaaS
         os.chdir(orig_dir)
-        r = ReportGenerator()
-        r.generate_report(parser_list, dockerfile_dir)
+        generate_report(parser_list, dockerfile_dir)
 
     else:
-
         for cmd in ins:
             cmd = cmd.rstrip('\n')
             arr = cmd.split(" ")
@@ -72,15 +77,16 @@ def get_dataset_provenance(dataset_dir, dockerfile_dir):
             os.chdir(cur_dir)
             try:
                 os.system(cmd_str)
-            except:
+            except Exception as e:
+                print(e)
+                print("NoWorkflow could not execute correctly, running code without it")
                 os.system(cmd)
                 continue
             file_path_to_exec = re.findall("^now run\s(.*)", cmd_str)[0]
-            p = Parser_py(par, file_path_to_exec)
+            p = ParserPy(par, file_path_to_exec)
             parser_list.append(p)
         os.chdir(orig_dir)
-        r = ReportGenerator()
-        r.generate_report(parser_list, dockerfile_dir)
+        generate_report(parser_list, dockerfile_dir)
 
 
 if len(sys.argv) == 3:

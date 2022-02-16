@@ -19,7 +19,8 @@ class RLang(LanguageInterface):
     def __init__(self):
         self.dataset_dir = None
 
-    def build_docker_package_install(self, package, version):
+    @staticmethod
+    def build_docker_package_install(package, version):
         """Outputs formatted dockerfile command to install a specific version
         of an R package into a docker image
         Parameters
@@ -32,7 +33,8 @@ class RLang(LanguageInterface):
         return 'RUN R -e \"require(\'devtools\');  {install_version(\'' + package + \
                '\', version=\'' + version + '\', repos=\'http://cran.rstudio.com\')}"\n'
 
-    def build_docker_package_install_no_version(self, package):
+    @staticmethod
+    def build_docker_package_install_no_version(package):
         """Outputs formatted dockerfile command to install a specific version
         of an R package into a docker image
         Parameters
@@ -46,7 +48,7 @@ class RLang(LanguageInterface):
                '\', update = F)}\n'
 
     def script_analysis(self, preprocess, dataverse_key='', data_folder='', run_instr='', user_pkg=''):
-        # This variable controls whether or not the container is built despite the existence
+        # This variable controls whether the container is built despite the existence
         # of errors detected in the script
         build_with_errors = False
 
@@ -55,7 +57,7 @@ class RLang(LanguageInterface):
         original_scripts_dir = os.path.join(dockerfile_dir, "__original_scripts__")
         static_analysis_dir = os.path.join(dockerfile_dir, "static_analysis")
 
-        ########## Preprocessing ######################################################################
+        # ---------- Preprocessing ------------
         src_ignore = []
         if preprocess:
             r_files = [y for x in os.walk(os.path.join(self.dataset_dir)) for y in glob(os.path.join(x[0], '*.R'))]
@@ -79,10 +81,10 @@ class RLang(LanguageInterface):
                 filename = re.split('\__preproc__.[rR]$', pre_file[1])[0]
                 os.rename(os.path.join(pre_file[0], pre_file[1]), os.path.join(pre_file[0], filename + ".R"))
 
-        ########## RUNNING STATIC ANALYSIS ######################################################################
+        # ---------- STATIC ANALYSIS ----------
         subprocess.run(['bash', 'app/language_r/static_analysis.sh', self.dataset_dir, static_analysis_dir])
 
-        ########## PARSING STATIC ANALYSIS ######################################################################
+        # ---------- PARSING STATIC ANALYSIS ----------
 
         # assemble a set of packages used and get system requirements
         sys_reqs = []
@@ -160,7 +162,7 @@ class RLang(LanguageInterface):
             new_docker.write('RUN Rscript /home/rstudio/install__packages.R\n')
 
             # These scripts will execute the analyses and collect provenance. Copy them to the
-            # Dockerfile directory first since files copied to the image cannot be outside of it
+            # Dockerfile directory first since files copied to the image cannot be outside it
             copy("app/language_r/get_prov_for_doi.sh", docker_file_dir)
             copy("app/language_r/get_dataset_provenance.R", docker_file_dir)
             copy("app/language_r/create_report.R", docker_file_dir)
@@ -177,12 +179,12 @@ class RLang(LanguageInterface):
                              dir_name + '/get_dataset_provenance.R' + '\n')
 
             # Collect installed package information for the report              
-            new_docker.write("RUN Rscript /home/rstudio/" + dir_name + "/create_report.R /home/rstudio/" + dir_name + \
+            new_docker.write("RUN Rscript /home/rstudio/" + dir_name + "/create_report.R /home/rstudio/" + dir_name +
                              "/prov_data \n")
 
     def create_report(self, current_user_id, name, dir_name, time):
 
-        ########## Generate Report About Build Process ##########################################################
+        # ---------- Generate Report About Build Process ----------
         # The report will have various information from the creation of the container
         # for the user
 

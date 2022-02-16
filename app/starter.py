@@ -65,7 +65,7 @@ def start_raas(self, language, current_user_id, name, preprocess, data_folder, z
                                               'status': 'Pushing Docker image to Dockerhub... '})
 
     if upload:
-        language_obj.push_docker_img(data_folder, current_user_id, name, report)
+        language_obj.push_docker_img(current_user_id, name, report)
     self.update_state(state='PROGRESS', meta={'current': 9, 'total': 10,
                                               'status': 'Cleaning up...'})
 

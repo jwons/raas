@@ -184,7 +184,7 @@ if __name__ == "__main__":
         test_normal
     ]
 
-    r_tests = []
+    #r_tests = []
 
     # Run R tests
     for test in r_tests:

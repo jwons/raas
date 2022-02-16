@@ -1,5 +1,3 @@
-import pdb
-
 from app.language_python.files_list import generate_modules, generate_set, generate_multimap2
 from app.language_python.py2or3 import python2or3
 from app.language_python.decommenter import remove_comments_and_docstrings
@@ -21,12 +19,14 @@ from shutil import copy
 from app.languageinterface import LanguageInterface
 from app.languageinterface import StaticAnalysisResults
 
-from celery.contrib import rdb
-
 
 class PyLang(LanguageInterface):
 
-    def temp_name(self, path):
+    def __init__(self):
+        self.dataset_dir = None
+
+    @staticmethod
+    def temp_name(path):
         p_obj = Path(path)
         filename = p_obj.stem
         temp_filename = filename + '_temp.py'
@@ -34,23 +34,22 @@ class PyLang(LanguageInterface):
         temp_path = os.path.join(par, temp_filename)
         return temp_path
 
-    def script_analysis(self, preprocess, data_folder='', user_pkg='', run_instr=''):
+    def script_analysis(self, preprocess=False, data_folder='', run_instr='', user_pkg=''):
         dockerfile_dir = self.get_dockerfile_dir(data_folder)
         self.dataset_dir = os.path.join(dockerfile_dir, os.listdir(dockerfile_dir)[0])
 
         pyfiles = generate_set(self.dataset_dir)
 
         py2 = False
+        py3 = False
         if preprocess:
             # try:
             # iterate through list of all python files to figure out if its python2 or python3
-            hash = generate_multimap2(self.dataset_dir + "/data_set_content", data_folder)
-            print(hash)
+            hash_multimap = generate_multimap2(self.dataset_dir + "/data_set_content", data_folder)
+            print(hash_multimap)
             for file in pyfiles:
                 print(file)
-                path_preprocess(file, "/home/datasets/" + data_folder + "/data_set_content", hash)
-            # except:
-            # pass
+                path_preprocess(file, "/home/datasets/" + data_folder + "/data_set_content", hash_multimap)
 
         user_defined_modules = generate_modules(self.dataset_dir)
 
@@ -72,33 +71,33 @@ class PyLang(LanguageInterface):
 
             py3 = python2or3(temp_filename)
 
-            if (py3 == False):
+            if not py3:
                 py2 = True
 
-        if (py2 == True):
+        if py2:
             py3 = False
 
         for file in pyfiles:
             try:
-                (unknown, dockerpkg) = get_imports(file, data_folder, user_defined_modules, py3)
+                (unknown, docker_pkg) = get_imports(file, data_folder, user_defined_modules, py3)
             except Exception as e:
                 p_ob = Path(file)
                 strp = ''
                 for i in e.args:
                     strp = strp + str(i) + ' '
-                self.clean_up_datasets()
+                self.clean_up_datasets(data_folder)
                 return {'current': 100, 'total': 100, 'status': ['Error in code.',
                                                                  [[
                                                                      'Error in AST generation of ' + p_ob.name,
                                                                      strp]]]}
             unknown_pkgs = unknown_pkgs.union(unknown)
-            docker_pkgs = docker_pkgs.union(dockerpkg)
+            docker_pkgs = docker_pkgs.union(docker_pkg)
 
         for temp in temp_pyfiles:
             os.remove(temp)
 
         user_pkg_json = {}
-        if (user_pkg != ''):
+        if user_pkg != '':
             user_pkg_json = json.loads(user_pkg)["pkg"]
 
         pkg_dict = {}
@@ -109,29 +108,30 @@ class PyLang(LanguageInterface):
             if not (pkgs in pkg_dict):
                 pkgs_to_ask_user.add(pkgs)
 
-        if (len(pkgs_to_ask_user) != 0):
+        if len(pkgs_to_ask_user) != 0:
             missing_modules = ''
             for pkg in pkgs_to_ask_user:
                 missing_modules += pkg + ','
-            self.clean_up_datasets()
+            self.clean_up_datasets(data_folder)
             return {'current': 100, 'total': 100, 'status': ['Modules not found.',
                                                              [[
-                                                                 'Kindly mention the pypi package name of these unknown modules or upload these missing modules',
+                                                                 'Kindly mention the pypi package name of these '
+                                                                 'unknown modules or upload these missing modules',
                                                                  missing_modules[:-1]]]]}
 
         # If even a single file contains python2 specific code then we take the entire dataset to be of python2
-        if (py2):
+        if py2:
             py3 = False
 
         for p in pyfiles:
-            error, err_mesg = pylint_parser(p, py3)
-            if (error):
+            error, err_message = pylint_parser(p, py3)
+            if error:
                 p_obj = Path(p)
-                self.clean_up_datasets()
+                self.clean_up_datasets(data_folder)
                 return {'current': 100, 'total': 100, 'status': ['Error in code.',
-                                                                 [[
-                                                                     'Error identified by static analysis of ' + p_obj.name,
-                                                                     err_mesg]]]}
+                                                                 [['Error identified by static analysis of '
+                                                                   + p_obj.name,
+                                                                   err_message]]]}
 
         return StaticAnalysisResults(lang_packages=docker_pkgs, sys_libs=None, lang_specific={"is_python_2": py2})
 
@@ -143,8 +143,8 @@ class PyLang(LanguageInterface):
             for instr in run_instr:
                 out.write(instr + '\n')
 
-        container_workdr = '/home/' + dir_name + '/'
-        container_dataset_dir = container_workdr + os.path.split(self.dataset_dir)[1]
+        container_workdir = '/home/' + dir_name + '/'
+        container_dataset_dir = container_workdir + os.path.split(self.dataset_dir)[1]
 
         dockerfile_dir = self.get_dockerfile_dir(dir_name)
 
@@ -162,23 +162,21 @@ class PyLang(LanguageInterface):
             new_docker.write('WORKDIR /home/noworkflow/\n')
             new_docker.write('RUN git checkout 2.0-alpha\n')
             new_docker.write('RUN python' + str(python_ver) + ' -m pip install -e capture\n')
-            new_docker.write('WORKDIR ' + container_workdr + '\n')
+            new_docker.write('WORKDIR ' + container_workdir + '\n')
             new_docker.write('COPY ' + os.path.split(self.dataset_dir)[1] + ' ./' + os.path.split(self.dataset_dir)[1]
                              + ' \n')
 
             copy("app/language_python/get_dataset_provenance.py", "instance/datasets/" + dir_name)
-            copy("app/language_python/Parser_py.py", "instance/datasets/" + dir_name)
-            copy("app/language_python/ReportGenerator.py", "instance/datasets/" + dir_name)
+            copy("app/language_python/ParserPy.py", "instance/datasets/" + dir_name)
             copy("app/language_python/cmd_line.py", "instance/datasets/" + dir_name)
             copy("app/language_python/run_instr.txt", "instance/datasets/" + dir_name)
 
-            new_docker.write('COPY get_dataset_provenance.py ' + container_workdr + '\n')
-            new_docker.write('COPY cmd_line.py ' + container_workdr + '\n')
-            new_docker.write('COPY Parser_py.py ' + container_workdr + '\n')
-            new_docker.write('COPY ReportGenerator.py ' + container_workdr + '\n')
-            new_docker.write('COPY run_instr.txt ' + container_workdr + '\n')
-            new_docker.write('RUN chmod a+rwx -R ' + container_workdr + '\n')
-            new_docker.write('WORKDIR ' + container_workdr + '\n')
+            new_docker.write('COPY get_dataset_provenance.py ' + container_workdir + '\n')
+            new_docker.write('COPY cmd_line.py ' + container_workdir + '\n')
+            new_docker.write('COPY ParserPy.py ' + container_workdir + '\n')
+            new_docker.write('COPY run_instr.txt ' + container_workdir + '\n')
+            new_docker.write('RUN chmod a+rwx -R ' + container_workdir + '\n')
+            new_docker.write('WORKDIR ' + container_workdir + '\n')
 
             for mod in ext_pkgs:
                 new_docker.write("RUN " + mod + "\n")
@@ -188,11 +186,11 @@ class PyLang(LanguageInterface):
             if python_ver == 2:
                 new_docker.write('RUN pip install pathlib\n')
 
-            new_docker.write("RUN pip list > " + container_workdr + "listOfPackages.txt \n")
+            new_docker.write("RUN pip list > " + container_workdir + "listOfPackages.txt \n")
 
             new_docker.write("RUN python" + str(python_ver) + " "
-                             + container_workdr + "get_dataset_provenance.py" + " " +
-                             container_dataset_dir + " " + container_workdr + "\n")
+                             + container_workdir + "get_dataset_provenance.py" + " " +
+                             container_dataset_dir + " " + container_workdir + "\n")
 
         return os.path.join(app.instance_path, 'datasets', dir_name)
 
@@ -227,7 +225,7 @@ class PyLang(LanguageInterface):
         # Split lines output from terminal in list of lists format defined for report
         installed_packages = [package_tuple.split() for package_tuple in installed_packages if package_tuple is not '']
 
-        report = {"Container Information": {}, "Individual Scripts": {}, "Additional Information":{}}
+        report = {"Container Information": {}, "Individual Scripts": {}, "Additional Information": {}}
 
         # Finish out report generation
         report["Container Information"]["Language Packages"] = installed_packages
@@ -238,5 +236,6 @@ class PyLang(LanguageInterface):
         report["Additional Information"]["Build Time"] = time
         return report
 
-    def build_docker_package_install(self, module):
+    @staticmethod
+    def build_docker_package_install(module):
         return "RUN pip install " + module + "\n"

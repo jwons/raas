@@ -4,7 +4,7 @@ import pdb
 import sqlite3
 
 
-class Parser_py:
+class ParserPy:
     # modification made by Akash
     # removed arguments parameter and added it to filepath, so its not filepath anymore, its command line
     def __init__(self, dir_path, filepath):
@@ -75,24 +75,26 @@ class Parser_py:
                 pkg_list.append((pkg_name.replace(".py", ""), p[1]))
         return pkg_list
 
-    def get_pkg_report(self, pkg_list):
+    @staticmethod
+    def get_pkg_report(pkg_list):
         pkg_report = []
         for p in pkg_list:
             pkg_report.append({"name": p[0], "version": p[1]})
         return pkg_report
 
-    def get_whole_report(self, pkg_report, script_report):
+    @staticmethod
+    def get_whole_report(pkg_report, script_report):
         jsontext = {
             'Pyplace Report': {"Modules Depended": pkg_report, "Individual Scripts": script_report}}
-        return (jsontext)
+        return jsontext
 
 
 class Script(object):
 
-    def __init__(self, id):
+    def __init__(self, arg_id):
         self.input_files = []
         self.output_files = []
-        self.id = id
+        self.id = arg_id
 
     def get_id(self):
         return self.id

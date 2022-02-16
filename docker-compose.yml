@@ -25,6 +25,8 @@ services:
       - ./eval/datasets:/raas/datasets
   celery:
     build: .
+    environment:
+      - DOCKER_REPO=jwonsil
     volumes:
       - instance_data:/raas/instance
       - /var/run/docker.sock:/var/run/docker.sock
