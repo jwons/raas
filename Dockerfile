@@ -19,8 +19,8 @@ COPY . .
 ARG FLASK_ENV="development"
 ENV FLASK_ENV="${FLASK_ENV}" \
     PYTHONUNBUFFERED="true"
-ENV FLASK_APP="raas.py"\ 
-      DOCKER_REPO="jwonsil"
+
+ENV FLASK_APP="raas.py"
 
 # We will be exposing port 5000, the actual command to do this is in the docker-compose
 EXPOSE 5000

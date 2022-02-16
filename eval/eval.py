@@ -5,19 +5,15 @@ import shutil
 import docker
 import json
 import threading
-import sqlite3
-import time
 import pandas as pd
 import argparse
 import subprocess
 
-from urllib3.exceptions import ReadTimeoutError
 from sqlalchemy import create_engine
 from io import StringIO
-from docker import APIClient
 from func_timeout import func_timeout, FunctionTimedOut
 
-from headless_raas import headless_raas
+from app.headless_raas import headless_raas
 
 
 def doi_to_directory(doi):
@@ -252,11 +248,7 @@ def batch_raas(dataset_dirs, zip_dirs = False, debug = True):
         with open("failed_sets.txt", "a+") as failed:
             for datadir in failed_sets:
                 failed.write(datadir + "\n")
-    #return((0, failed_sets))	
-
-def start_raas():
-    os.chdir("../")
-    subprocess.run(["docker-compose", "up"])
+    #return((0, failed_sets))
 
 if __name__ == "__main__":
 
@@ -274,10 +266,6 @@ if __name__ == "__main__":
 
     if(args.noraas == False):
         print("RaaS must be running or this will fail")
-        #raas_thread = threading.Thread(target=start_raas, daemon=True)
-        #raas_thread.start()
-    #time.sleep(5)
-    #os.chdir("eval/")
 
     # which increment of r dois to evaluate 
     dois = dois[args.start:args.end]
