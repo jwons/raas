@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+{% import 'bootstrap/wtf.html' as wtf %}
+{% block styles %}
+    {{ super() }}
+    <link rel="stylesheet"
+          href="{{ url_for('static', filename='containerize.css') }}">
+{% endblock %}
+{% block app_content %}
+    <script>
+
+        function isInArray(arr, value) {
+            for (var i = 0; i < arr.length; i++) {
+                if (value === arr[i]) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        function hide_ad() {
+            document.getElementById("advance").style.display = "none"
+            document.getElementById('button1').value = "Show Advanced Options";
+        }
+
+        function block() {
+            if (document.getElementById('button1').value === "Show Advanced Options") {
+                document.getElementById('button1').value = "Hide Advanced Options";
+                document.getElementById("advance").style.display = "block"
+            } else {
+                document.getElementById('button1').value = "Show Advanced Options";
+                document.getElementById("advance").style.display = "none"
+
+            }
+        }
+    </script>
+    <style>
+        #main {
+            float: left
+        }
+
+        #advance {
+            float: left
+        }
+
+        #pkg_table {
+            float: bottom
+        }
+    </style>
+
+
+    {% if show_adv == False %}
+        <body onload="hide_ad()">
+    {% elif show_adv == True %}
+        <body>
+    {% endif %}
+
+<div class="row">
+    <h1 class="text-primary">Build Docker Image for Dataset</h1>
+    <p class="text-muted">For instructions, see Part 3 of the <a href=" {{ url_for('instructions') }}">instructions
+        page</a>
+        {% if show_adv == False %}
+            <input type='button' id="button1" value="Show Advanced Options" onclick="block()">
+        {% elif show_adv == True %}
+            <input type='button' id="button1" value="Hide Advanced Options" onclick="block()">
+        {% endif %}
+
+    <form action="" method='POST' enctype="multipart/form-data">
+        <div id="main" class="col-md-4 text-muted">
+            {{ form.hidden_tag() }}
+            {{ form.spot_id }}
+            {{ wtf.form_field(form.zip_file) }}
+            {{ wtf.form_field(form.name) }}
+            {{ wtf.form_field(form.fix_code) }}
+            {{ wtf.form_field(form.language) }}
+            {{ wtf.form_field(form.submit) }}
+        </div>
+        <div id="advance">
+{#        expected to be supported in future#}
+{#            {{ wtf.form_field(form.provenance) }}#}
+{#            {{ wtf.form_field(form.sample_output) }}#}
+            <label class="control-label">Additional Packages</label>
+            <div id="pkg_table" style="line-height:25px">
+                {% for f in form.pkg_asked %}
+                    {{ f.hidden_tag() }}
+                    {{ f.spot_id }}
+
+                    <label class="package name" style="color:grey; font-weight: lighter">Package name {{ loop.index }}:</label>
+                    {{ f.package_name }}
+                    <label class="installation_cmd" style="color:grey; font-weight: lighter">Installation Command {{ loop.index }}:</label>
+                    {{ f.installation_cmd }}<br>
+                {% endfor %}
+                {{ wtf.form_field(form.add_pkg) }}
+            </div>
+         <label class="control-label">Run instruction(Command line)</label>
+        <div id="cmd" style="line-height:25px">
+                {% for f in form.command_line %}
+                    {{ f.hidden_tag() }}
+                    {{ f.spot_id }}
+                    <label class="command" style="color:grey; font-weight: lighter">Line    {{ loop.index }}:</label>
+                    {{ f.command }}<br>
+                {% endfor %}
+                {{ wtf.form_field(form.add_cmd) }}
+            </div>
+         <label class="control-label">Line of code to run between package install and execute</label>
+        <div id="pkg_table" style="line-height:25px">
+                {% for f in form.code_btw %}
+                    {{ f.hidden_tag() }}
+                    {{ f.spot_id }}
+                    <label class="command" style="color:grey; font-weight: lighter">Line {{ loop.index }}:</label>
+                    {{ f.code }}<br>
+                {% endfor %}
+                {{ wtf.form_field(form.add_code) }}
+            </div>
+        </div>
+
+
+    </form>
+
+</div>
+
+
+</body>
+
+
+
+
+
+{% endblock %}

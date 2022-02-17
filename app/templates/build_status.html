@@ -3,7 +3,7 @@
 {% block styles %}
 {{super()}}
 <link rel="stylesheet"
-      href="{{url_for('static', filename='containrize.css')}}">
+      href="{{url_for('static', filename='containerize.css')}}">
 {% endblock %}
 {% block app_content %}
 	<h1 class="text-primary">Build Status for Docker Image</h1>
@@ -39,7 +39,7 @@
 						}
 						$("#error-list").append('<li class="text-danger bg-danger" style="padding-left:10px">' + error_text + '</li>');		
 					}
-					$("#error").append('<br><div style="text-align:center"><a href="' + '{{ url_for("containrize") }}' + '"><button type="button" class="btn btn-primary">Retry</button>')
+					$("#error").append('<br><div style="text-align:center"><a href="' + '{{ url_for("containerize") }}' + '"><button type="button" class="btn btn-primary">Retry</button>')
 				}
 				if (data['state'] != 'PENDING' && data['state'] != 'PROGRESS') {
 					if ('result' in data) {
