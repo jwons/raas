@@ -3,6 +3,7 @@ A website that automatically creates Docker images from user-uploaded directorie
 This service supports multiple languages including R, Python, and Julia (to varying degrees). 
 
 For detailed set up instructions and other information visit the [wiki](https://github.com/jwons/raas/wiki).
+For a detailed view into the architecture and evaluation of the system refer to my [master's thesis at the UBC Library](http://hdl.handle.net/2429/78501).
 
 ## Running RaaS with Docker (recommended)
 Make sure to "install" RaaS first and set up the environment as specified in the [wiki](https://github.com/jwons/raas/wiki).
