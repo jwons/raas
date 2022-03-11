@@ -2,7 +2,7 @@
 # the environment in the container necessary to run raas. Since that process takes
 # a while and is largely static, it is a separate build. This file will simply load
 # in the current version of the code and start the service. 
-FROM jwonsil/raas-env
+FROM raas-env
 
 WORKDIR /raas
 
