@@ -8,7 +8,7 @@
 ##################################################
 
 library(stringr)
-library(rdtLite)
+library(rdt)
 library(provParseR)
 
 # get commandline arguments
@@ -66,8 +66,8 @@ for (r_file in r_files) {
 	save(dir_path_doi, r_files, r_file, filename,
 		 file=paste(prov.dir, "/get_prov.RData", sep =""))
 	#setwd(script_dir)
-	run.script <- paste0("R -e \"library(rdtLite); setwd('", paste0(dir_path_doi, substr(dirname(filename), 2, nchar(filename))), "'); error <-  try(prov.run('", basename(r_file), "', prov.dir = '", prov.dir ,
-	                     "'), silent = TRUE); if(class(error) == 'try-error'){save(error,file ='", paste0(prov.dir, "/error.RData") ,"')}", "\"")
+	run.script <- paste0("R -e \"library(rdt); setwd('", paste0(dir_path_doi, substr(dirname(filename), 2, nchar(filename))), "'); error <-  try(prov.run('", basename(r_file), "', prov.dir = '", prov.dir ,
+	                     "', annotate.inside.functions = TRUE, max.loops = 10000, snapshot.size = Inf), silent = TRUE); if(class(error) == 'try-error'){save(error,file ='", paste0(prov.dir, "/error.RData") ,"')}", "\"")
 	system(run.script)
 
 	# Determine provenance directory so it can be changed to a unique name

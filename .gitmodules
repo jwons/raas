@@ -1,0 +1,3 @@
+[submodule "app/language/rdt"]
+	path = app/language/rdt
+	url = https://github.com/jwons/rdt.git

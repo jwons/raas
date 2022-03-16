@@ -220,7 +220,7 @@ def batch_raas(dataset_dirs, zip_dirs = False, debug = True):
             shutil.make_archive("datasets/" + os.path.basename(data_dir), 'zip', data_dir)
         if(debug): print("Beginning containerization for: " + os.path.basename(data_dir))
         try:
-            result = headless_raas(name = os.path.basename(data_dir), lang = "R", preproc = "1", zip_path = "datasets/" + os.path.basename(data_dir) + ".zip")
+            result = headless_raas(name = os.path.basename(data_dir), lang = "R", preproc = "1", zip_path = os.path.basename(data_dir) + ".zip")
             if(result is False):
                 print("raas function returned false")
                 raise Exception("raas function returned false")
@@ -253,7 +253,7 @@ def batch_raas(dataset_dirs, zip_dirs = False, debug = True):
 if __name__ == "__main__":
 
     # this file is created by the get_r_dois.py script
-    with open('r_dois.txt') as doi_file:
+    with open('rdt_dois.txt') as doi_file:
         dois = doi_file.readlines()
 
     parser = argparse.ArgumentParser()
@@ -272,8 +272,11 @@ if __name__ == "__main__":
 
     # Define chunk size
     start = 0
-    end = 1
-    increment_by = 1
+    end = 2
+    increment_by = 2
+
+    if end > len(dois):
+        end = len(dois)
 
     # Create folder for storing datasets if necessary
     if not os.path.exists("datasets"):

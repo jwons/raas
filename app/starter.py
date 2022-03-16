@@ -27,6 +27,7 @@ def start_raas(self, language, current_user_id, name, preprocess, data_folder, z
         return {'current': 100, 'total': 100, 'status': ['Error in language.',
                                                          [[language + " is not supported"]]]}
 
+
     self.update_state(state='PROGRESS', meta={'current': 1, 'total': 10,
                                               'status': 'Unzipping data'})
 
@@ -50,6 +51,7 @@ def start_raas(self, language, current_user_id, name, preprocess, data_folder, z
                                               'status': 'Generating Dockerfile... '})
 
     language_obj.build_docker_file(data_folder, static_results, code_btw, run_instr)
+
     self.update_state(state='PROGRESS', meta={'current': 4, 'total': 10,
                                               'status': 'Building Docker image... '})
 
