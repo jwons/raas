@@ -21,13 +21,19 @@ COPY r_dependencies.R .
 COPY requirements.txt requirements.txt
 
 # This variable specifices the system packages needed to be installed for RaaS
-ENV BUILD_DEPS="build-essential libcurl4-gnutls-dev libxml2-dev libssl-dev libgit2-dev" \
-    APP_DEPS="curl libpq-dev r-base python3-pip python3 wget apt-transport-https ca-certificates gnupg-agent software-properties-common"
+ENV BUILD_DEPS="build-essential libcurl4-gnutls-dev libxml2-dev libssl-dev libgit2-dev dirmngr" \
+    APP_DEPS="curl libpq-dev python3-pip python3 wget apt-transport-https ca-certificates gnupg-agent software-properties-common"
 
 # Install previously defined system libraries
 RUN apt-get update \
   && apt-get upgrade -y \
   && apt-get install -y ${BUILD_DEPS} ${APP_DEPS} --no-install-recommends 
+
+# Install R (dirmngr is required for this process, so goes after previous bulk install)
+RUN apt-key adv --keyserver keyserver.ubuntu.com --recv-keys E298A3A825C0D65DFD57CBB651716619E084DAB9  \
+    && add-apt-repository 'deb https://cloud.r-project.org/bin/linux/ubuntu focal-cran40/' \
+    && apt update \
+    && apt install -y r-base r-base-core r-recommended r-base-dev
 
 # Install docker for containerizing scripts
 RUN curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add - \
