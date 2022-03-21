@@ -99,6 +99,7 @@ class RLang(LanguageInterface):
             sys_reqs = data['sys_deps']
 
         sys_reqs.append("libjpeg-dev")
+        sys_reqs.append("libxt6")
 
         return StaticAnalysisResults(lang_packages=used_packages, sys_libs=sys_reqs, lang_specific={"src_ignore":
                                                                                                     src_ignore})
