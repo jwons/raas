@@ -353,7 +353,7 @@ def preprocess_package_install(r_file, path, from_preproc=False):
 					install_replace = line
 					# replace "install.packages" calls
 					if (re.search("install.packages\s*\(\"?([^\"]*)\"?\)", line) is not None):
-						install_replace = re.sub("install.packages\s*\(\"?([^\"]*)\"?\)",
+						install_replace = re.sub("install.packages\s*\(\s*[\"\']([^\"\']*)[\"\']\s?\)",
 												 'if(!((\"\\1\") %in% rownames(installed.packages()))){ \n' +
 												 ' install.packages(pkgs=package, repos="http://cran.r-project.org")' +
 												 ' \n }', line).replace(" ", "")

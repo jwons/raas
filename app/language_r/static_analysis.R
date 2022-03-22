@@ -11,6 +11,7 @@
 library(CodeDepends)
 library(lintr)
 library(rjson)
+library(Rclean)
 
 # get commandline arguments
 args = commandArgs(trailingOnly=TRUE)
@@ -28,13 +29,87 @@ print("Creating directory!\n")
 dir.create(static.analysis.dir, showWarnings = FALSE)
 
 
-r_files <-  list.files(".", pattern="\\.[Rr]\\>", recursive=T, full.names=T)
+r_files <- list.files(".", pattern="\\.[Rr]\\>", recursive=T, full.names=T)
 # parse out preprocessed files
 preproc_files = grep("__preproc__", r_files)
 if (length(preproc_files) > 0) {
-	r_files = r_files[-preproc_files]
+	r_files <- r_files[-preproc_files]
 }
 
+# This function takes some text from a script and if the 
+# text contains a install.packages function call where
+# a variable is passed to the function rather than a 
+# character literal, it returns the name of said variable.
+# Otherwise returns NA
+check.for.install.by.var <- function(script.text){
+  parsed <- parse(text = script.text)
+  
+  # Begin to look through parse tree, recur inside as needed 
+  pos.var <- check.expressions(parsed)
+  if(pos.var != ""){
+    return(pos.var[[1]])
+  } else {
+    return(NA)
+  }
+}
+
+# This function, called recursively examines the parse tree of some code
+# checking for install.packages function call where
+# a variable is passed to the function. Either returns the variable name, 
+# "" if nothing found, or recurs. 
+check.expressions <- function(expr){
+  if(length(expr) == 1 && typeof(expr) != "expression"){
+    return("")
+  } else if(length(expr[[1]]) == 1 && expr[[1]] == "install.packages"){
+    if(typeof(expr[[2]]) == "symbol"){
+      return(expr[[2]])
+    } else {
+      return("")
+    }
+    
+  } else {
+    ret.val <- unique(sapply(expr, check.expressions))
+    ret.val <- ret.val[! ret.val %in% c('')]
+    if(length(ret.val) > 0){
+      return(ret.val)
+    } else{
+      return("")
+    }
+  }
+}
+
+# Given a file, this scripts will find the values of any variable used
+# when passing a variable to an install.packages function.
+# For example:
+#
+# list.of.packages <- c("rdtLite", "rdt", "ggplot2")
+# install.packages(list.of.packages)
+# 
+# for the above script will return a character vector:
+# ["rdtLite", "rdt", "ggplot2"]
+get.variable.loaded.libs <- function(file){
+  #lines <- readLines(file)
+  #lines <- lines[unname(sapply(lines, grepl, pattern = "install.packages", fixed = T))]
+  install.lines = paste(readLines(file), collapse = "\n")
+  vars <- as.character(check.for.install.by.var(install.lines))
+  if(is.na(vars)){
+    pos.libs <- character()
+  } else {
+    code <- Rclean::clean(file, vars)
+    parsed <- sapply(code, str2expression)
+    script_env <- new.env()
+    evals <- sapply(parsed, eval, envir=script_env)
+    pos.libs <- c()
+    for (var in evals){
+      if(typeof(var) == "character"){
+        pos.libs <- c(var, pos.libs)
+      }
+    }
+    pos.libs <- unique(pos.libs)
+  }
+  
+  return(pos.libs)
+}
 
 lint_file <- function(file) {
   
@@ -51,12 +126,12 @@ lint_file <- function(file) {
   # collect errors and warnings
   for (r in res) {
     if (r$type == "warning") {
-      warning = paste(r$line, "Line:", r$line_number, r$message)
+      warning <- paste(r$line, "Line:", r$line_number, r$message)
       warnings_x <- c(warnings_x, warning)
     }
     if (r$type == "error") {
-      error = paste(r$line, "Line:", r$line_number, r$message)
-      errors_x = c(errors_x, error)
+      error <- paste(r$line, "Line:", r$line_number, r$message)
+      errors_x <- c(errors_x, error)
     }
   }
 
@@ -64,19 +139,19 @@ lint_file <- function(file) {
 }
 
 get_library_inputs <- function(inputs) {
-  res = getInputs(inputs)
-  libraries_used = c()
+  res <- getInputs(inputs)
+  libraries_used <- c()
 
   if (length(res) == 1) {
     if (length(res@libraries) != 0) {
-      libraries_used = c(libraries_used, res@libraries)
+      libraries_used <- c(libraries_used, res@libraries)
     }
   }
 
   else {
     lapply(res, function(r) {
      if (length(r@libraries) != 0) {
-       libraries_used = c(libraries_used, r@libraries)
+       libraries_used <- c(libraries_used, r@libraries)
      }
    })
   }
@@ -106,16 +181,16 @@ find_calls <- function(x) {
 
 identify_packages <- function(file) {
   # error check here
-  doc = readScript(file)
-  result = getInputs(doc)
+  doc <- readScript(file)
+  result <- getInputs(doc)
 
-  packages_used = c()
+  packages_used <- c()
 
   for (r in result) {
 
     # get libraries found at top level
     if (length(r@libraries) != 0) {
-      packages_used = unique(c(packages_used, r@libraries))
+      packages_used <- unique(c(packages_used, r@libraries))
     }
 
     # if libraries are not on top level CodeDepends will not pick 
@@ -125,17 +200,22 @@ identify_packages <- function(file) {
       if ("library" %in% names(r@functions) || "::" %in% names(r@functions)
         || "namespace" %in% names(r@functions)|| "require" %in% names(r@functions)) {
 
-        pack = find_calls(r@code)
-        packages_used = unique(c(packages_used, pack))
+        pack <- find_calls(r@code)
+        packages_used <- unique(c(packages_used, pack))
       }
     }
   }
+  
+  # Libraries might be loaded through a variable rather than a character literal,
+  # find those libraries here
+  packages_used <- unique(c(packages_used, get.variable.loaded.libs(file)))
+  
   return(packages_used)
 }
 
-libs = character()
-warnings = character()
-errors = character()
+libs <- character()
+warnings <- character()
+errors <- character()
 
 print("Starting script linting")
 
@@ -189,11 +269,13 @@ if(r$status == 404){
   api.resp <- unique(api.resp[api.resp != "NULL"])
 }
 
-response = list( errors = if (length(errors) == 1) list(errors) else errors, 
+response <- list( errors = if (length(errors) == 1) list(errors) else errors, 
                  warnings = if (length(warnings) == 1) list(warnings) else warnings, 
                  packages = unique(c(libs,all.libs)), 
                  package_deps = all.libs, 
                  sys_deps = api.resp)
-json = rjson::toJSON(response)
+
+
+json <- rjson::toJSON(response)
 print(json)
 write(json, paste(static.analysis.dir, "/static_analysis.json", sep=""))
