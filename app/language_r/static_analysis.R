@@ -223,7 +223,7 @@ print("Starting script linting")
 for (r_file in r_files) {
   # Collect libraries
   libs <- tryCatch(expr = {
-    unique(c(identify_packages(r_file), libs, 'rdtLite'))
+    unique(c(identify_packages(r_file), libs))
   }, error = function(cond){
     print(c(r_file, "Failed on Library"))
     libs
@@ -259,9 +259,10 @@ libs.request <- paste(all.libs, collapse=",")
 
 # get system dependencies
 print("Getting system reqs:")
-print(paste("https://sysreqs.r-hub.io/pkg/", libs.request,"/linux-x86_64-ubuntu-gcc", sep = ""))
+sys.reqs.request <- paste("https://sysreqs.r-hub.io/pkg/", libs.request,"/linux-x86_64-ubuntu-gcc", sep = "")
+print(sys.reqs.request)
 
-r <- httr::GET(paste("https://sysreqs.r-hub.io/pkg//linux-x86_64-ubuntu-gcc", sep = ""))
+r <- httr::GET(sys.reqs.request)
 if(r$status == 404){
   api.resp = list()
 } else {

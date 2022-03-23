@@ -130,6 +130,13 @@ class RLang(LanguageInterface):
         with open(os.path.join(docker_file_dir, 'install__packages.R'), 'w') as install_packs:
             install_packs.write('require(\'devtools\')\n')
             install_packs.write('require(\'BiocManager\')\n')
+            install_rdt = """
+devtools::install_github("End-to-end-provenance/provParseR")
+devtools::install_github("End-to-end-provenance/provViz")
+devtools::install_github("End-to-end-provenance/provSummarizeR")
+devtools::install_github("End-to-end-provenance/rdtLite")                   
+"""
+            install_packs.write(install_rdt)
             # perform any pre-specified installs
             if special_packages:
                 for key in special_install["packages"].keys():
@@ -149,7 +156,7 @@ class RLang(LanguageInterface):
             new_docker.write('FROM rocker/tidyverse:latest\n')
 
             # install system requirements
-            sysinstall = "RUN export DEBIAN_FRONTEND=noninteractive; apt-get -y update && apt-get install -y "
+            sysinstall = "RUN export DEBIAN_FRONTEND=noninteractive; apt-get -y --allow-releaseinfo-change update && apt-get install -y "
             if len(static_results.sys_libs) != 0:
                 new_docker.write(sysinstall + ' '.join(static_results.sys_libs) + '\n')
 
