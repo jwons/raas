@@ -54,7 +54,7 @@ if(file.exists("../.srcignore")){
 # for each R file
 for (r_file in r_files) {
   # If this is a sourced script do not run it independently, instead go to next file
-  if(!is.na(sourced.scripts)){
+  if(!is.na(sourced.scripts[1])){
     if(substr(r_file, 2, nchar(r_file)) %in% sourced.scripts){
       next
     }
