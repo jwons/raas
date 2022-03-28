@@ -126,8 +126,9 @@ class RLang(LanguageInterface):
                 for line in static_results.lang_specific["src_ignore"]:
                     src_ignore_file.write(line + "\n")
                 src_ignore_file.write('\n')
-
-        with open(os.path.join(docker_file_dir, 'install__packages.R'), 'w') as install_packs:
+        backup_install_packages = 'backup_install_packages.R'
+        with open(os.path.join(docker_file_dir, backup_install_packages), 'w') as install_packs:
+            install_packs.write('if(file.exists("/home/rstudio/.Renviron")){q(save = "no")}\n')
             install_packs.write('require(\'devtools\')\n')
             install_packs.write('require(\'BiocManager\')\n')
             install_rdt = """
@@ -136,7 +137,7 @@ devtools::install_github("End-to-end-provenance/provViz")
 devtools::install_github("End-to-end-provenance/provSummarizeR")
 devtools::install_github("End-to-end-provenance/rdtLite")                   
 """
-            install_packs.write(install_rdt)
+            # install_packs.write(install_rdt)
             # perform any pre-specified installs
             if special_packages:
                 for key in special_install["packages"].keys():
@@ -166,8 +167,12 @@ devtools::install_github("End-to-end-provenance/rdtLite")
                     new_docker.write(sysinstall + ' '.join(special_install["sys-libs"]) + '\n')
 
             # Install libraries
-            new_docker.write('COPY install__packages.R /home/rstudio/\n')
-            new_docker.write('RUN Rscript /home/rstudio/install__packages.R\n')
+            copy("app/language_r/install_packages.R", docker_file_dir)
+            new_docker.write('COPY install_packages.R /home/rstudio/\n')
+            new_docker.write('COPY ' + backup_install_packages + ' /home/rstudio/\n')
+            new_docker.write('RUN Rscript /home/rstudio/install_packages.R ' + " ".join(docker_packages) + '\n')
+            new_docker.write('RUN Rscript /home/rstudio/' + backup_install_packages + '\n')
+
 
             # These scripts will execute the analyses and collect provenance. Copy them to the
             # Dockerfile directory first since files copied to the image cannot be outside it

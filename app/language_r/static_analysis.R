@@ -253,7 +253,7 @@ all.libs <- unique(unlist(sapply(libs, function(lib){
   tools::package_dependencies(lib, recursive = T)
 })))
 
-all.libs <- unique(c(libs, all.libs))
+all.libs <- unique(c(libs, all.libs, "rdtLite"))
 
 libs.request <- paste(all.libs, collapse=",")
 
@@ -270,10 +270,9 @@ if(r$status == 404){
   api.resp <- unique(api.resp[api.resp != "NULL"])
 }
 
-response <- list( errors = if (length(errors) == 1) list(errors) else errors, 
+response <- list(errors = if (length(errors) == 1) list(errors) else errors,
                  warnings = if (length(warnings) == 1) list(warnings) else warnings, 
-                 packages = unique(c(libs,all.libs)), 
-                 package_deps = all.libs, 
+                 packages = as.list(all.libs),
                  sys_deps = api.resp)
 
 
