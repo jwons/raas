@@ -5,10 +5,12 @@ import docker
 import re
 
 from glob import glob
+from app import app
 from app.languageinterface import LanguageInterface
 from app.languageinterface import StaticAnalysisResults
 from app.language_r.preproc_helpers import all_preproc
 from shutil import copy
+from shutil import copytree
 
 # Debugging
 from celery.contrib import rdb
@@ -135,9 +137,10 @@ class RLang(LanguageInterface):
 devtools::install_github("End-to-end-provenance/provParseR")
 devtools::install_github("End-to-end-provenance/provViz")
 devtools::install_github("End-to-end-provenance/provSummarizeR")
-devtools::install_github("End-to-end-provenance/rdtLite")                   
+devtools::install_github("End-to-end-provenance/rdtLite")  
+install.packages("/home/rstudio/rdt", repos = NULL, type="source")
 """
-            # install_packs.write(install_rdt)
+
             # perform any pre-specified installs
             if special_packages:
                 for key in special_install["packages"].keys():
@@ -166,25 +169,23 @@ devtools::install_github("End-to-end-provenance/rdtLite")
                 if "sys-libs" in special_install.keys():
                     new_docker.write(sysinstall + ' '.join(special_install["sys-libs"]) + '\n')
 
+            copytree("app/language_r/rdt", docker_file_dir + "/rdt")
+            # Add the dataset to the container
+            new_docker.write('COPY . /home/rstudio/' + dir_name + '\n')
+
             # Install libraries
             copy("app/language_r/install_packages.R", docker_file_dir)
+            new_docker.write('COPY rdt /home/rstudio/rdt\n')
             new_docker.write('COPY install_packages.R /home/rstudio/\n')
             new_docker.write('COPY ' + backup_install_packages + ' /home/rstudio/\n')
             new_docker.write('RUN Rscript /home/rstudio/install_packages.R ' + " ".join(docker_packages) + '\n')
             new_docker.write('RUN Rscript /home/rstudio/' + backup_install_packages + '\n')
-
 
             # These scripts will execute the analyses and collect provenance. Copy them to the
             # Dockerfile directory first since files copied to the image cannot be outside it
             copy("app/language_r/get_prov_for_doi.sh", docker_file_dir)
             copy("app/language_r/get_dataset_provenance.R", docker_file_dir)
             copy("app/language_r/create_report.R", docker_file_dir)
-
-            # Add the dataset to the container
-            new_docker.write('COPY . /home/rstudio/' + dir_name + '\n')
-
-            # Add permissions or the scripts will fail
-            new_docker.write('RUN chown -R  rstudio:rstudio /home/rstudio/\n')
 
             # Execute analysis and collect provenance
             new_docker.write('RUN /home/rstudio/' + dir_name + '/get_prov_for_doi.sh /home/rstudio/' + dir_name + \
@@ -194,6 +195,10 @@ devtools::install_github("End-to-end-provenance/rdtLite")
             # Collect installed package information for the report              
             new_docker.write("RUN Rscript /home/rstudio/" + dir_name + "/create_report.R /home/rstudio/" + dir_name +
                              "/prov_data \n")
+
+            # Add permissions or the scripts will fail
+            new_docker.write('RUN chown -R  rstudio:rstudio /home/rstudio/\n')
+
 
     def create_report(self, current_user_id, name, dir_name, time):
 
@@ -214,6 +219,12 @@ devtools::install_github("End-to-end-provenance/rdtLite")
         report["Additional Information"]["Container Name"] = self.get_container_tag(current_user_id, name)
         report["Additional Information"]["Build Time"] = time
 
+        bits, stat = container.get_archive("/home/rstudio/" + dir_name + "/prov_data")
+        if not os.path.exists(os.path.join(app.instance_path, 'results')):
+            os.makedirs(os.path.join(app.instance_path, 'results'))
+        with open(os.path.join(app.instance_path, 'results', dir_name + "_prov_data.tar"), 'wb') as prov_dir:
+            for chunk in bits:
+                prov_dir.write(chunk)
         # information from the container is no longer needed
         container.kill()
 

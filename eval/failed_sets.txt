@@ -1,1 +1,7 @@
 datasets/doi-10.7910-DVN-HUZ1CD
+datasets/doi-10.7910-DVN-EJYWCK
+datasets/doi-10.7910-DVN-DZQDQO
+datasets/doi-10.7910-DVN-ELI51F
+datasets/doi-10.7910-DVN-DZQDQO
+datasets/doi-10.7910-DVN-EJYWCK
+datasets/doi-10.7910-DVN-ELI51F
