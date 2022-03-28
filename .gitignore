@@ -16,3 +16,4 @@ venv/
 logs/
 *.swp
 eval/datasets
+.Rproj.user

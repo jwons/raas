@@ -34,8 +34,7 @@ class LanguageInterface(object):
     def get_container_tag(current_user_id, name):
         current_user_obj = User.query.get(current_user_id)
         image_name = current_user_obj.username + '-' + name
-        repo_name = os.environ.get('DOCKER_REPO') + '/'
-        return repo_name.lower() + image_name.lower()
+        return image_name.lower()
 
     @staticmethod
     def get_dockerfile_dir(name):
@@ -51,17 +50,15 @@ class LanguageInterface(object):
                 for line in json.loads(chunk.decode())["stream"].splitlines():
                     print(line)
 
-    @staticmethod
-    def push_docker_img(current_user_id, name, report):
+    def push_docker_img(self, current_user_id, name, report):
         current_user_obj = User.query.get(current_user_id)
-        image_name = current_user_obj.username + '-' + name
-        repo_name = os.environ.get('DOCKER_REPO') + '/'
 
         # Not pushing to Docker Hub at the moment.
-        # print(self.client.images.push(repository=repo_name + image_name), file=sys.stderr)
+        # print(self.client.images.push(repository=self.get_container_tag(current_user_id, name)), file=sys.stderr)
 
         # add dataset to database
-        new_dataset = Dataset(url="https://hub.docker.com/r/" + repo_name + image_name + "/",
+        image_tag = self.get_container_tag(current_user_id, name)
+        new_dataset = Dataset(url="https://hub.docker.com/r/" + self.get_container_tag(current_user_id, name) + "/",
                               author=current_user_obj,
                               name=name,
                               report=report)
@@ -85,5 +82,4 @@ class StaticAnalysisResults:
     def __init__(self, lang_packages, sys_libs, lang_specific={}):
         self.lang_packages = lang_packages
         self.sys_libs = sys_libs
-        # self.src_ignore = src_ignore
         self.lang_specific = lang_specific

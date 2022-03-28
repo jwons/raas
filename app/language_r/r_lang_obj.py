@@ -101,6 +101,7 @@ class RLang(LanguageInterface):
             sys_reqs = data['sys_deps']
 
         sys_reqs.append("libjpeg-dev")
+        sys_reqs.append("libxt6")
 
         return StaticAnalysisResults(lang_packages=used_packages, sys_libs=sys_reqs, lang_specific={"src_ignore":
                                                                                                     src_ignore})
@@ -127,12 +128,19 @@ class RLang(LanguageInterface):
                 for line in static_results.lang_specific["src_ignore"]:
                     src_ignore_file.write(line + "\n")
                 src_ignore_file.write('\n')
-
-        with open(os.path.join(docker_file_dir, 'install__packages.R'), 'w') as install_packs:
+        backup_install_packages = 'backup_install_packages.R'
+        with open(os.path.join(docker_file_dir, backup_install_packages), 'w') as install_packs:
+            install_packs.write('if(file.exists("/home/rstudio/.Renviron")){q(save = "no")}\n')
             install_packs.write('require(\'devtools\')\n')
             install_packs.write('require(\'BiocManager\')\n')
-            install_packs.write('install.packages("rdtLite")\n')
-            install_packs.write('install.packages("/home/rstudio/rdt", repos = NULL, type="source")\n')
+            install_rdt = """
+devtools::install_github("End-to-end-provenance/provParseR")
+devtools::install_github("End-to-end-provenance/provViz")
+devtools::install_github("End-to-end-provenance/provSummarizeR")
+devtools::install_github("End-to-end-provenance/rdtLite")  
+install.packages("/home/rstudio/rdt", repos = NULL, type="source")
+"""
+
             # perform any pre-specified installs
             if special_packages:
                 for key in special_install["packages"].keys():
@@ -152,7 +160,7 @@ class RLang(LanguageInterface):
             new_docker.write('FROM rocker/tidyverse:latest\n')
 
             # install system requirements
-            sysinstall = "RUN export DEBIAN_FRONTEND=noninteractive; apt-get -y update && apt-get install -y "
+            sysinstall = "RUN export DEBIAN_FRONTEND=noninteractive; apt-get -y --allow-releaseinfo-change update && apt-get install -y "
             if len(static_results.sys_libs) != 0:
                 new_docker.write(sysinstall + ' '.join(static_results.sys_libs) + '\n')
 
@@ -166,9 +174,12 @@ class RLang(LanguageInterface):
             new_docker.write('COPY . /home/rstudio/' + dir_name + '\n')
 
             # Install libraries
-            new_docker.write('COPY install__packages.R /home/rstudio/\n')
+            copy("app/language_r/install_packages.R", docker_file_dir)
             new_docker.write('COPY rdt /home/rstudio/rdt\n')
-            new_docker.write('RUN Rscript /home/rstudio/install__packages.R\n')
+            new_docker.write('COPY install_packages.R /home/rstudio/\n')
+            new_docker.write('COPY ' + backup_install_packages + ' /home/rstudio/\n')
+            new_docker.write('RUN Rscript /home/rstudio/install_packages.R ' + " ".join(docker_packages) + '\n')
+            new_docker.write('RUN Rscript /home/rstudio/' + backup_install_packages + '\n')
 
             # These scripts will execute the analyses and collect provenance. Copy them to the
             # Dockerfile directory first since files copied to the image cannot be outside it
