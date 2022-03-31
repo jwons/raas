@@ -47,7 +47,7 @@ class LanguageInterface(object):
 
         for chunk in generator:
             if 'stream' in chunk.decode():
-                for line in json.loads(chunk.decode())["stream"].splitlines():
+                for line in json.loads(chunk.decode().replace("\r\n", "\n"))["stream"].splitlines():
                     print(line)
 
     def push_docker_img(self, current_user_id, name, report):

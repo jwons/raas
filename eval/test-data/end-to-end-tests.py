@@ -200,8 +200,8 @@ if __name__ == "__main__":
         test_normal
     ]
 
-    # r_tests = []
-    # py_tests = []
+    #r_tests = []
+    #py_tests = []
 
     # Run R tests
     for test in r_tests:

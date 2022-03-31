@@ -187,13 +187,16 @@ devtools::install_github("End-to-end-provenance/rdtLite")
             new_docker.write('RUN chown -R  rstudio:rstudio /home/rstudio/\n')
 
             # Execute analysis and collect provenance
-            new_docker.write('RUN /home/rstudio/' + dir_name + '/get_prov_for_doi.sh /home/rstudio/' + dir_name + \
-                             '/' + os.path.basename(self.dataset_dir) + ' ' + '/home/rstudio/' + \
-                             dir_name + '/get_dataset_provenance.R' + '\n')
+            new_docker.write('RUN /home/rstudio/' + dir_name + '/get_prov_for_doi.sh /home/rstudio/' + \
+                             dir_name + '/get_dataset_provenance.R ' + '/home/rstudio/' + dir_name + \
+                             '/' + os.path.basename(self.dataset_dir) + '\n')
 
             # Collect installed package information for the report              
             new_docker.write("RUN Rscript /home/rstudio/" + dir_name + "/create_report.R /home/rstudio/" + dir_name +
                              "/prov_data \n")
+
+            # Add permissions or the scripts will fail
+            new_docker.write('RUN chown -R  rstudio:rstudio /home/rstudio/\n')
 
     def create_report(self, current_user_id, name, dir_name, time):
 

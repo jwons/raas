@@ -395,7 +395,7 @@ def preprocess_file_paths(r_file, script_dir, from_preproc=False, report_missing
 	else:
 		file_to_copy = file_path
 
-	curr_wd = script_dir
+	curr_wd = get_root_dir(file_path)
 
 	# wipe the preprocessed file and open it for writing
 	with open(preproc_path, 'w') as outfile:
