@@ -205,7 +205,7 @@ def batch_run(datadirs):
                 timed_out.write(datadir + "\n")
 
 def tag_from_datadir(datadir):
-    return("jwonsil/jwons-" + os.path.basename(datadir.lower()))
+    return("jwons-" + os.path.basename(datadir.lower()))
 
 # Get all dataset dirs, remove first element because walk will return the datasets directory itself
 # as the first element 

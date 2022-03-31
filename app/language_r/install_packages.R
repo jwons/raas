@@ -2,7 +2,7 @@ install.packages("R.utils")
 R.utils::setOption("repos", c(CRAN = "https://cran.microsoft.com/snapshot/2022-03-18"))
 install.packages("renv")
 install.packages("rdtLite")
-
+install.packages("/home/rstudio/rdt", repos = NULL, type="source")
 #devtools::install_github("End-to-end-provenance/provParseR")
 #devtools::install_github("End-to-end-provenance/provViz")
 #devtools::install_github("End-to-end-provenance/provSummarizeR")
