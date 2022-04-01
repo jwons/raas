@@ -42,6 +42,7 @@ class LanguageInterface(object):
 
     def build_docker_img(self, docker_file_dir, current_user_id, name):
         # Use low-level api client so we can print output from build process.
+        '''
         client = docker.APIClient(base_url='unix://var/run/docker.sock')
         generator = client.build(path=docker_file_dir, tag=self.get_container_tag(current_user_id, name))
 
@@ -49,6 +50,15 @@ class LanguageInterface(object):
             if 'stream' in chunk.decode():
                 for line in json.loads(chunk.decode().replace("\r\n", "\n"))["stream"].splitlines():
                     print(line)
+        '''
+
+        cli = docker.from_env()
+        response = cli.api.build(path=docker_file_dir, tag=self.get_container_tag(current_user_id, name), decode=True)
+        for line in response:
+            if 'stream' in line.keys() or 'error' in line.keys():
+                value = [*line.values()][0].strip()
+                if value:
+                    print(value)
 
     def push_docker_img(self, current_user_id, name, report):
         current_user_obj = User.query.get(current_user_id)
