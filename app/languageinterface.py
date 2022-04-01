@@ -52,6 +52,9 @@ class LanguageInterface(object):
                     print(line)
         '''
 
+        # Code taken from feliperuhland and (slightly modified to work with dict_key as sets now)
+        # on GitHub in response to an issue
+        # https://github.com/docker/docker-py/issues/2468
         cli = docker.from_env()
         response = cli.api.build(path=docker_file_dir, tag=self.get_container_tag(current_user_id, name), decode=True)
         for line in response:
@@ -59,6 +62,7 @@ class LanguageInterface(object):
                 value = [*line.values()][0].strip()
                 if value:
                     print(value)
+        # End code taken from GitHub issue
 
     def push_docker_img(self, current_user_id, name, report):
         current_user_obj = User.query.get(current_user_id)
