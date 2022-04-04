@@ -219,5 +219,6 @@ devtools::install_github("End-to-end-provenance/rdtLite")
 
         # information from the container is no longer needed
         container.kill()
+        client.containers.prune()
 
         return report
