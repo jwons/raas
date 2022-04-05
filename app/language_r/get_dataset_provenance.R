@@ -66,7 +66,7 @@ for (r_file in r_files) {
 	save(dir_path_doi, r_files, r_file, filename,
 		 file=paste(prov.dir, "/get_prov.RData", sep =""))
 	#setwd(script_dir)
-	run.script <- paste0("R -e \"library(rdtLite); setwd('", dir_path_doi, "'); error <-  try(prov.run('", r_file, "', prov.dir = '", prov.dir ,
+	run.script <- paste0("R -e \"library(rdtLite); .libPaths(new = '/home/rstudio/r_packages/'); setwd('", dir_path_doi, "'); error <-  try(prov.run('", r_file, "', prov.dir = '", prov.dir ,
 	                     "'), silent = TRUE); if(class(error) == 'try-error'){save(error,file ='", paste0(prov.dir, "/error.RData") ,"')}", "\"")
 	system(run.script)
 
