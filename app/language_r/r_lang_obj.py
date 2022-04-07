@@ -84,7 +84,7 @@ class RLang(LanguageInterface):
 
         # ---------- STATIC ANALYSIS ----------
         subprocess.run(['bash', 'app/language_r/static_analysis.sh', self.dataset_dir, static_analysis_dir])
-
+        
         # ---------- PARSING STATIC ANALYSIS ----------
 
         # assemble a set of packages used and get system requirements

@@ -226,6 +226,8 @@ for (r_file in r_files) {
   libs <- tryCatch(expr = {
     unique(c(identify_packages(r_file), libs))
   }, error = function(cond){
+  # Manual check
+  # Also check packages are in the archive before install
     print(c(r_file, "Failed on Library"))
     print(cond)
     libs
