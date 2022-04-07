@@ -33,25 +33,28 @@ for(i in 1:length(standard.snapshots)){
 r.lib.path <- "/home/rstudio/r_packages"
 dir.create(r.lib.path)
 
-for(repo.to.try in repos.to.try){
-  R.utils::setOption("repos", c(CRAN = repo.to.try))
-  
-  success.install <- tryCatch({
-    renv::use(library = r.lib.path)
-    renv::install(list.of.packages)
-    T
-  }, error = function(e) {
-    print(e)
-    unlink(r.lib.path, recursive = T)
-    dir.create(r.lib.path)
-    return(F)
-  })
-  
-  if(success.install){
-    print(paste("Chosen snapshot is:", repo.to.try))
-    break
+if(length(list.of.packages) == 0){
+  success.install <- T
+} else {
+  for(repo.to.try in repos.to.try){
+    R.utils::setOption("repos", c(CRAN = repo.to.try))
+
+    success.install <- tryCatch({
+      renv::use(library = r.lib.path)
+      renv::install(list.of.packages)
+      T
+    }, error = function(e) {
+      print(e)
+      unlink(r.lib.path, recursive = T)
+      dir.create(r.lib.path)
+      return(F)
+    })
+
+    if(success.install){
+      print(paste("Chosen snapshot is:", repo.to.try))
+      break
+    }
   }
-  
 }
 
 if(success.install){
