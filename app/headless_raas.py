@@ -52,7 +52,7 @@ def headless_raas(name, lang, user = 1, preproc = "0", doi = "", zip_path = "", 
     return (retVal)
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='A command-line interface to containR\'s web API.')
+    parser = argparse.ArgumentParser(description='A command-line interface to RaaS\' web API.')
 
     parser.add_argument('--name', type=str, required=True, help=\
         'a dataset name, must be all lowercase with no spaces or special characters other than "-" ')
