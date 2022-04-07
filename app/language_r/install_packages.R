@@ -12,6 +12,8 @@ install.packages("rdtLite")
 
 list.of.packages = commandArgs(trailingOnly=TRUE)
 
+list.of.packages <- list.of.packages[!list.of.packages %in% installed.packages()]
+
 generate.mran.url <- function(date){
   gsub(" ", "", paste("https://cran.microsoft.com/snapshot/", date, collapse = ""))
 }
