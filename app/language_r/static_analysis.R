@@ -92,6 +92,7 @@ get.variable.loaded.libs <- function(file){
   #lines <- lines[unname(sapply(lines, grepl, pattern = "install.packages", fixed = T))]
   install.lines = paste(readLines(file), collapse = "\n")
   vars <- as.character(check.for.install.by.var(install.lines))
+
   if(is.na(vars)){
     pos.libs <- character()
   } else {
@@ -225,7 +226,10 @@ for (r_file in r_files) {
   libs <- tryCatch(expr = {
     unique(c(identify_packages(r_file), libs))
   }, error = function(cond){
+  # Manual check
+  # Also check packages are in the archive before install
     print(c(r_file, "Failed on Library"))
+    print(cond)
     libs
   })
   

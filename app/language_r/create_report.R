@@ -47,6 +47,16 @@ container.information <- list("Language Packages"=as.list(packages), "System Lib
 # Begin collecting script-level information. Need to identify all prov.json files
 prov.jsons <- list.files(prov.data.dir, pattern="prov.json", recursive=T, full.names=FALSE)
 
+check.filename.in.runlog <- function(run.log.filename, prov.filename){
+  run.split <- str_split(run.log.filename, "/")[[1]][-1]
+  prov.split <- tail(str_split(prov.filename, "/")[[1]], length(run.split))
+  eql.set <- unique(run.split == prov.split)
+  return(T %in% eql.set && !F %in% eql.set)
+}
+
+# Contains information about whether a script timed out
+run.log <- read.csv(file.path(prov.data.dir, "run_log.csv"))
+
 # This code gathers the information from each individual script, collecting input files, output files, and warnings
 # for each script that has provenance. ind.scripts becomes a named list where the key is a full script path
 # and the value is the data collected.
@@ -58,6 +68,16 @@ for (prov.json in prov.jsons){
   # Filename is used as key to the list
   filename <- provParseR::get.environment(prov.obj)[provParseR::get.environment(prov.obj)$label == "script",]$value
 
+  # Check for matching file in run log
+  run.mask <- unlist(lapply(run.log[["filename"]], check.filename.in.runlog, prov.filename=filename))
+  run.log.row <- run.log[run.mask, ]
+
+  timed.out <- F
+  if(nrow(run.log.row) == 1 && run.log.row[["error"]] == "timed out"){
+    timed.out <- T
+  }
+
+
   # Gather data
   input.files <- unique(provParseR::get.input.files(prov.obj)$name)
   output.files <- unique(provParseR::get.output.files(prov.obj)$name)
@@ -65,7 +85,7 @@ for (prov.json in prov.jsons){
   warnings <- data.nodes[data.nodes$name == 'warning.msg',]$value
   errors <- data.nodes[data.nodes$name == 'error.msg',]$value
   # Condense and add to the final list
-  script.info <- list("Input Files"= input.files, "Output Files"=output.files, "Warnings"=warnings, "Errors" = errors)
+  script.info <- list("Input Files"= input.files, "Output Files"=output.files, "Warnings"=warnings, "Errors" = errors, "Timed Out"= as.character(timed.out))
   ind.scripts[[filename]] <- script.info
 }
 
