@@ -189,8 +189,8 @@ devtools::install_github("End-to-end-provenance/rdtLite")
 
             # Execute analysis and collect provenance
             new_docker.write('RUN /home/rstudio/' + dir_name + '/get_prov_for_doi.sh /home/rstudio/' + \
-                             dir_name + '/get_dataset_provenance.R ' + '/home/rstudio/' + dir_name + \
-                             '/' + os.path.basename(self.dataset_dir) + '\n')
+                             dir_name + '/get_dataset_provenance.R ' + '"/home/rstudio/' + dir_name + \
+                             '/' + os.path.basename(self.dataset_dir) + '"\n')
 
             # Collect installed package information for the report              
             new_docker.write("RUN Rscript /home/rstudio/" + dir_name + "/create_report.R /home/rstudio/" + dir_name +
