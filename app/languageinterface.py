@@ -59,7 +59,7 @@ class LanguageInterface(object):
         response = cli.api.build(path=docker_file_dir, tag=self.get_container_tag(current_user_id, name), decode=True)
         for line in response:
             if 'stream' in line.keys() or 'error' in line.keys():
-                value = [*line.values()][0].strip()
+                value = str([*line.values()][0]).strip()
                 if value:
                     print(value)
         # End code taken from GitHub issue
