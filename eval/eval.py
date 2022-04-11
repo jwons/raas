@@ -12,6 +12,7 @@ import subprocess
 from sqlalchemy import create_engine
 from io import StringIO
 from func_timeout import func_timeout, FunctionTimedOut
+from urllib import parse
 
 from app.headless_raas import headless_raas
 
@@ -127,9 +128,9 @@ def download_dataset(doi, destination,
                 value, params = cgi.parse_header(
                     response.headers['Content-disposition'])
                 if 'filename*' in params:
-                    filename = params['filename*'].split("'")[-1]
+                    filename = parse.unquote(params['filename*'].split("'")[-1])
                 else:
-                    filename = params['filename']
+                    filename = parse.unquote(params['filename'])
 
                 # write the response to correctly-named file in the dataset directory
                 with open(doi_direct + "/" + filename, 'wb') as handle:
@@ -301,14 +302,15 @@ if __name__ == "__main__":
             batch_thread.join()
             print("Batch " + str(batch_counter) + " completed.")
             batch_counter += 1
-        if(args.noraas):
-            batch_thread = threading.Thread(target=batch_run, args=(data_dirs_chunk,), daemon=True)
-        else:
-            batch_thread = threading.Thread(target=batch_raas, args=(data_dirs_chunk,True, True), daemon=True)
-        batch_thread.start()
+        if len(data_dirs_chunk) != 0:
+            if args.noraas:
+                batch_thread = threading.Thread(target=batch_run, args=(data_dirs_chunk,), daemon=True)
+            else:
+                batch_thread = threading.Thread(target=batch_raas, args=(data_dirs_chunk,True, True), daemon=True)
+            batch_thread.start()
 
-        if(end == len(dois)):
-            break
+            if end == len(dois):
+                break
 
         start += increment_by
         end += increment_by
