@@ -83,12 +83,13 @@ class LanguageInterface(object):
 
     def clean_up_datasets(self, name):
         # delete any stored data
-        try:
-            shutil.rmtree(self.get_dockerfile_dir(name))
-        except Exception as e:
-            print("Can't delete dataset")
-            print(e)
-            pass
+        if os.path.isdir(self.get_dockerfile_dir(name)):
+            try:
+                shutil.rmtree(self.get_dockerfile_dir(name))
+            except Exception as e:
+                print("Can't delete dataset")
+                print(e)
+                pass
 
 
 class StaticAnalysisResults:

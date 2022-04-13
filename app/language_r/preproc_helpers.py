@@ -443,14 +443,14 @@ def preprocess_file_paths(r_file, script_dir, from_preproc=False, report_missing
                                                              script_dir,
                                                              r_file)
                     elif less_potential_path:
-                        if('http' not in less_potential_path.group(1)):
+                        if 'http' not in less_potential_path.group(1):
                             print("We have identified what might be a path, but is less likely to be a path than normal.")
                             line = process_potential_path_string(line,
-                                                             potential_path,
-                                                             curr_wd,
-                                                             report_missing,
-                                                             script_dir,
-                                                             r_file)
+                                                                 less_potential_path,
+                                                                 curr_wd,
+                                                                 report_missing,
+                                                                 script_dir,
+                                                                 r_file)
 
                 outfile.write(line)
 
