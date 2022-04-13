@@ -15,7 +15,7 @@ from celery.contrib import rdb
 # Used for eval
 # @celery.task(bind=True, time_limit=3660, soft_time_limit = 3600)
 
-@celery.task(bind=True)
+@celery.task(bind=True, time_limit=18060, soft_time_limit=18000)
 def start_raas(self, language, current_user_id, name, preprocess, data_folder, zip_filename,
                run_instr='', user_pkgs='', sample_output=None, code_btw=[],
                prov=None, upload=True, make_report=True):
@@ -29,7 +29,7 @@ def start_raas(self, language, current_user_id, name, preprocess, data_folder, z
 
     self.update_state(state='PROGRESS', meta={'current': 1, 'total': 10,
                                               'status': 'Unzipping data'})
-
+    language_obj.clean_up_datasets(data_folder)
     extract_zip(zip_filename, data_folder)
 
     self.update_state(state='PROGRESS', meta={'current': 2, 'total': 10,

@@ -65,10 +65,15 @@ def download_dataset(doi, destination,
 
 
     try:
+        request = requests.get(api_url + "/datasets/:persistentId",
+                             params={"persistentId": doi}).json()
+        if(request["status"] == "ERROR"):
+            print("Possible incorrect permissions for " + doi)
+            with open("skipped_dois.csv", "a+") as skipped_dois:
+                skipped_dois.write(doi + "," + request["message"] + "\n")
+            return "SKIP"
         # query the dataverse API for all the files in a dataverse
-        files = requests.get(api_url + "/datasets/:persistentId",
-                             params={"persistentId": doi}) \
-            .json()['data']['latestVersion']['files']
+        files = request['data']['latestVersion']['files']
 
     except Exception as e:
         print("Could not get dataset info from dataverse")
@@ -206,7 +211,7 @@ def batch_run(datadirs):
                 timed_out.write(datadir + "\n")
 
 def tag_from_datadir(datadir):
-    return("jwonsil/jwons-" + os.path.basename(datadir.lower()))
+    return("jwons-" + os.path.basename(datadir.lower()))
 
 # Get all dataset dirs, remove first element because walk will return the datasets directory itself
 # as the first element 
@@ -221,7 +226,7 @@ def batch_raas(dataset_dirs, zip_dirs = False, debug = True):
             shutil.make_archive("datasets/" + os.path.basename(data_dir), 'zip', data_dir)
         if(debug): print("Beginning containerization for: " + os.path.basename(data_dir))
         try:
-            result = headless_raas(name = os.path.basename(data_dir), lang = "R", preproc = "1", zip_path = "datasets/" + os.path.basename(data_dir) + ".zip")
+            result = headless_raas(name = os.path.basename(data_dir), lang = "R", preproc = "1", zip_path = os.path.basename(data_dir) + ".zip")
             if(result is False):
                 print("raas function returned false")
                 raise Exception("raas function returned false")
@@ -265,8 +270,11 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    if(args.noraas == False):
+    if args.noraas == False:
         print("RaaS must be running or this will fail")
+
+    args.start = 0
+    args.end = 5
 
     # which increment of r dois to evaluate 
     dois = dois[args.start:args.end]
@@ -280,18 +288,36 @@ if __name__ == "__main__":
     if not os.path.exists("datasets"):
         os.makedirs("datasets")
 
-    shutil.copy("get_dataset_results.R", "datasets/get_dataset_results.R")
+    if args.noraas:
+        shutil.copy("get_dataset_results.R", "datasets/get_dataset_results.R")
+    #else
+        '''
+        subprocess.run(["docker-compose", "up", "--build"],  )
+        client = docker.from_env()
+
+        for second in range(0, 10):
+            try:
+                container = client.containers.get("cl01")
+            except docker.errors.NotFound as exc:
+                print("RaaS probably still booting")
+                os.sleep(1)
+            else:
+                print("RaaS booted continuing on")
+        '''
+
     batch_thread = None
     batch_counter = 0
 
     # Download datasets while executing eval in batches
-    while(True):
+    while True:
 
         # download a chunk of datasets as defined outside the loop
         data_dirs_chunk = []
         for data_index in range(start, end):
             print("Downloading dataset " + str(data_index) + ": " + dois[data_index])
             datadir = download_dataset(dois[data_index].strip("\n"), "datasets")
+            if datadir == "SKIP":
+                continue
             data_dirs_chunk.append(datadir)
         data_dirs_chunk = list(set(data_dirs_chunk))
 

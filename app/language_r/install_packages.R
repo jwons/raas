@@ -23,6 +23,7 @@ list.of.packages = commandArgs(trailingOnly=TRUE)
 list.of.packages <- list.of.packages[!list.of.packages %in% installed.packages()]
 list.of.packages <- list.of.packages[tolower(list.of.packages) %in% tolower(archived)]
 
+
 generate.mran.url <- function(date){
   gsub(" ", "", paste("https://cran.microsoft.com/snapshot/", date, collapse = ""))
 }
@@ -42,15 +43,18 @@ for(i in 1:length(standard.snapshots)){
 r.lib.path <- "/home/rstudio/r_packages"
 dir.create(r.lib.path)
 
+
 check.in.repo <- function(package, all.packs){
   return(package %in% all.packs)
 }
+
 
 if(length(list.of.packages) == 0){
   success.install <- T
 } else {
   for(repo.to.try in repos.to.try){
     R.utils::setOption("repos", c(CRAN = repo.to.try))
+
     all.packs <- available.packages()
     
     all.packs.available <- all(unlist(lapply(list.of.packages, check.in.repo, all.packs=all.packs)))
@@ -58,6 +62,7 @@ if(length(list.of.packages) == 0){
     if(!all.packs.available){
       next
     }
+
 
     success.install <- tryCatch({
       renv::use(library = r.lib.path)
