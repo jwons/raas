@@ -203,6 +203,9 @@ identify_packages <- function(file) {
         pack <- find_calls(r@code)
         packages_used <- unique(c(packages_used, pack))
       }
+      if("p_load" %in% names(r@functions)){
+        packages_used <- unique(c(packages_used, r@inputs))
+      }
     }
   }
   
