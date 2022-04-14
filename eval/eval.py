@@ -38,7 +38,7 @@ def build_dataset_image(tag, client):
     for chunk in generator:
         if 'stream' in chunk.decode():
             for line in json.loads(chunk.decode())["stream"].splitlines():
-                #print(line)
+                print(line)
                 pass
 
 def download_dataset(doi, destination,
@@ -161,10 +161,10 @@ def batch_run(datadirs):
         # A dockerfile is written for each directory specifying how to build the image
         # Running the R scripts is part of the build process
         with open(os.path.join("datasets", 'Dockerfile'), 'w') as new_docker:
-            new_docker.write("FROM r-base:3.6.3\n")
-            new_docker.write("ADD " + os.path.basename(datadir) + " /home/docker/" + os.path.basename(datadir) + "\n")
-            new_docker.write("COPY get_dataset_results.R /home/get_dataset_results.R\n")
-            new_docker.write("RUN Rscript /home/get_dataset_results.R /home/docker\n")
+            new_docker.write("FROM rocker/tidyverse:3.6.3\n")
+            new_docker.write("ADD " + os.path.basename(datadir) + " /home/rstudio/" + os.path.basename(datadir) + "\n")
+            new_docker.write("COPY get_dataset_results.R /home/rstudio/get_dataset_results.R\n")
+            new_docker.write("RUN Rscript /home/rstudio/get_dataset_results.R /home/rstudio/" + os.path.basename(datadir) + "\n")
         
         # Connect to docker to build the image
         client = docker.APIClient(base_url='unix://var/run/docker.sock')
@@ -173,7 +173,7 @@ def batch_run(datadirs):
         tag = os.path.basename(datadir).replace(".", "-").lower()
         build_success = True
         try:
-            func_timeout(3600, build_dataset_image, args=(tag, client))
+            func_timeout(18000, build_dataset_image, args=(tag, client))
         except FunctionTimedOut:
             print(datadir + " timed-out and was skipped")
             build_success = False
@@ -185,7 +185,7 @@ def batch_run(datadirs):
             client = docker.from_env() 
 
             # Collect log, specify sep, engine, and escapechar to prevent pandas parsing errors
-            run_log = client.containers.run(tag, "cat /home/docker/prov_data/run_log.csv").decode()
+            run_log = client.containers.run(tag, "cat /home/rstudio/prov_data/run_log.csv").decode()
             log_df = pd.read_csv(StringIO(run_log), sep=",", engine='python', escapechar="\\")
 
             # remove containers, images, and dir to keep storage costs down
@@ -274,15 +274,16 @@ if __name__ == "__main__":
         print("RaaS must be running or this will fail")
 
     args.start = 0
-    args.end = 5
+    args.end = 20
+    args.noraas = True
 
     # which increment of r dois to evaluate 
     dois = dois[args.start:args.end]
 
     # Define chunk size
     start = 0
-    end = 1
-    increment_by = 1
+    end = 5
+    increment_by = 5
 
     # Create folder for storing datasets if necessary
     if not os.path.exists("datasets"):
@@ -290,6 +291,15 @@ if __name__ == "__main__":
 
     if args.noraas:
         shutil.copy("get_dataset_results.R", "datasets/get_dataset_results.R")
+    else:
+        try:
+            client = docker.from_env()
+            container = client.containers.get("cl01")
+        except docker.errors.NotFound as exc:
+            print("RaaS not booted")
+            exit(1)
+        else:
+            print("RaaS booted continuing on")
     #else
         '''
         subprocess.run(["docker-compose", "up", "--build"],  )
@@ -328,6 +338,8 @@ if __name__ == "__main__":
             batch_thread.join()
             print("Batch " + str(batch_counter) + " completed.")
             batch_counter += 1
+            if end == len(dois):
+                break
         if len(data_dirs_chunk) != 0:
             if args.noraas:
                 batch_thread = threading.Thread(target=batch_run, args=(data_dirs_chunk,), daemon=True)
@@ -344,4 +356,5 @@ if __name__ == "__main__":
             end = len(dois)
 
     batch_thread.join()
-    subprocess.run(["docker-compose", "down"])
+    if not args.noraas:
+        subprocess.run(["docker-compose", "down"])

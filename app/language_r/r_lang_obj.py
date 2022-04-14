@@ -50,7 +50,7 @@ class RLang(LanguageInterface):
     def script_analysis(self, preprocess, dataverse_key='', data_folder='', run_instr='', user_pkg=''):
         # This variable controls whether the container is built despite the existence
         # of errors detected in the script
-        build_with_errors = False
+        build_with_errors = True
 
         dockerfile_dir = self.get_dockerfile_dir(data_folder)
         self.dataset_dir = os.path.join(dockerfile_dir, os.listdir(dockerfile_dir)[0])
@@ -155,7 +155,7 @@ devtools::install_github("End-to-end-provenance/rdtLite")
                         install_packs.write(self.build_docker_package_install_no_version(package))
 
         with open(os.path.join(docker_file_dir, 'Dockerfile'), 'w') as new_docker:
-            new_docker.write('FROM rocker/tidyverse:latest\n')
+            new_docker.write('FROM rocker/tidyverse:3.6.3\n')
 
             # install system requirements
             sysinstall = "RUN export DEBIAN_FRONTEND=noninteractive; apt-get -y --allow-releaseinfo-change update && apt-get install -y "
