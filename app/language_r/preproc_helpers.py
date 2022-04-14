@@ -513,7 +513,7 @@ def preprocess_source(r_file, script_dir, from_preproc=False):
 
                         # Check for preprocessed version if original is not found
                         if not new_path:
-                            new_path = find_file(re.sub('.R$', '__preproc__.R', os.path.basename(sourced_file)),
+                            new_path = find_file(re.sub('.[Rr]$', '__preproc__.R', os.path.basename(sourced_file)),
                                                  get_root_dir(curr_wd))
                         if new_path:
                             rel_path = os.path.join(get_root_dir(curr_wd), new_path)
