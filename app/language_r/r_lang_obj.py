@@ -60,7 +60,7 @@ class RLang(LanguageInterface):
         # ---------- Preprocessing ------------
         src_ignore = []
         if preprocess:
-            r_files = [y for x in os.walk(os.path.join(self.dataset_dir)) for y in glob(os.path.join(x[0], '*.R'))]
+            r_files = [y for x in os.walk(os.path.join(self.dataset_dir)) for y in glob(os.path.join(x[0], '*.[Rr]'))]
 
             if not os.path.exists(original_scripts_dir):
                 os.makedirs(original_scripts_dir)
