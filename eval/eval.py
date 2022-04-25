@@ -2,6 +2,7 @@ import os
 import requests
 import cgi
 import shutil
+import sys
 import docker
 import json
 import threading
@@ -12,10 +13,14 @@ import subprocess
 from sqlalchemy import create_engine
 from io import StringIO
 from func_timeout import func_timeout, FunctionTimedOut
+from timeit import default_timer as timer
 from urllib import parse
 
-from app.headless_raas import headless_raas
 
+sys.path.append("../app")
+import headless_raas
+
+#from app.headless_raas import headless_raas
 
 def doi_to_directory(doi):
     """Converts a doi string to a more directory-friendly name
@@ -38,7 +43,7 @@ def build_dataset_image(tag, client):
     for chunk in generator:
         if 'stream' in chunk.decode():
             for line in json.loads(chunk.decode())["stream"].splitlines():
-                print(line)
+                #print(line)
                 pass
 
 def download_dataset(doi, destination,
@@ -157,6 +162,8 @@ def download_dataset(doi, destination,
 def batch_run(datadirs):
     run_logs = []
     skipped = []
+    dataset_times = {"doi": [], "time": []}
+
     for datadir in datadirs:
         # A dockerfile is written for each directory specifying how to build the image
         # Running the R scripts is part of the build process
@@ -172,13 +179,14 @@ def batch_run(datadirs):
         # Tags cannot have uppercase characters, and it is better to not have double special characters either
         tag = os.path.basename(datadir).replace(".", "-").lower()
         build_success = True
+        start_time = timer()
         try:
             func_timeout(18000, build_dataset_image, args=(tag, client))
         except FunctionTimedOut:
             print(datadir + " timed-out and was skipped")
             build_success = False
             skipped.append(datadir)
-
+        end_time = timer() - start_time
         if (build_success):
             # To collect the results from the container we need to run the container just to get the run_log.csv
             # which is where the results are kept
@@ -193,6 +201,8 @@ def batch_run(datadirs):
             client.images.remove(tag)
             # record results
             run_logs.append(log_df)
+        dataset_times["doi"].append(datadir)
+        dataset_times["time"].append(end_time)
         shutil.rmtree(datadir)
         
     # Clear up dataset dir
@@ -205,6 +215,7 @@ def batch_run(datadirs):
         engine = create_engine('sqlite:///results.db', echo=False)
         run_logs.to_sql('results', con=engine, if_exists='append', index=False)
 
+    pd.DataFrame(dataset_times).to_csv("dataset_times.csv", mode="a", index=False, header=False)
     if(len(skipped) != 0):
         with open("timed_out.txt", "a+") as timed_out:
             for datadir in skipped:
@@ -273,17 +284,17 @@ if __name__ == "__main__":
     if args.noraas == False:
         print("RaaS must be running or this will fail")
 
-    args.start = 0
-    args.end = 20
-    args.noraas = True
+    #args.start = 0
+    #args.end = 3
+    #args.noraas = True
 
     # which increment of r dois to evaluate 
     dois = dois[args.start:args.end]
 
     # Define chunk size
     start = 0
-    end = 5
-    increment_by = 5
+    end = 3
+    increment_by = 3
 
     # Create folder for storing datasets if necessary
     if not os.path.exists("datasets"):
@@ -300,6 +311,8 @@ if __name__ == "__main__":
             exit(1)
         else:
             print("RaaS booted continuing on")
+        with open("dataset_times.csv", "w") as create_dt:
+            create_dt.write("doi,time\n")
     #else
         '''
         subprocess.run(["docker-compose", "up", "--build"],  )

@@ -72,7 +72,7 @@ for (r_file in r_files) {
 		#file.copy(paste0("prov_data/prov_",basename(filename) ,"/prov.json"), paste0("prov_data/", "prov_", basename(filename), ".json"))
 	}
 	# create dataframe from doi, filename, and errors to facilitate csv writing
-	new_log_data = data.frame(filename=c(r_file), error=c(error),
+	new_log_data = data.frame(filename=c(file.path(dir_path_doi, r_file)), error=c(gsub("[\r\n]", "", error)),
 							  stringsAsFactors = FALSE)
 	# write the new log data into the log file
 	write.table(new_log_data, file=file.path(prov.dir, "run_log.csv"), sep=",", append=TRUE,
