@@ -51,10 +51,20 @@ for (r_file in r_files) {
 	#setwd(script_dir)
 	run.script <- paste0("R -e \"setwd('", paste0(dir_path_doi, substr(dirname(filename), 2, nchar(filename))), "'); error <-  try(source('", basename(r_file), "'", 
 	                     "), silent = TRUE); if(class(error) == 'try-error'){save(error,file ='", file.path(prov.dir, "error.RData") ,"')}", "\"")
-	system(run.script, timeout=3600)
+	result = tryCatch({
+	  system(run.script, timeout = 3600)
+	}, warning = function(w) {
+	  w
+	})
+
+	timed.out <- F
+	if(grepl("timed out after", result[[1]])){
+	  timed.out <- T
+	}
 	
 	# restore local variables
 	load(file.path(prov.dir, "get_prov.RData"))
+
 	# if there was an error
 	if (file.exists(file.path(prov.dir, "error.RData"))) {
 	  load(file.path(prov.dir, "error.RData"))
@@ -66,7 +76,9 @@ for (r_file in r_files) {
 	  # replace all newline characters in middle of string with special string
 	  #error = str_replace_all(error, "[\n]", "[newline]")
 	}
-	else {
+	else if (timed.out) {
+	    error = "timed out"
+	} else {
 		error = "success"
 		# copy the provenance
 		#file.copy(paste0("prov_data/prov_",basename(filename) ,"/prov.json"), paste0("prov_data/", "prov_", basename(filename), ".json"))

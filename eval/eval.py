@@ -284,7 +284,7 @@ if __name__ == "__main__":
     if args.noraas == False:
         print("RaaS must be running or this will fail")
 
-    #args.start = 0
+    #args.start = 2
     #args.end = 3
     #args.noraas = True
 
@@ -302,6 +302,8 @@ if __name__ == "__main__":
 
     if args.noraas:
         shutil.copy("get_dataset_results.R", "datasets/get_dataset_results.R")
+        with open("dataset_times.csv", "w") as create_dt:
+            create_dt.write("doi,time\n")
     else:
         try:
             client = docker.from_env()
@@ -311,8 +313,6 @@ if __name__ == "__main__":
             exit(1)
         else:
             print("RaaS booted continuing on")
-        with open("dataset_times.csv", "w") as create_dt:
-            create_dt.write("doi,time\n")
     #else
         '''
         subprocess.run(["docker-compose", "up", "--build"],  )
