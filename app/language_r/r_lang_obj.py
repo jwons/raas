@@ -4,6 +4,7 @@ import json
 import docker
 import re
 
+from app import app
 from glob import glob
 from app.languageinterface import LanguageInterface
 from app.languageinterface import StaticAnalysisResults
@@ -217,6 +218,14 @@ devtools::install_github("End-to-end-provenance/rdtLite")
         report["Additional Information"] = {}
         report["Additional Information"]["Container Name"] = self.get_container_tag(current_user_id, name)
         report["Additional Information"]["Build Time"] = time
+
+        # save prov data for further analysis
+        bits, stat = container.get_archive("/home/rstudio/" + dir_name + "/prov_data")
+        if not os.path.exists(os.path.join(app.instance_path, 'results')):
+            os.makedirs(os.path.join(app.instance_path, 'results'))
+        with open(os.path.join(app.instance_path, 'results', dir_name + "_prov_data.tar"), 'wb') as prov_dir:
+            for chunk in bits:
+                prov_dir.write(chunk)
 
         # information from the container is no longer needed
         container.kill()
