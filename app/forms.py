@@ -3,7 +3,7 @@ import zipfile
 from flask_wtf import FlaskForm
 from flask_wtf.file import FileField
 from wtforms import StringField, PasswordField, BooleanField, SubmitField, SelectField, FormField, FieldList
-from wtforms.validators import ValidationError, DataRequired, Email, EqualTo, Optional, Length, Required
+from wtforms.validators import ValidationError, DataRequired, Email, EqualTo, Optional, Length, InputRequired
 from app.models import User, Dataset
 from flask_login import current_user, login_user, login_required, logout_user
 
@@ -32,7 +32,7 @@ class InputForm(FlaskForm):
     name = StringField('Name of the Dataset')
     fix_code = BooleanField('Attempt to automatically fix code', default=True)
 
-    language = SelectField('What language is included in your upload', validators=[Required()],
+    language = SelectField('What language is included in your upload', validators=[InputRequired()],
                            choices=[('R', 'R'), ('Python', 'Python')])
     #TODO: support using provanence files provided by user directly
     #provenance = FileField('Provenance File')
