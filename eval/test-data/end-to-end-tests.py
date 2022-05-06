@@ -5,7 +5,7 @@ import json
 from requests.exceptions import ConnectionError
 from shutil import copy
 
-from app.headless_raas import headless_raas
+from headless_raas import headless_raas
 
 client = docker.from_env()
 TEST_USER = "jwons-"
