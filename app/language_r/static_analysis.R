@@ -37,15 +37,15 @@ if (length(preproc_files) > 0) {
 }
 
 # This function takes some text from a script and if the 
-# text contains a install.packages function call where
+# text contains a function call to either install.packages or library where
 # a variable is passed to the function rather than a 
 # character literal, it returns the name of said variable.
 # Otherwise returns NA
-check.for.install.by.var <- function(script.text){
+check.for.lib.by.var <- function(script.text, function.name){
   parsed <- parse(text = script.text)
   
   # Begin to look through parse tree, recur inside as needed 
-  pos.var <- check.expressions(parsed)
+  pos.var <- check.expressions(parsed, function.name)
   if(pos.var != ""){
     return(pos.var[[1]])
   } else {
@@ -54,13 +54,13 @@ check.for.install.by.var <- function(script.text){
 }
 
 # This function, called recursively examines the parse tree of some code
-# checking for install.packages function call where
+# checking for function calls to either install.packages or library where
 # a variable is passed to the function. Either returns the variable name, 
 # "" if nothing found, or recurs. 
-check.expressions <- function(expr){
+check.expressions <- function(expr, function.name){
   if(length(expr) == 1 && typeof(expr) != "expression"){
     return("")
-  } else if(length(expr[[1]]) == 1 && expr[[1]] == "install.packages"){
+  } else if(length(expr[[1]]) == 1 && expr[[1]] == function.name){
     if(typeof(expr[[2]]) == "symbol"){
       return(expr[[2]])
     } else {
@@ -68,7 +68,7 @@ check.expressions <- function(expr){
     }
     
   } else {
-    ret.val <- unique(sapply(expr, check.expressions))
+    ret.val <- unique(sapply(expr, check.expressions, function.name))
     ret.val <- ret.val[! ret.val %in% c('')]
     if(length(ret.val) > 0){
       return(ret.val)
@@ -79,7 +79,7 @@ check.expressions <- function(expr){
 }
 
 # Given a file, this scripts will find the values of any variable used
-# when passing a variable to an install.packages function.
+# when passing a variable to either install.packages or library function.
 # For example:
 #
 # list.of.packages <- c("rdtLite", "rdt", "ggplot2")
@@ -87,23 +87,27 @@ check.expressions <- function(expr){
 # 
 # for the above script will return a character vector:
 # ["rdtLite", "rdt", "ggplot2"]
-get.variable.loaded.libs <- function(file){
+get.variable.loaded.libs <- function(file, function.name){
   #lines <- readLines(file)
   #lines <- lines[unname(sapply(lines, grepl, pattern = "install.packages", fixed = T))]
   install.lines = paste(readLines(file), collapse = "\n")
-  vars <- as.character(check.for.install.by.var(install.lines))
+  vars <- as.character(check.for.lib.by.var(install.lines, function.name))
 
   if(is.na(vars)){
     pos.libs <- character()
   } else {
     code <- Rclean::clean(file, vars)
-    parsed <- sapply(code, str2expression)
-    script_env <- new.env()
-    evals <- sapply(parsed, eval, envir=script_env)
+    if(function.name == "library"){
+        code <- gsub("library", "require", code)
+    }
+    parsed <- parse(text = code)
+    script.env <- new.env()
+    evals <- tryCatch(sapply(parsed, eval, envir=script.env),
+                  error = function(e) print("Error in eval"))
     pos.libs <- c()
     for (var in evals){
       if(typeof(var) == "character"){
-        pos.libs <- c(var, pos.libs)
+         pos.libs <- c(var, pos.libs)
       }
     }
     pos.libs <- unique(pos.libs)
@@ -212,7 +216,8 @@ identify_packages <- function(file) {
   
   # Libraries might be loaded through a variable rather than a character literal,
   # find those libraries here
-  packages_used <- unique(c(packages_used, get.variable.loaded.libs(file)))
+  packages_used <- unique(c(packages_used, get.variable.loaded.libs(file, "install.packages")))
+  packages_used <- unique(c(packages_used, get.variable.loaded.libs(file, "library")))
   
   return(packages_used)
 }
