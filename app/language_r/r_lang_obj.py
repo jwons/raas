@@ -4,6 +4,7 @@ import json
 import docker
 import re
 
+from app import app
 from glob import glob
 from app.languageinterface import LanguageInterface
 from app.languageinterface import StaticAnalysisResults
@@ -50,7 +51,7 @@ class RLang(LanguageInterface):
     def script_analysis(self, preprocess, dataverse_key='', data_folder='', run_instr='', user_pkg=''):
         # This variable controls whether the container is built despite the existence
         # of errors detected in the script
-        build_with_errors = False
+        build_with_errors = True
 
         dockerfile_dir = self.get_dockerfile_dir(data_folder)
         self.dataset_dir = os.path.join(dockerfile_dir, os.listdir(dockerfile_dir)[0])
@@ -81,9 +82,10 @@ class RLang(LanguageInterface):
                 filename = re.split('\__preproc__.[rR]$', pre_file[1])[0]
                 os.rename(os.path.join(pre_file[0], pre_file[1]), os.path.join(pre_file[0], filename + ".R"))
 
+
         # ---------- STATIC ANALYSIS ----------
         subprocess.run(['bash', 'app/language_r/static_analysis.sh', self.dataset_dir, static_analysis_dir])
-
+        
         # ---------- PARSING STATIC ANALYSIS ----------
 
         # assemble a set of packages used and get system requirements
@@ -154,7 +156,7 @@ devtools::install_github("End-to-end-provenance/rdtLite")
                         install_packs.write(self.build_docker_package_install_no_version(package))
 
         with open(os.path.join(docker_file_dir, 'Dockerfile'), 'w') as new_docker:
-            new_docker.write('FROM rocker/tidyverse:latest\n')
+            new_docker.write('FROM rocker/tidyverse:3.6.3\n')
 
             # install system requirements
             sysinstall = "RUN export DEBIAN_FRONTEND=noninteractive; apt-get -y --allow-releaseinfo-change update && apt-get install -y "
@@ -216,6 +218,14 @@ devtools::install_github("End-to-end-provenance/rdtLite")
         report["Additional Information"] = {}
         report["Additional Information"]["Container Name"] = self.get_container_tag(current_user_id, name)
         report["Additional Information"]["Build Time"] = time
+
+        # save prov data for further analysis
+        bits, stat = container.get_archive("/home/rstudio/" + dir_name + "/prov_data")
+        if not os.path.exists(os.path.join(app.instance_path, 'results')):
+            os.makedirs(os.path.join(app.instance_path, 'results'))
+        with open(os.path.join(app.instance_path, 'results', dir_name + "_prov_data.tar"), 'wb') as prov_dir:
+            for chunk in bits:
+                prov_dir.write(chunk)
 
         # information from the container is no longer needed
         container.kill()

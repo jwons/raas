@@ -68,22 +68,35 @@ for (r_file in r_files) {
 	#setwd(script_dir)
 	run.script <- paste0("R -e \"library(rdtLite); .libPaths(new = '/home/rstudio/r_packages/'); setwd('", dir_path_doi, "'); error <-  try(prov.run('", r_file, "', prov.dir = '", prov.dir ,
 	                     "'), silent = TRUE); if(class(error) == 'try-error'){save(error,file ='", paste0(prov.dir, "/error.RData") ,"')}", "\"")
-	system(run.script)
-
-	# Determine provenance directory so it can be changed to a unique name
-	script.no.ext <- basename(filename)
-	old.prov.dir <- paste0(prov.dir, "/", paste0("prov_", script.no.ext))
-	script.no.ext <- basename(old.prov.dir)
-
-	# Switch all periods and forward slashes to dashes and then remove first occurences
-	# Will turn "./Scripts/anotherTest" into first "--Scripts-anotherTest" and then "Scripts-anotherTest"
-	# Then append to the prov directory
-	new.prov.dir <- str_replace_all(filename, "[\\/.]", "-")
-	new.prov.dir <- str_replace_all(new.prov.dir, "^-*", "")
-	new.prov.dir <- paste0(dirname(old.prov.dir), "/", new.prov.dir)
-
-	# Execute renaming
-	system(paste0("mv ", old.prov.dir, " ", new.prov.dir))
+	
+	result = tryCatch({
+	  system(run.script, timeout = 3600)
+	}, warning = function(w) {
+	  w
+	})
+	
+	timed.out <- F
+	if(grepl("timed out after", result[[1]])){
+	  timed.out <- T
+	}
+  
+	if(!timed.out){
+	  # Determine provenance directory so it can be changed to a unique name
+	  script.no.ext <- basename(filename)
+	  old.prov.dir <- paste0(prov.dir, "/", paste0("prov_", script.no.ext))
+	  script.no.ext <- basename(old.prov.dir)
+	  
+	  # Switch all periods and forward slashes to dashes and then remove first occurences
+	  # Will turn "./Scripts/anotherTest" into first "--Scripts-anotherTest" and then "Scripts-anotherTest"
+	  # Then append to the prov directory
+	  new.prov.dir <- str_replace_all(filename, "[\\/.]", "-")
+	  new.prov.dir <- str_replace_all(new.prov.dir, "^-*", "")
+	  new.prov.dir <- paste0(dirname(old.prov.dir), "/", new.prov.dir)
+	  
+	  # Execute renaming
+	  system(paste0("mv ", old.prov.dir, " ", new.prov.dir))
+	}
+	
 
 	# restore local variables
 	load(paste0(prov.dir, "/get_prov.RData"))
@@ -97,6 +110,8 @@ for (r_file in r_files) {
 	  error = str_replace_all(error, "\"", "")
 	  # replace all newline characters in middle of string with special string
 	  error = str_replace_all(error, "[\n]", "[newline]")
+	} else if (timed.out){
+	  error = "timed out"
 	} else {
 		error = "success"
 		# copy the provenance

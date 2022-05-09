@@ -2,6 +2,7 @@ import os
 import requests
 import cgi
 import shutil
+import sys
 import docker
 import json
 import threading
@@ -12,10 +13,14 @@ import subprocess
 from sqlalchemy import create_engine
 from io import StringIO
 from func_timeout import func_timeout, FunctionTimedOut
+from timeit import default_timer as timer
 from urllib import parse
 
-from app.headless_raas import headless_raas
 
+sys.path.append("../app")
+import headless_raas
+
+#from app.headless_raas import headless_raas
 
 def doi_to_directory(doi):
     """Converts a doi string to a more directory-friendly name
@@ -65,10 +70,15 @@ def download_dataset(doi, destination,
 
 
     try:
+        request = requests.get(api_url + "/datasets/:persistentId",
+                             params={"persistentId": doi}).json()
+        if(request["status"] == "ERROR"):
+            print("Possible incorrect permissions for " + doi)
+            with open("skipped_dois.csv", "a+") as skipped_dois:
+                skipped_dois.write(doi + "," + request["message"] + "\n")
+            return "SKIP"
         # query the dataverse API for all the files in a dataverse
-        files = requests.get(api_url + "/datasets/:persistentId",
-                             params={"persistentId": doi}) \
-            .json()['data']['latestVersion']['files']
+        files = request['data']['latestVersion']['files']
 
     except Exception as e:
         print("Could not get dataset info from dataverse")
@@ -152,14 +162,16 @@ def download_dataset(doi, destination,
 def batch_run(datadirs):
     run_logs = []
     skipped = []
+    dataset_times = {"doi": [], "time": []}
+
     for datadir in datadirs:
         # A dockerfile is written for each directory specifying how to build the image
         # Running the R scripts is part of the build process
         with open(os.path.join("datasets", 'Dockerfile'), 'w') as new_docker:
-            new_docker.write("FROM r-base:3.6.3\n")
-            new_docker.write("ADD " + os.path.basename(datadir) + " /home/docker/" + os.path.basename(datadir) + "\n")
-            new_docker.write("COPY get_dataset_results.R /home/get_dataset_results.R\n")
-            new_docker.write("RUN Rscript /home/get_dataset_results.R /home/docker\n")
+            new_docker.write("FROM rocker/tidyverse:3.6.3\n")
+            new_docker.write("ADD " + os.path.basename(datadir) + " /home/rstudio/" + os.path.basename(datadir) + "\n")
+            new_docker.write("COPY get_dataset_results.R /home/rstudio/get_dataset_results.R\n")
+            new_docker.write("RUN Rscript /home/rstudio/get_dataset_results.R /home/rstudio/" + os.path.basename(datadir) + "\n")
         
         # Connect to docker to build the image
         client = docker.APIClient(base_url='unix://var/run/docker.sock')
@@ -167,20 +179,21 @@ def batch_run(datadirs):
         # Tags cannot have uppercase characters, and it is better to not have double special characters either
         tag = os.path.basename(datadir).replace(".", "-").lower()
         build_success = True
+        start_time = timer()
         try:
-            func_timeout(3600, build_dataset_image, args=(tag, client))
+            func_timeout(18000, build_dataset_image, args=(tag, client))
         except FunctionTimedOut:
             print(datadir + " timed-out and was skipped")
             build_success = False
             skipped.append(datadir)
-
+        end_time = timer() - start_time
         if (build_success):
             # To collect the results from the container we need to run the container just to get the run_log.csv
             # which is where the results are kept
             client = docker.from_env() 
 
             # Collect log, specify sep, engine, and escapechar to prevent pandas parsing errors
-            run_log = client.containers.run(tag, "cat /home/docker/prov_data/run_log.csv").decode()
+            run_log = client.containers.run(tag, "cat /home/rstudio/prov_data/run_log.csv").decode()
             log_df = pd.read_csv(StringIO(run_log), sep=",", engine='python', escapechar="\\")
 
             # remove containers, images, and dir to keep storage costs down
@@ -188,6 +201,8 @@ def batch_run(datadirs):
             client.images.remove(tag)
             # record results
             run_logs.append(log_df)
+        dataset_times["doi"].append(datadir)
+        dataset_times["time"].append(end_time)
         shutil.rmtree(datadir)
         
     # Clear up dataset dir
@@ -200,13 +215,14 @@ def batch_run(datadirs):
         engine = create_engine('sqlite:///results.db', echo=False)
         run_logs.to_sql('results', con=engine, if_exists='append', index=False)
 
+    pd.DataFrame(dataset_times).to_csv("dataset_times.csv", mode="a", index=False, header=False)
     if(len(skipped) != 0):
         with open("timed_out.txt", "a+") as timed_out:
             for datadir in skipped:
                 timed_out.write(datadir + "\n")
 
 def tag_from_datadir(datadir):
-    return("jwonsil/jwons-" + os.path.basename(datadir.lower()))
+    return("jwons-" + os.path.basename(datadir.lower()))
 
 # Get all dataset dirs, remove first element because walk will return the datasets directory itself
 # as the first element 
@@ -221,7 +237,7 @@ def batch_raas(dataset_dirs, zip_dirs = False, debug = True):
             shutil.make_archive("datasets/" + os.path.basename(data_dir), 'zip', data_dir)
         if(debug): print("Beginning containerization for: " + os.path.basename(data_dir))
         try:
-            result = headless_raas(name = os.path.basename(data_dir), lang = "R", preproc = "1", zip_path = "datasets/" + os.path.basename(data_dir) + ".zip")
+            result = headless_raas(name = os.path.basename(data_dir), lang = "R", preproc = "1", zip_path = os.path.basename(data_dir) + ".zip")
             if(result is False):
                 print("raas function returned false")
                 raise Exception("raas function returned false")
@@ -265,33 +281,66 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    if(args.noraas == False):
+    if args.noraas == False:
         print("RaaS must be running or this will fail")
+
+    #args.start = 2
+    #args.end = 3
+    #args.noraas = True
 
     # which increment of r dois to evaluate 
     dois = dois[args.start:args.end]
 
     # Define chunk size
     start = 0
-    end = 1
-    increment_by = 1
+    end = 3
+    increment_by = 3
 
     # Create folder for storing datasets if necessary
     if not os.path.exists("datasets"):
         os.makedirs("datasets")
 
-    shutil.copy("get_dataset_results.R", "datasets/get_dataset_results.R")
+    if args.noraas:
+        shutil.copy("get_dataset_results.R", "datasets/get_dataset_results.R")
+        with open("dataset_times.csv", "w") as create_dt:
+            create_dt.write("doi,time\n")
+    else:
+        try:
+            client = docker.from_env()
+            container = client.containers.get("cl01")
+        except docker.errors.NotFound as exc:
+            print("RaaS not booted")
+            exit(1)
+        else:
+            print("RaaS booted continuing on")
+    #else
+        '''
+        subprocess.run(["docker-compose", "up", "--build"],  )
+        client = docker.from_env()
+
+        for second in range(0, 10):
+            try:
+                container = client.containers.get("cl01")
+            except docker.errors.NotFound as exc:
+                print("RaaS probably still booting")
+                os.sleep(1)
+            else:
+                print("RaaS booted continuing on")
+        '''
+
     batch_thread = None
     batch_counter = 0
 
     # Download datasets while executing eval in batches
-    while(True):
+    while True:
 
         # download a chunk of datasets as defined outside the loop
         data_dirs_chunk = []
         for data_index in range(start, end):
             print("Downloading dataset " + str(data_index) + ": " + dois[data_index])
             datadir = download_dataset(dois[data_index].strip("\n"), "datasets")
+            if datadir == "SKIP":
+                continue
             data_dirs_chunk.append(datadir)
         data_dirs_chunk = list(set(data_dirs_chunk))
 
@@ -302,6 +351,8 @@ if __name__ == "__main__":
             batch_thread.join()
             print("Batch " + str(batch_counter) + " completed.")
             batch_counter += 1
+            if end == len(dois):
+                break
         if len(data_dirs_chunk) != 0:
             if args.noraas:
                 batch_thread = threading.Thread(target=batch_run, args=(data_dirs_chunk,), daemon=True)
@@ -318,4 +369,5 @@ if __name__ == "__main__":
             end = len(dois)
 
     batch_thread.join()
-    subprocess.run(["docker-compose", "down"])
+    if not args.noraas:
+        subprocess.run(["docker-compose", "down"])
