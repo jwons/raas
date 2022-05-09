@@ -100,7 +100,7 @@ get.variable.loaded.libs <- function(file, function.name){
         code <- gsub("library", "require", code)
     }
     parsed <- parse(text = code)
-    script_env <- new.env()
+    script.env <- new.env()
     evals <- tryCatch(sapply(parsed, eval, envir=script.env),
                   error = function(e) print("Error in eval"))
     pos.libs <- c()
