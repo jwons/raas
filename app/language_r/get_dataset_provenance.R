@@ -131,7 +131,12 @@ if(length(missing.lists) > 0){
 
 	for(missing.list in missing.lists){
 	  missing.table <- read.csv(file.path(dir_path_doi, missing.list), header = F)
+	  # Remove potentially duplicated rows
+	  missing.table <- missing.table[!duplicated(missing.table), ]
 	  missing.files <- rbind(missing.files, missing.table)
+	  if(file.exists(file.path(dir_path_doi, missing.list))){
+		  file.remove(file.path(dir_path_doi, missing.list))
+	  }
 	}
 	colnames(missing.files) <- c("Script Name", "Missing File")
 	write.csv(x = missing.files, file =  "../missing_files.csv", row.names = F)
