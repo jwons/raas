@@ -15,6 +15,7 @@ decorator
 docker 
 docker-pycreds 
 dominate 
+email_validator
 entrypoints 
 Flask 
 Flask-Bootstrap 
