@@ -18,7 +18,7 @@ from urllib import parse
 
 
 sys.path.append("../app")
-import headless_raas
+from headless_raas import headless_raas
 
 #from app.headless_raas import headless_raas
 
@@ -234,7 +234,10 @@ def batch_raas(dataset_dirs, zip_dirs = False, debug = True):
         # This code only needs to be run once
         if(zip_dirs):
             if(debug): print("Zipping: " + data_dir)
-            shutil.make_archive("datasets/" + os.path.basename(data_dir), 'zip', data_dir)
+            try:
+                shutil.make_archive("datasets/" + os.path.basename(data_dir), 'zip', data_dir)
+            except Exception as e:
+                print(e)
         if(debug): print("Beginning containerization for: " + os.path.basename(data_dir))
         try:
             result = headless_raas(name = os.path.basename(data_dir), lang = "R", preproc = "1", zip_path = os.path.basename(data_dir) + ".zip")
@@ -284,8 +287,8 @@ if __name__ == "__main__":
     if args.noraas == False:
         print("RaaS must be running or this will fail")
 
-    #args.start = 2
-    #args.end = 3
+    #args.start = 0
+    #args.end = 25
     #args.noraas = True
 
     # which increment of r dois to evaluate 
