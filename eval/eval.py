@@ -16,6 +16,10 @@ from func_timeout import func_timeout, FunctionTimedOut
 from timeit import default_timer as timer
 from urllib import parse
 
+# Debugging
+from celery.contrib import rdb
+
+
 
 sys.path.append("../app")
 from headless_raas import headless_raas
@@ -68,7 +72,6 @@ def download_dataset(doi, destination,
     # make a new directory to store the dataset
     # (if one doesn't exist)
 
-
     try:
         request = requests.get(api_url + "/datasets/:persistentId",
                              params={"persistentId": doi}).json()
@@ -83,7 +86,7 @@ def download_dataset(doi, destination,
     except Exception as e:
         print("Could not get dataset info from dataverse")
         print(e)
-        return False
+        return "SKIP"
 
     # convert DOI into a friendly directory name by replacing slashes and colons
     doi_direct = destination + '/' + doi_to_directory(doi)
@@ -224,29 +227,40 @@ def batch_run(datadirs):
 def tag_from_datadir(datadir):
     return("jwons-" + os.path.basename(datadir.lower()))
 
+def print_batch(message):
+    print("Batch Thread: " + str(message))
+
+def get_doi_from_dir_path(dir_path):
+    doi = dir_path.split("datasets/")[1]
+    doi = doi.replace("-", ":", 1)
+    doi = doi.replace("-", "/")
+    return(doi)
+
 # Get all dataset dirs, remove first element because walk will return the datasets directory itself
 # as the first element 
-#dataset_dirs = [direc[0] for direc in os.walk("./eval/datasets")][1:]
 def batch_raas(dataset_dirs, zip_dirs = False, debug = True):
-    print(dataset_dirs)
+    print_batch(dataset_dirs)
     failed_sets = []
     for data_dir in dataset_dirs:
         # This code only needs to be run once
+        rel_datapath = "datasets/" + os.path.basename(data_dir)
         if(zip_dirs):
             if(debug): print("Zipping: " + data_dir)
             try:
-                shutil.make_archive("datasets/" + os.path.basename(data_dir), 'zip', data_dir)
+                shutil.make_archive(rel_datapath, 'zip', data_dir)
             except Exception as e:
-                print(e)
-        if(debug): print("Beginning containerization for: " + os.path.basename(data_dir))
+                with open("vanished_dois.txt", "a+") as vanished:
+                    vanished.write(get_doi_from_dir_path(rel_datapath) + "\n")
+                continue
+        #if(debug): print("Beginning containerization for: " + os.path.basename(data_dir))
         try:
             result = headless_raas(name = os.path.basename(data_dir), lang = "R", preproc = "1", zip_path = os.path.basename(data_dir) + ".zip")
             if(result is False):
-                print("raas function returned false")
+                print_batch("raas function returned false")
                 raise Exception("raas function returned false")
         except Exception as e:
-            print("Containerization failed on: " + data_dir)
-            print(e)
+            print_batch("Containerization failed on: " + data_dir)
+            print_batch(e)
             failed_sets.append(data_dir)
 
         # Clean up
@@ -254,15 +268,16 @@ def batch_raas(dataset_dirs, zip_dirs = False, debug = True):
         os.remove("datasets/" + os.path.basename(data_dir) + ".zip")
         client = docker.from_env() 
         client.containers.prune()
+
         try:
             client.images.remove(tag_from_datadir(data_dir))
         except Exception as e:
-            print("Delete image failed")
-            print(e)
+            print_batch("Delete image failed")
+            print_batch(e)
             pass
         client.images.prune()
         
-    print("Reached end of list")
+    print_batch("Reached end of list")
 
     if(len(failed_sets) != 0):
         with open("failed_sets.txt", "a+") as failed:
@@ -273,7 +288,7 @@ def batch_raas(dataset_dirs, zip_dirs = False, debug = True):
 if __name__ == "__main__":
 
     # this file is created by the get_r_dois.py script
-    with open('r_dois.txt') as doi_file:
+    with open('r_vanished_dois.txt') as doi_file:
         dois = doi_file.readlines()
 
     parser = argparse.ArgumentParser()
@@ -296,8 +311,8 @@ if __name__ == "__main__":
 
     # Define chunk size
     start = 0
-    end = 3
-    increment_by = 3
+    end = 1
+    increment_by = end - start
 
     # Create folder for storing datasets if necessary
     if not os.path.exists("datasets"):
@@ -344,12 +359,18 @@ if __name__ == "__main__":
             datadir = download_dataset(dois[data_index].strip("\n"), "datasets")
             if datadir == "SKIP":
                 continue
+            '''
+            if not os.path.exists(datadir):
+                print("Dataset that 'downloaded' no longer exsits: " + datadir)
+                rdb.set_trace()
+            '''
+
             data_dirs_chunk.append(datadir)
         data_dirs_chunk = list(set(data_dirs_chunk))
 
         if(False in data_dirs_chunk):
             data_dirs_chunk.remove(False)
-        
+
         if batch_thread is not None:
             batch_thread.join()
             print("Batch " + str(batch_counter) + " completed.")
@@ -363,14 +384,20 @@ if __name__ == "__main__":
                 batch_thread = threading.Thread(target=batch_raas, args=(data_dirs_chunk,True, True), daemon=True)
             batch_thread.start()
 
-            if end == len(dois):
+        if end == len(dois):
                 break
-
         start += increment_by
         end += increment_by
         if (end > len(dois)):
             end = len(dois)
 
     batch_thread.join()
+
+    # save prov data for further analysis
+    bits, stat = container.get_archive("/raas/instance/results")
+    with open(os.path.join("prov_dirs.tar"), 'wb') as prov_dirs:
+        for chunk in bits:
+            prov_dirs.write(chunk)
+
     if not args.noraas:
         subprocess.run(["docker-compose", "down"])

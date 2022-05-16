@@ -375,7 +375,7 @@ def process_potential_path_string(line, potential_path, curr_wd, report_missing,
                     missing_out.write(find_rel_path(script_dir, get_root_dir(curr_wd)) + "/" \
                                       + r_file + ',' + potential_path + '\n')
     else:
-        line = re.sub(potential_path, os.path.basename(potential_path), line)
+        line = line.replace(potential_path, os.path.basename(potential_path))
     return line
 
 

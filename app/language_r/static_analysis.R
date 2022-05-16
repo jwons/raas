@@ -216,9 +216,17 @@ identify_packages <- function(file) {
   
   # Libraries might be loaded through a variable rather than a character literal,
   # find those libraries here
-  packages_used <- unique(c(packages_used, get.variable.loaded.libs(file, "install.packages")))
-  packages_used <- unique(c(packages_used, get.variable.loaded.libs(file, "library")))
-  
+  other.libs <- tryCatch(expr = {
+    vars.libs <- c()
+    vars.libs <- unique(c(vars.libs, get.variable.loaded.libs(file, "install.packages")))
+    vars.libs <- unique(c(vars.libs, get.variable.loaded.libs(file, "library")))
+    vars.libs
+  }, error = function(cond){
+    vars.libs
+  })
+  #packages_used <- unique(c(packages_used, get.variable.loaded.libs(file, "install.packages")))
+  #packages_used <- unique(c(packages_used, get.variable.loaded.libs(file, "library")))
+  packages_used <- unique(c(packages_used, other.libs))
   return(packages_used)
 }
 

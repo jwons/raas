@@ -23,6 +23,9 @@ list.of.packages = commandArgs(trailingOnly=TRUE)
 list.of.packages <- list.of.packages[!list.of.packages %in% installed.packages()]
 list.of.packages <- list.of.packages[tolower(list.of.packages) %in% tolower(archived)]
 
+if("rJava" %in% list.of.packages){
+  system("apt-get update && apt-get install -y default-jdk libbz2-dev libicu-dev liblzma-dev")
+}
 
 generate.mran.url <- function(date){
   gsub(" ", "", paste("https://cran.microsoft.com/snapshot/", date, collapse = ""))

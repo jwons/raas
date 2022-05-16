@@ -82,7 +82,6 @@ class RLang(LanguageInterface):
                 filename = re.split('\__preproc__.[rR]$', pre_file[1])[0]
                 os.rename(os.path.join(pre_file[0], pre_file[1]), os.path.join(pre_file[0], filename + ".R"))
 
-
         # ---------- STATIC ANALYSIS ----------
         subprocess.run(['bash', 'app/language_r/static_analysis.sh', self.dataset_dir, static_analysis_dir])
         

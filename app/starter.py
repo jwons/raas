@@ -52,7 +52,7 @@ def start_raas(self, language, current_user_id, name, preprocess, data_folder, z
     language_obj.build_docker_file(data_folder, static_results, code_btw, run_instr)
     self.update_state(state='PROGRESS', meta={'current': 4, 'total': 10,
                                               'status': 'Building Docker image... '})
-
+                                              
     language_obj.build_docker_img(language_obj.get_dockerfile_dir(data_folder), current_user_id, name)
     self.update_state(state='PROGRESS', meta={'current': 7, 'total': 10,
                                               'status': 'Collecting container environment information... '})

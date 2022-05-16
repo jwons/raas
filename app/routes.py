@@ -16,6 +16,8 @@ from app.models import User, Dataset
 from werkzeug.utils import secure_filename
 from app.starter import start_raas
 
+from celery.contrib import rdb
+
 
 @app.route('/')
 @app.route('/index')
@@ -281,36 +283,35 @@ def api_build():
     if 'ext_pkgs' in request.args:
         ext_pkgs = request.args['ext_pkgs']
 
-    else:
-        # create directories if they don't exists yet
-        if not os.path.exists(app.instance_path):
-            os.makedirs(app.instance_path)
-        if not os.path.exists(os.path.join(app.instance_path, 'datasets')):
-            os.makedirs(os.path.join(app.instance_path, 'datasets'))
-        else:
-            clean_folder = True
-            # In case a previous run errored out and failed to clean up, do it now
-            if clean_folder:
-                datasets_dir = os.path.join(app.instance_path, "datasets")
-                for files in os.listdir(datasets_dir):
-                    path = os.path.join(datasets_dir, files)
-                    try:
-                        shutil.rmtree(path)
-                    except OSError:
-                        os.remove(path)
-        # save the .zip file to the correct location
-        # extract_zip(zip_file, name)
-        shutil.copyfile("datasets/" + zip_file, os.path.join(app.instance_path, 'datasets', os.path.basename(zip_file)))
+    # create directories if they don't exists yet
+    if not os.path.exists(app.instance_path):
+        os.makedirs(app.instance_path)
+    if not os.path.exists(os.path.join(app.instance_path, 'datasets')):
+        os.makedirs(os.path.join(app.instance_path, 'datasets'))
 
-        task = start_raas.apply_async(kwargs={'language': language,
-                                              'data_folder': name,
-                                              'zip_filename': zip_file,
-                                              'current_user_id': user_id,
-                                              'name': name,
-                                              'preprocess': preprocess,
-                                              'run_instr': runinstr,
-                                              })
-        session['task_id'] = task.id
+    clean_folder = True
+    # In case a previous run errored out and failed to clean up, do it now
+    if clean_folder:
+        datasets_dir = os.path.join(app.instance_path, "datasets")
+        for files in os.listdir(datasets_dir):
+            path = os.path.join(datasets_dir, files)
+            try:
+                shutil.rmtree(path)
+            except OSError:
+                os.remove(path)
+    # save the .zip file to the correct location
+    # extract_zip(zip_file, name)
+    shutil.copyfile("datasets/" + zip_file, os.path.join(app.instance_path, 'datasets', os.path.basename(zip_file)))
+
+    task = start_raas.apply_async(kwargs={'language': language,
+                                          'data_folder': name,
+                                          'zip_filename': zip_file,
+                                          'current_user_id': user_id,
+                                          'name': name,
+                                          'preprocess': preprocess,
+                                          'run_instr': runinstr,
+                                          })
+    session['task_id'] = task.id
     taskinfo = {"task_id": task.id}
     return jsonify(taskinfo)
 
