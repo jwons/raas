@@ -297,11 +297,21 @@ if __name__ == "__main__":
     parser.add_argument('--start', default=0, type = int)
     parser.add_argument('--end', default = len(dois), type = int)
 
+    parser.add_argument('--stepwise', action='store_true')
+    parser.add_argument('--increment', default=0, type=int)  # 427
+    parser.add_argument('--step', default=0, type=int)
+
     args = parser.parse_args()
 
     if args.noraas == False:
         print("RaaS must be running or this will fail")
 
+    if args.stepwise:
+        args.start = args.increment * args.step
+        args.end = args.increment * args.step + args.increment
+        print("Executing stepwise.")
+        print("Starting with: " + dois[args.start])
+        print("Ending with: " + dois[args.end])
     #args.start = 0
     #args.end = 25
     #args.noraas = True
@@ -311,7 +321,7 @@ if __name__ == "__main__":
 
     # Define chunk size
     start = 0
-    end = 1
+    end = 3
     increment_by = end - start
 
     # Create folder for storing datasets if necessary
