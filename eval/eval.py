@@ -288,7 +288,7 @@ def batch_raas(dataset_dirs, zip_dirs = False, debug = True):
 if __name__ == "__main__":
 
     # this file is created by the get_r_dois.py script
-    with open('r_vanished_dois.txt') as doi_file:
+    with open('r_dois.txt') as doi_file:
         dois = doi_file.readlines()
 
     parser = argparse.ArgumentParser()
