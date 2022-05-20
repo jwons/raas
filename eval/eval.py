@@ -255,6 +255,9 @@ def batch_raas(dataset_dirs, zip_dirs = False, debug = True):
         #if(debug): print("Beginning containerization for: " + os.path.basename(data_dir))
         try:
             result = headless_raas(name = os.path.basename(data_dir), lang = "R", preproc = "1", zip_path = os.path.basename(data_dir) + ".zip")
+            if(result == "TIMEOUT"):
+                with open("raas_timeout_dois.txt", "a+") as timed_out:
+                    timed_out.write(get_doi_from_dir_path(rel_datapath) + "\n")
             if(result is False):
                 print_batch("raas function returned false")
                 raise Exception("raas function returned false")
@@ -313,7 +316,7 @@ if __name__ == "__main__":
         print("Starting with: " + dois[args.start])
         print("Ending with: " + dois[args.end])
     #args.start = 0
-    #args.end = 25
+    #args.end = 2
     #args.noraas = True
 
     # which increment of r dois to evaluate 

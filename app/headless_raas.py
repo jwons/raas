@@ -30,6 +30,9 @@ def headless_raas(name, lang, user = 1, preproc = "0", doi = "", zip_path = "", 
     while(True):
         try:
             task_status = requests.get(status_request).json()
+            if(task_status["status"] == 'SoftTimeLimitExceeded()'):
+                retVal = "TIMEOUT"
+                break
             if(task_status["status"] != last_status):
                 print(task_status)
                 last_status = task_status["status"]
