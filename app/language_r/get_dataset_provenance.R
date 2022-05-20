@@ -38,10 +38,14 @@ write.csv(run_log, file=run.log.file, row.names=FALSE)
 
 # get correct list of r files to run
 r_files = list.files(".", pattern="\\.[Rr]\\>", recursive=T, full.names=T)
-# parse out preprocessed files
+# parse out preprocessed and original files
 preproc_files = grep("__preproc__", r_files)
+original_files = grep("__original_scripts__", r_files)
 if (length(preproc_files) > 0) {
 	r_files = r_files[-preproc_files]
+}
+if (length(original_files) > 0) {
+  r_files = r_files[-original_files]
 }
 
 
@@ -92,9 +96,13 @@ for (r_file in r_files) {
 	  new.prov.dir <- str_replace_all(filename, "[\\/.]", "-")
 	  new.prov.dir <- str_replace_all(new.prov.dir, "^-*", "")
 	  new.prov.dir <- paste0(dirname(old.prov.dir), "/", new.prov.dir)
-	  
+	  new.prov.dir <- gsub(" ", "", new.prov.dir)
+
+	  setwd(prov.dir)
+	  old.prov.dir <- paste(strsplit(old.prov.dir, " ")[[1]], collapse = "\\ ")
 	  # Execute renaming
-	  system(paste0("mv ", old.prov.dir, " ", new.prov.dir))
+	  system(paste0("mv ", basename(old.prov.dir), " ", basename(new.prov.dir)))
+	  setwd(dir_path_doi)
 	}
 	
 

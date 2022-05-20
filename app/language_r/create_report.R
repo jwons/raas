@@ -57,6 +57,9 @@ check.filename.in.runlog <- function(run.log.filename, prov.filename){
 # Contains information about whether a script timed out
 run.log <- read.csv(file.path(prov.data.dir, "run_log.csv"))
 
+# Master list of r scripts in a dataset
+r.scripts <- basename(as.character(run.log$filename))
+
 # This code gathers the information from each individual script, collecting input files, output files, and warnings
 # for each script that has provenance. ind.scripts becomes a named list where the key is a full script path
 # and the value is the data collected.
@@ -67,6 +70,10 @@ for (prov.json in prov.jsons){
 
   # Filename is used as key to the list
   filename <- provParseR::get.environment(prov.obj)[provParseR::get.environment(prov.obj)$label == "script",]$value
+
+  # Keep track of which files have been processed
+  r.scripts <- r.scripts[r.scripts != basename(filename)]
+
 
   # Check for matching file in run log
   run.mask <- unlist(lapply(run.log[["filename"]], check.filename.in.runlog, prov.filename=filename))
@@ -87,6 +94,14 @@ for (prov.json in prov.jsons){
   # Condense and add to the final list
   script.info <- list("Input Files"= input.files, "Output Files"=output.files, "Warnings"=warnings, "Errors" = errors, "Timed Out"= as.character(timed.out))
   ind.scripts[[filename]] <- script.info
+}
+
+# If a script didn't have prov it will show up here
+if(length(r.scripts) > 0){
+  for (no.prov.script in r.scripts){
+    script.info <- list("Input Files"= c(), "Output Files"=c(), "Warnings"=c(), "Errors" = c("rdtLite Error"), "Timed Out"= as.character(F))
+    ind.scripts[[no.prov.script]] <- script.info
+  }
 }
 
 # Creat a single R object and then convert to json before writing to system to be read by RaaS
