@@ -15,7 +15,7 @@ library(provParseR)
 args = commandArgs(trailingOnly=TRUE)
 # parse command line args for path to the directory and preprocessing
 dir_path_doi = args[1] # example: "doi--10.7910-DVN-26905"
-prov.dir <- file.path(dir_path_doi, "/../prov_data")
+prov.dir <- file.path(dir_path_doi, "../prov_data")
 run.log.file <- file.path(prov.dir, "/run_log.csv")
 error.file <- file.path(prov.dir, "/error.RData")
 
@@ -54,7 +54,7 @@ if(file.exists("../.srcignore")){
 # for each R file
 for (r_file in r_files) {
   # If this is a sourced script do not run it independently, instead go to next file
-  if(!is.na(sourced.scripts)){
+  if(!is.na(sourced.scripts[1])){
     if(substr(r_file, 2, nchar(r_file)) %in% sourced.scripts){
       next
     }
@@ -66,7 +66,7 @@ for (r_file in r_files) {
 	save(dir_path_doi, r_files, r_file, filename,
 		 file=paste(prov.dir, "/get_prov.RData", sep =""))
 	#setwd(script_dir)
-	run.script <- paste0("R -e \"library(rdtLite); setwd('", paste0(dir_path_doi, substr(dirname(filename), 2, nchar(filename))), "'); error <-  try(prov.run('", basename(r_file), "', prov.dir = '", prov.dir ,
+	run.script <- paste0("R -e \"library(rdtLite); .libPaths(new = '/home/rstudio/r_packages/'); setwd('", dir_path_doi, "'); error <-  try(prov.run('", r_file, "', prov.dir = '", prov.dir ,
 	                     "'), silent = TRUE); if(class(error) == 'try-error'){save(error,file ='", paste0(prov.dir, "/error.RData") ,"')}", "\"")
 	system(run.script)
 

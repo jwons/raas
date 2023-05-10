@@ -34,8 +34,7 @@ class LanguageInterface(object):
     def get_container_tag(current_user_id, name):
         current_user_obj = User.query.get(current_user_id)
         image_name = current_user_obj.username + '-' + name
-        repo_name = os.environ.get('DOCKER_REPO') + '/'
-        return repo_name.lower() + image_name.lower()
+        return image_name.lower()
 
     @staticmethod
     def get_dockerfile_dir(name):
@@ -43,25 +42,37 @@ class LanguageInterface(object):
 
     def build_docker_img(self, docker_file_dir, current_user_id, name):
         # Use low-level api client so we can print output from build process.
+        '''
         client = docker.APIClient(base_url='unix://var/run/docker.sock')
         generator = client.build(path=docker_file_dir, tag=self.get_container_tag(current_user_id, name))
 
         for chunk in generator:
             if 'stream' in chunk.decode():
-                for line in json.loads(chunk.decode())["stream"].splitlines():
+                for line in json.loads(chunk.decode().replace("\r\n", "\n"))["stream"].splitlines():
                     print(line)
+        '''
 
-    @staticmethod
-    def push_docker_img(current_user_id, name, report):
+        # Code taken from feliperuhland and (slightly modified to work with dict_key as sets now)
+        # on GitHub in response to an issue
+        # https://github.com/docker/docker-py/issues/2468
+        cli = docker.from_env()
+        response = cli.api.build(path=docker_file_dir, tag=self.get_container_tag(current_user_id, name), decode=True)
+        for line in response:
+            if 'stream' in line.keys() or 'error' in line.keys():
+                value = str([*line.values()][0]).strip()
+                if value:
+                    print(value)
+        # End code taken from GitHub issue
+
+    def push_docker_img(self, current_user_id, name, report):
         current_user_obj = User.query.get(current_user_id)
-        image_name = current_user_obj.username + '-' + name
-        repo_name = os.environ.get('DOCKER_REPO') + '/'
 
         # Not pushing to Docker Hub at the moment.
-        # print(self.client.images.push(repository=repo_name + image_name), file=sys.stderr)
+        # print(self.client.images.push(repository=self.get_container_tag(current_user_id, name)), file=sys.stderr)
 
         # add dataset to database
-        new_dataset = Dataset(url="https://hub.docker.com/r/" + repo_name + image_name + "/",
+        image_tag = self.get_container_tag(current_user_id, name)
+        new_dataset = Dataset(url="https://hub.docker.com/r/" + self.get_container_tag(current_user_id, name) + "/",
                               author=current_user_obj,
                               name=name,
                               report=report)
@@ -72,12 +83,13 @@ class LanguageInterface(object):
 
     def clean_up_datasets(self, name):
         # delete any stored data
-        try:
-            shutil.rmtree(self.get_dockerfile_dir(name))
-        except Exception as e:
-            print("Can't delete dataset")
-            print(e)
-            pass
+        if os.path.isdir(self.get_dockerfile_dir(name)):
+            try:
+                shutil.rmtree(self.get_dockerfile_dir(name))
+            except Exception as e:
+                print("Can't delete dataset")
+                print(e)
+                pass
 
 
 class StaticAnalysisResults:
@@ -85,5 +97,4 @@ class StaticAnalysisResults:
     def __init__(self, lang_packages, sys_libs, lang_specific={}):
         self.lang_packages = lang_packages
         self.sys_libs = sys_libs
-        # self.src_ignore = src_ignore
         self.lang_specific = lang_specific

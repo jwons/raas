@@ -22,7 +22,7 @@ COPY requirements.txt requirements.txt
 
 # This variable specifices the system packages needed to be installed for RaaS
 ENV BUILD_DEPS="build-essential libcurl4-gnutls-dev libxml2-dev libssl-dev libgit2-dev dirmngr" \
-    APP_DEPS="curl libpq-dev python3-pip python3 wget apt-transport-https ca-certificates gnupg-agent software-properties-common"
+    APP_DEPS="curl libpq-dev python3-pip python3 wget apt-transport-https ca-certificates gnupg-agent software-properties-common telnet"
 
 # Install previously defined system libraries
 RUN apt-get update \
@@ -51,6 +51,7 @@ RUN wget \
     && mkdir /root/.conda \
     && bash Miniconda3-latest-Linux-x86_64.sh -b \
     && rm -f Miniconda3-latest-Linux-x86_64.sh \
+    && conda update -y -n base -c defaults conda \
     && conda env create -f raas-env.yml \
     && conda env create -f pylint2-env.yml \
     && conda env create -f pylint3-env.yml 

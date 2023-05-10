@@ -8,7 +8,7 @@ from shutil import copy
 from app.headless_raas import headless_raas
 
 client = docker.from_env()
-TEST_USER = "jwonsil/jwons-"
+TEST_USER = "jwons-"
 r_datadir = "R/"
 py_datadir = "Python/"
 
@@ -70,6 +70,21 @@ def test_recursive_source_call():
 def test_fixing_filepath():
     print_r_testname("Fixing Filepaths")
     script_name = "test-fix-filepath.zip"
+    copy(r_datadir + script_name, "../datasets/")
+    container_tag = TEST_USER + os.path.splitext(script_name)[0]
+    result = invoke_raas(script_name, "R")
+    failed_scripts = check_for_failed_r_scripts(container_tag)
+    if len(failed_scripts) > 0:
+        result = False
+    client.containers.prune()
+    client.images.remove(container_tag)
+    os.remove("../datasets/" + script_name)
+    if result is False:
+        raise TestFailure("Test fixing filepath failed")
+
+def test_install_through_filepaths():
+    print_r_testname("Installing Through Variables")
+    script_name = "test-install-through-variables.zip"
     copy(r_datadir + script_name, "../datasets/")
     container_tag = TEST_USER + os.path.splitext(script_name)[0]
     result = invoke_raas(script_name, "R")
@@ -177,7 +192,8 @@ if __name__ == "__main__":
     r_tests = [
         test_missing_files,
         test_recursive_source_call,
-        test_fixing_filepath
+        test_fixing_filepath,
+        test_install_through_filepaths
     ]
 
     py_tests = [
@@ -185,6 +201,7 @@ if __name__ == "__main__":
     ]
 
     #r_tests = []
+    #py_tests = []
 
     # Run R tests
     for test in r_tests:

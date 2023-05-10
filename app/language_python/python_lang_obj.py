@@ -196,12 +196,10 @@ class PyLang(LanguageInterface):
 
     def create_report(self, current_user_id, name, dir_name, time):
         client = docker.from_env()
-        current_user_obj = User.query.get(current_user_id)
-        # image_name = ''.join(random.choice(string.ascii_lowercase) for _ in range(5))
-        image_name = current_user_obj.username + '-' + name
-        repo_name = os.environ.get('DOCKER_REPO') + '/'
-        container = client.containers.run(image=repo_name + image_name,
-                                          environment=["PASSWORD=" + repo_name + image_name],
+
+        image_name = self.get_container_tag(current_user_id, name)
+        container = client.containers.run(image=image_name,
+                                          environment=["PASSWORD=pass"],
                                           detach=True, command="tail -f /dev/null")
 
         container_packages = \
@@ -232,7 +230,7 @@ class PyLang(LanguageInterface):
         report["Container Information"]["System Libraries"] = system_packages
         report["Container Information"]["Language Version"] = python_version
         report["Individual Scripts"] = container_packages
-        report["Additional Information"]["Container Name"] = repo_name + image_name
+        report["Additional Information"]["Container Name"] = image_name
         report["Additional Information"]["Build Time"] = time
         return report
 
